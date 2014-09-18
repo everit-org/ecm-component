@@ -16,30 +16,16 @@
  */
 package org.everit.osgi.ecm.component.internal.metatype;
 
-import java.util.ResourceBundle;
+import java.util.Dictionary;
 
-public class Localizer {
+import org.osgi.service.cm.ConfigurationException;
+import org.osgi.service.cm.ManagedService;
 
-    private final ResourceBundle resourceBundle;
+public class ManagedServiceImpl implements ManagedService {
 
-    public Localizer(ResourceBundle resourceBundle) {
-        this.resourceBundle = resourceBundle;
+    @Override
+    public void updated(Dictionary<String, ?> properties) throws ConfigurationException {
+        System.out.println("Managed service update: " + properties);
     }
 
-    public String localize(String text) {
-        if (text == null) {
-            return null;
-        }
-
-        if (!text.startsWith("%")) {
-            return text;
-        }
-
-        text = text.substring(1);
-
-        if (text.length() == 0 || resourceBundle == null || !resourceBundle.containsKey(text)) {
-            return text;
-        }
-        return resourceBundle.getString(text);
-    }
 }
