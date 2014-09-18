@@ -21,6 +21,9 @@ import org.everit.osgi.ecm.component.Component;
 import org.everit.osgi.ecm.metadata.ComponentMetadata;
 import org.osgi.framework.BundleActivator;
 import org.osgi.framework.BundleContext;
+import org.osgi.framework.ServiceReference;
+import org.osgi.service.metatype.MetaTypeInformation;
+import org.osgi.service.metatype.MetaTypeService;
 
 public class ECMTestActivator implements BundleActivator {
 
@@ -33,6 +36,29 @@ public class ECMTestActivator implements BundleActivator {
 
         component = new Component<AnnotatedClass>(componentMetadata, context);
         component.open();
+
+        new Thread(
+                () -> {
+                    try {
+                        Thread.sleep(5000);
+                    } catch (Exception e) {
+                        // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+            ServiceReference<MetaTypeService> metatypeServiceReference = context
+                    .getServiceReference(MetaTypeService.class);
+            MetaTypeService metaTypeService = context.getService(metatypeServiceReference);
+
+            MetaTypeInformation metaTypeInformation = metaTypeService.getMetaTypeInformation(context
+                    .getBundle(context
+                            .getBundle().getBundleId()));
+
+            System.out.println(context.getBundle().getBundleId() + ", "
+                    + metaTypeInformation.getObjectClassDefinition("TestAnnotedClass", "").getClass().toString());
+
+            context.ungetService(metatypeServiceReference);
+        }).start();
+        ;
 
     }
 
