@@ -17,8 +17,15 @@
 package org.everit.osgi.ecm.component.tests;
 
 import org.everit.osgi.ecm.annotation.Component;
+import org.everit.osgi.ecm.annotation.attribute.ShortAttribute;
 
-@Component(metatype = true, name = "TestAnnotedClass", configurationFactory = true)
+@Component(metatype = true, componentId = "TestAnnotedClass", configurationFactory = true)
 public class AnnotatedClass {
 
+    @ShortAttribute(multiple = true)
+    private short lau;
+
+    public void setLau(short lau) {
+        this.lau = lau;
+    }
 }

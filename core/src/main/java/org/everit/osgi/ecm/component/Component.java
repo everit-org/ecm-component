@@ -17,11 +17,13 @@
 package org.everit.osgi.ecm.component;
 
 import java.util.Dictionary;
+import java.util.Enumeration;
 import java.util.Hashtable;
+import java.util.Random;
 
-import org.everit.osgi.ecm.component.internal.metatype.ManagedServiceFactoryImpl;
-import org.everit.osgi.ecm.component.internal.metatype.ManagedServiceImpl;
-import org.everit.osgi.ecm.component.internal.metatype.MetatypeProviderImpl;
+import org.everit.osgi.ecm.component.internal.ManagedServiceFactoryImpl;
+import org.everit.osgi.ecm.component.internal.ManagedServiceImpl;
+import org.everit.osgi.ecm.component.internal.MetatypeProviderImpl;
 import org.everit.osgi.ecm.metadata.ComponentMetadata;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.Constants;
@@ -36,11 +38,13 @@ public class Component<C> {
 
     private final ComponentMetadata<C> componentMetadata;
 
+    private Dictionary<String, Object> managedServiceProps;
+
+    private ServiceRegistration<?> managedServiceSR;
+
     private final MetatypeProviderImpl<C> metatypeProviderImpl;
 
     private ServiceRegistration<MetaTypeProvider> metatypeProviderSR;
-
-    private ServiceRegistration<?> managedServiceSR;
 
     public Component(ComponentMetadata<C> componentMetadata, BundleContext bundleContext) {
         this.componentMetadata = componentMetadata;
@@ -66,16 +70,30 @@ public class Component<C> {
             registerMetatypeProvider(configurationPid);
         }
 
-        Dictionary<String, Object> serviceProps = new Hashtable<String, Object>();
-        serviceProps.put(Constants.SERVICE_PID, configurationPid);
+        managedServiceProps = new Hashtable<String, Object>();
+        managedServiceProps.put(Constants.SERVICE_PID, configurationPid);
         if (componentMetadata.isConfigurationFactory()) {
             ManagedServiceFactory managedServiceFactory = new ManagedServiceFactoryImpl();
             managedServiceSR = bundleContext.registerService(ManagedServiceFactory.class, managedServiceFactory,
-                    serviceProps);
+                    managedServiceProps);
         } else {
             ManagedService managedService = new ManagedServiceImpl();
-            managedServiceSR = bundleContext.registerService(ManagedService.class, managedService, serviceProps);
+            managedServiceSR = bundleContext.registerService(ManagedService.class, managedService, managedServiceProps);
         }
+    }
+
+    public void pushModifiedService() {
+        Random r = new Random();
+
+        Hashtable<String, Object> newProps = new Hashtable<String, Object>();
+        Enumeration<String> keys = managedServiceProps.keys();
+        while (keys.hasMoreElements()) {
+            String key = keys.nextElement();
+            Object value = managedServiceProps.get(key);
+            newProps.put(key, value);
+        }
+        newProps.put("someProp", r.nextInt());
+        managedServiceSR.setProperties(newProps);
     }
 
     private void registerMetatypeProvider(String configurationPid) {

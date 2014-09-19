@@ -18,13 +18,21 @@ package org.everit.osgi.ecm.component.internal.metatype;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.LinkedList;
+import java.util.List;
 
+import org.everit.osgi.ecm.component.internal.Localizer;
+import org.everit.osgi.ecm.metadata.AttributeMetadata;
 import org.everit.osgi.ecm.metadata.ComponentMetadata;
 import org.everit.osgi.ecm.metadata.Icon;
+import org.everit.osgi.ecm.metadata.ReferenceMetadata;
+import org.everit.osgi.ecm.metadata.StringAttributeMetadata;
 import org.osgi.service.metatype.AttributeDefinition;
 import org.osgi.service.metatype.ObjectClassDefinition;
 
 public class ObjectClassDefinitionImpl<C> implements ObjectClassDefinition {
+
+    private final AttributeDefinition[] attributeDefinitions;
 
     private final ClassLoader classLoader;
 
@@ -37,12 +45,44 @@ public class ObjectClassDefinitionImpl<C> implements ObjectClassDefinition {
         this.componentMetadata = componentMetadata;
         this.localizer = localizer;
         this.classLoader = classLoader;
+
+        attributeDefinitions = createAttributeDefinitions(componentMetadata);
+
+    }
+
+    private AttributeDefinition[] createAttributeDefinitions(ComponentMetadata<C> componentMetadata) {
+        AttributeMetadata<?>[] attributes = componentMetadata.getAttributes();
+        if (attributes == null || attributes.length == 0) {
+            return null;
+        }
+
+        List<AttributeDefinition> result = new LinkedList<AttributeDefinition>();
+
+        for (AttributeMetadata<?> attribute : attributes) {
+            if (attribute instanceof ReferenceMetadata) {
+                // TODO
+            } else if (attribute instanceof StringAttributeMetadata) {
+                // TODO
+            } else {
+                result.add(new AttributeDefinitionImpl(attribute, localizer));
+            }
+        }
+
+        if (result.size() == 0) {
+            return null;
+        }
+
+        return result.toArray(new AttributeDefinition[result.size()]);
     }
 
     @Override
     public AttributeDefinition[] getAttributeDefinitions(int filter) {
-        // TODO Auto-generated method stub
-        return new AttributeDefinition[] { new AttributeDefinitionImpl() };
+        if (filter == ObjectClassDefinition.ALL || filter == ObjectClassDefinition.REQUIRED) {
+            return attributeDefinitions;
+        } else {
+            // TODO handle optional attributes
+            return null;
+        }
     }
 
     @Override
@@ -82,7 +122,7 @@ public class ObjectClassDefinitionImpl<C> implements ObjectClassDefinition {
 
     @Override
     public String getName() {
-        return localizer.localize(componentMetadata.getName());
+        return localizer.localize(componentMetadata.getComponentId());
     }
 
 }

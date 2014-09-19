@@ -14,11 +14,12 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with Everit - ECM Component.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.everit.osgi.ecm.component.internal.metatype;
+package org.everit.osgi.ecm.component.internal;
 
 import java.util.Locale;
 import java.util.ResourceBundle;
 
+import org.everit.osgi.ecm.component.internal.metatype.ObjectClassDefinitionImpl;
 import org.everit.osgi.ecm.metadata.ComponentMetadata;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.wiring.BundleWiring;
