@@ -17,6 +17,8 @@
 package org.everit.osgi.ecm.component.tests;
 
 import org.everit.osgi.ecm.annotation.Component;
+import org.everit.osgi.ecm.annotation.attribute.IntegerAttribute;
+import org.everit.osgi.ecm.annotation.attribute.IntegerAttributeOption;
 import org.everit.osgi.ecm.annotation.attribute.ShortAttribute;
 
 @Component(metatype = true, componentId = "TestAnnotedClass", configurationFactory = true)
@@ -24,6 +26,10 @@ public class AnnotatedClass {
 
     @ShortAttribute(multiple = true)
     private short lau;
+
+    @IntegerAttribute(options = { @IntegerAttributeOption(label = "option 0", value = 0),
+            @IntegerAttributeOption(label = "option 1", value = 1) }, defaultValue = 1)
+    private int selectableInteger;
 
     public void setLau(short lau) {
         this.lau = lau;

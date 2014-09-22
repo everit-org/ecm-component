@@ -16,20 +16,32 @@
  */
 package org.everit.osgi.ecm.component.internal.metatype;
 
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+
 import org.everit.osgi.ecm.component.internal.Localizer;
 import org.everit.osgi.ecm.metadata.AttributeMetadata;
+import org.everit.osgi.ecm.metadata.AttributeMetadataHolder;
 import org.everit.osgi.ecm.metadata.PasswordAttributeMetadata;
+import org.everit.osgi.ecm.metadata.SelectablePropertyAttributeMetadata;
 import org.osgi.service.metatype.AttributeDefinition;
 
-public class AttributeDefinitionImpl implements AttributeDefinition {
+public class AttributeDefinitionImpl<V> implements AttributeDefinition, AttributeMetadataHolder<V> {
 
-    private final AttributeMetadata<?> attributeMetadata;
+    private final AttributeMetadata<V> attributeMetadata;
 
     private final int attributeType;
 
+    private final String[] defaultValue;
+
     private final Localizer localizer;
 
-    public AttributeDefinitionImpl(AttributeMetadata<?> attributeMetadata, Localizer localizer) {
+    private final String[] optionLabels;
+
+    private final String[] optionValues;
+
+    public AttributeDefinitionImpl(AttributeMetadata<V> attributeMetadata, Localizer localizer) {
         this.attributeMetadata = attributeMetadata;
         this.localizer = localizer;
 
@@ -56,6 +68,50 @@ public class AttributeDefinitionImpl implements AttributeDefinition {
         } else {
             attributeType = AttributeDefinition.STRING;
         }
+
+        defaultValue = createDefaultValueArray();
+
+        if (attributeMetadata instanceof SelectablePropertyAttributeMetadata) {
+            SelectablePropertyAttributeMetadata<V> selectableMetadata =
+                    (SelectablePropertyAttributeMetadata<V>) attributeMetadata;
+
+            Map<V, String> options = selectableMetadata.getOptions();
+
+            if (options == null || options.size() == 0) {
+                optionLabels = null;
+                optionValues = null;
+            } else {
+                Set<Entry<V, String>> optionsEntrySet = options.entrySet();
+                optionLabels = new String[options.size()];
+                optionValues = new String[options.size()];
+
+                int i = 0;
+                for (Entry<V, String> optionEntry : optionsEntrySet) {
+                    optionLabels[i] = localizer.localize(optionEntry.getValue());
+                    optionValues[i] = String.valueOf(optionEntry.getKey());
+                    i++;
+                }
+            }
+
+        } else {
+            optionLabels = null;
+            optionValues = null;
+        }
+    }
+
+    private String[] createDefaultValueArray() {
+        Object[] defaultValue = attributeMetadata.getDefaultValue();
+        if (defaultValue == null || defaultValue.length == 0) {
+            return null;
+        }
+
+        String[] result = new String[defaultValue.length];
+        for (int i = 0; i < result.length; i++) {
+            if (defaultValue[i] != null) {
+                result[i] = String.valueOf(defaultValue[i]);
+            }
+        }
+        return result;
     }
 
     @Override
@@ -69,18 +125,7 @@ public class AttributeDefinitionImpl implements AttributeDefinition {
 
     @Override
     public String[] getDefaultValue() {
-        Object[] defaultValue = attributeMetadata.getDefaultValue();
-        if (defaultValue == null || defaultValue.length == 0) {
-            return null;
-        }
-
-        String[] result = new String[defaultValue.length];
-        for (int i = 0; i < result.length; i++) {
-            if (defaultValue[i] != null) {
-                defaultValue[i] = String.valueOf(defaultValue[i]);
-            }
-        }
-        return result;
+        return defaultValue;
     }
 
     @Override
@@ -94,20 +139,23 @@ public class AttributeDefinitionImpl implements AttributeDefinition {
     }
 
     @Override
+    public AttributeMetadata<V> getMetadata() {
+        return attributeMetadata;
+    }
+
+    @Override
     public String getName() {
         return localizer.localize(attributeMetadata.getLabel());
     }
 
     @Override
     public String[] getOptionLabels() {
-        // TODO
-        return null;
+        return optionLabels;
     }
 
     @Override
     public String[] getOptionValues() {
-        // TODO Auto-generated method stub
-        return null;
+        return optionValues;
     }
 
     @Override

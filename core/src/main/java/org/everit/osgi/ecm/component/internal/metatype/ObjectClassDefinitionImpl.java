@@ -25,8 +25,6 @@ import org.everit.osgi.ecm.component.internal.Localizer;
 import org.everit.osgi.ecm.metadata.AttributeMetadata;
 import org.everit.osgi.ecm.metadata.ComponentMetadata;
 import org.everit.osgi.ecm.metadata.Icon;
-import org.everit.osgi.ecm.metadata.ReferenceMetadata;
-import org.everit.osgi.ecm.metadata.StringAttributeMetadata;
 import org.osgi.service.metatype.AttributeDefinition;
 import org.osgi.service.metatype.ObjectClassDefinition;
 
@@ -59,13 +57,11 @@ public class ObjectClassDefinitionImpl<C> implements ObjectClassDefinition {
         List<AttributeDefinition> result = new LinkedList<AttributeDefinition>();
 
         for (AttributeMetadata<?> attribute : attributes) {
-            if (attribute instanceof ReferenceMetadata) {
-                // TODO
-            } else if (attribute instanceof StringAttributeMetadata) {
-                // TODO
-            } else {
-                result.add(new AttributeDefinitionImpl(attribute, localizer));
-            }
+
+            @SuppressWarnings({ "unchecked", "rawtypes" })
+            AttributeDefinitionImpl<Object> attributeDefinition = new AttributeDefinitionImpl(attribute, localizer);
+
+            result.add(attributeDefinition);
         }
 
         if (result.size() == 0) {
