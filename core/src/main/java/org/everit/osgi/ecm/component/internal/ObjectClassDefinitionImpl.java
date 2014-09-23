@@ -14,15 +14,16 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with Everit - ECM Component.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.everit.osgi.ecm.component.internal.metatype;
+package org.everit.osgi.ecm.component.internal;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 
-import org.everit.osgi.ecm.component.internal.Localizer;
 import org.everit.osgi.ecm.metadata.AttributeMetadata;
+import org.everit.osgi.ecm.metadata.AttributeMetadataHolder;
 import org.everit.osgi.ecm.metadata.ComponentMetadata;
 import org.everit.osgi.ecm.metadata.Icon;
 import org.osgi.service.metatype.AttributeDefinition;
@@ -57,7 +58,6 @@ public class ObjectClassDefinitionImpl<C> implements ObjectClassDefinition {
         List<AttributeDefinition> result = new LinkedList<AttributeDefinition>();
 
         for (AttributeMetadata<?> attribute : attributes) {
-
             @SuppressWarnings({ "unchecked", "rawtypes" })
             AttributeDefinitionImpl<Object> attributeDefinition = new AttributeDefinitionImpl(attribute, localizer);
 
@@ -73,12 +73,28 @@ public class ObjectClassDefinitionImpl<C> implements ObjectClassDefinition {
 
     @Override
     public AttributeDefinition[] getAttributeDefinitions(int filter) {
-        if (filter == ObjectClassDefinition.ALL || filter == ObjectClassDefinition.REQUIRED) {
-            return attributeDefinitions;
+        if (filter == ObjectClassDefinition.REQUIRED) {
+            return generateAttributeDefinitions(true);
+        } else if (filter == ObjectClassDefinition.OPTIONAL) {
+            return generateAttributeDefinitions(false);
         } else {
-            // TODO handle optional attributes
+            return attributeDefinitions;
+        }
+    }
+
+    private AttributeDefinition[] generateAttributeDefinitions(boolean required) {
+        List<AttributeDefinition> result = new ArrayList<AttributeDefinition>();
+        for (AttributeDefinition ad : attributeDefinitions) {
+            AttributeMetadataHolder<?> amh = (AttributeMetadataHolder<?>) ad;
+            AttributeMetadata<?> attributeMetadata = amh.getMetadata();
+            if ((required && !attributeMetadata.isOptional()) || (!required && attributeMetadata.isOptional())) {
+                result.add(ad);
+            }
+        }
+        if (result.size() == 0) {
             return null;
         }
+        return result.toArray(new AttributeDefinition[result.size()]);
     }
 
     @Override
@@ -118,7 +134,7 @@ public class ObjectClassDefinitionImpl<C> implements ObjectClassDefinition {
 
     @Override
     public String getName() {
-        return localizer.localize(componentMetadata.getComponentId());
+        return localizer.localize(componentMetadata.getLabel());
     }
 
 }

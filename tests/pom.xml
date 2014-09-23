@@ -68,7 +68,7 @@
           </jacoco>
           <environments>
             <environment>
-              <id>propertyManagerFelix</id>
+              <id>ecmFelix</id>
               <framework>felix</framework>
               <systemProperties>
                 <felix.cm.dir>${wrapper_home}/../conf/configadmin</felix.cm.dir>

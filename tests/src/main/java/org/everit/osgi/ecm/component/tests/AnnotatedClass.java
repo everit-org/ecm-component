@@ -21,7 +21,8 @@ import org.everit.osgi.ecm.annotation.attribute.IntegerAttribute;
 import org.everit.osgi.ecm.annotation.attribute.IntegerAttributeOption;
 import org.everit.osgi.ecm.annotation.attribute.ShortAttribute;
 
-@Component(metatype = true, componentId = "TestAnnotedClass", configurationFactory = true)
+@Component(metatype = true, componentId = "TestAnnotedClass", configurationFactory = true,
+        localizationBase = "/OSGI-INF/metatype/test")
 public class AnnotatedClass {
 
     @ShortAttribute(multiple = true)

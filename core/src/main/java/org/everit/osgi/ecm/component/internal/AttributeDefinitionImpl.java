@@ -14,13 +14,12 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with Everit - ECM Component.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.everit.osgi.ecm.component.internal.metatype;
+package org.everit.osgi.ecm.component.internal;
 
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
-import org.everit.osgi.ecm.component.internal.Localizer;
 import org.everit.osgi.ecm.metadata.AttributeMetadata;
 import org.everit.osgi.ecm.metadata.AttributeMetadataHolder;
 import org.everit.osgi.ecm.metadata.PasswordAttributeMetadata;

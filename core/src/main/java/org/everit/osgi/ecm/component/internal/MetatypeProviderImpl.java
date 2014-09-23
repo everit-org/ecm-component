@@ -16,11 +16,14 @@
  */
 package org.everit.osgi.ecm.component.internal;
 
+import java.util.Collection;
+import java.util.HashSet;
 import java.util.Locale;
 import java.util.ResourceBundle;
+import java.util.Set;
 
-import org.everit.osgi.ecm.component.internal.metatype.ObjectClassDefinitionImpl;
 import org.everit.osgi.ecm.metadata.ComponentMetadata;
+import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.wiring.BundleWiring;
 import org.osgi.service.metatype.MetaTypeProvider;
@@ -32,15 +35,62 @@ public class MetatypeProviderImpl<C> implements MetaTypeProvider {
 
     private final ComponentMetadata<C> componentMetadata;
 
+    private String[] locales;
+
     public MetatypeProviderImpl(ComponentMetadata<C> componentMetadata, BundleContext bundleContext) {
         this.componentMetadata = componentMetadata;
         this.bundleContext = bundleContext;
+
+        this.locales = createLocales();
+    }
+
+    private String[] createLocales() {
+        String localizationBase = componentMetadata.getLocalizationBase();
+        if (localizationBase == null) {
+            return null;
+        }
+
+        int lastIndexOfSlash = localizationBase.lastIndexOf('/');
+        String path = localizationBase;
+        String filePattern = localizationBase;
+        if (lastIndexOfSlash > 0) {
+            path = localizationBase.substring(0, lastIndexOfSlash);
+            filePattern = filePattern.substring(lastIndexOfSlash + 1);
+        }
+
+        Bundle bundle = bundleContext.getBundle();
+        BundleWiring bundleWiring = bundle.adapt(BundleWiring.class);
+
+        String propertiesPattern = "*.properties";
+        Collection<String> resources = bundleWiring.listResources(path, filePattern + propertiesPattern,
+                BundleWiring.LISTRESOURCES_LOCAL);
+
+        if (resources.size() == 0) {
+            return null;
+        }
+
+        int localizationBaseLength = localizationBase.length();
+        Set<String> result = new HashSet<String>();
+        int propertiesExtensionLength = propertiesPattern.length() - 1;
+        for (String resource : resources) {
+            String locale = resource.substring(localizationBaseLength - 1, resource.length()
+                    - propertiesExtensionLength);
+            if (locale.length() == 0) {
+                result.add("");
+            } else if (locale.startsWith("_")) {
+                result.add(locale.substring(1));
+            }
+        }
+
+        if (result.size() == 0) {
+            return null;
+        }
+        return result.toArray(new String[result.size()]);
     }
 
     @Override
     public String[] getLocales() {
-        // TODO handle locales if necessary
-        return null;
+        return locales;
     }
 
     @Override
@@ -50,7 +100,7 @@ public class MetatypeProviderImpl<C> implements MetaTypeProvider {
         Localizer localizer;
 
         String localizationBase = componentMetadata.getLocalizationBase();
-        if (localizationBase == null) {
+        if (locales == null) {
             localizer = new Localizer(null);
         } else {
             Locale locale;
