@@ -50,7 +50,7 @@
         <extensions>true</extensions>
         <configuration>
           <instructions>
-            <Bundle-SymbolicName>${project.artifactId}xx</Bundle-SymbolicName>
+            <Bundle-SymbolicName>${project.artifactId}</Bundle-SymbolicName>
             <Bundle-Activator>org.everit.osgi.ecm.component.tests.ECMTestActivator</Bundle-Activator>
             <EOSGi-TestNum>${eosgi.testnum}</EOSGi-TestNum>
           </instructions>
