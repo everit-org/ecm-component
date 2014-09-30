@@ -14,17 +14,30 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with Everit - ECM Component.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.everit.osgi.ecm.component.resource;
+package org.everit.osgi.ecm.component.internal;
 
+import org.everit.osgi.ecm.component.resource.ComponentRevision;
 import org.everit.osgi.ecm.metadata.ComponentMetadata;
-import org.osgi.framework.BundleContext;
 
-public interface ComponentContainer<C> {
+public class ComponentImpl<C> {
 
-    ComponentRevision[] getComponentRevisions();
+    private final ComponentMetadata<C> componentMetadata;
 
-    ComponentMetadata<C> getComponentMetadata();
+    public ComponentImpl(ComponentMetadata<C> componentMetadata) {
+        this.componentMetadata = componentMetadata;
+        // TODO Auto-generated constructor stub
+    }
 
-    BundleContext getBundleContext();
+    public void close() {
+        // TODO
+    }
 
+    public ComponentRevision getComponentRevision() {
+        // TODO
+        return null;
+    }
+
+    public void open() {
+        // TODO
+    }
 }

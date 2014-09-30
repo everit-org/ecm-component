@@ -17,16 +17,21 @@
 package org.everit.osgi.ecm.component.tests;
 
 import org.everit.osgi.ecm.annotation.Component;
+import org.everit.osgi.ecm.annotation.ConfigurationPolicy;
 import org.everit.osgi.ecm.annotation.attribute.IntegerAttribute;
 import org.everit.osgi.ecm.annotation.attribute.IntegerAttributeOption;
+import org.everit.osgi.ecm.annotation.attribute.PasswordAttribute;
 import org.everit.osgi.ecm.annotation.attribute.ShortAttribute;
 
-@Component(metatype = true, componentId = "TestAnnotedClass", configurationFactory = true,
+@Component(metatype = true, componentId = "TestAnnotedClass", configurationPolicy = ConfigurationPolicy.FACTORY,
         localizationBase = "/OSGI-INF/metatype/test")
 public class AnnotatedClass {
 
     @ShortAttribute(multiple = true)
     private short lau;
+
+    @PasswordAttribute
+    private String password;
 
     @IntegerAttribute(options = { @IntegerAttributeOption(label = "option 0", value = 0),
             @IntegerAttributeOption(label = "option 1", value = 1) }, defaultValue = 1)

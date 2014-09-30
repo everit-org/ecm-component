@@ -20,6 +20,7 @@ import java.util.Dictionary;
 import java.util.Hashtable;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.everit.osgi.ecm.component.resource.ComponentContainer;
 import org.everit.osgi.ecm.component.resource.ComponentRevision;
@@ -34,6 +35,8 @@ import org.osgi.service.metatype.MetaTypeProvider;
 
 public class ComponentContainerImpl<C> extends AbstractComponentContainer<C> implements ManagedService {
 
+    private final AtomicReference<ComponentImpl<C>> componentAtomicReference = new AtomicReference<ComponentImpl<C>>();
+
     private ServiceRegistration<?> serviceRegistration;
 
     public ComponentContainerImpl(ComponentMetadata<C> componentMetadata, BundleContext bundleContext) {
@@ -41,9 +44,25 @@ public class ComponentContainerImpl<C> extends AbstractComponentContainer<C> imp
     }
 
     @Override
-    public ComponentRevision[] getComponents() {
-        // TODO Auto-generated method stub
-        return null;
+    public void close() {
+        if (serviceRegistration != null) {
+            serviceRegistration.unregister();
+            serviceRegistration = null;
+        }
+        ComponentImpl<C> componentImpl = componentAtomicReference.get();
+        if (componentImpl != null) {
+            componentImpl.close();
+            componentAtomicReference.set(null);
+        }
+    }
+
+    @Override
+    public ComponentRevision[] getComponentRevisions() {
+        ComponentImpl<C> componentImpl = componentAtomicReference.get();
+        if (componentImpl == null) {
+            return new ComponentRevision[0];
+        }
+        return new ComponentRevision[] { componentImpl.getComponentRevision() };
     }
 
     @Override
@@ -54,12 +73,12 @@ public class ComponentContainerImpl<C> extends AbstractComponentContainer<C> imp
         serviceInterfaces.add(ComponentContainer.class.getName());
 
         ComponentMetadata<C> componentMetadata = getComponentMetadata();
-        if (componentMetadata.isMetatype()) {
-            properties.put(MetaTypeProvider.METATYPE_PID, componentMetadata.getConfigurationPid());
-            serviceInterfaces.add(MetaTypeProvider.class.getName());
-        }
 
         if (!ConfigurationPolicy.IGNORE.equals(componentMetadata.getConfigurationPolicy())) {
+            if (componentMetadata.isMetatype()) {
+                properties.put(MetaTypeProvider.METATYPE_PID, componentMetadata.getConfigurationPid());
+                serviceInterfaces.add(MetaTypeProvider.class.getName());
+            }
             properties.put(Constants.SERVICE_PID, componentMetadata.getConfigurationPid());
             serviceInterfaces.add(ManagedService.class.getName());
         }
@@ -67,20 +86,24 @@ public class ComponentContainerImpl<C> extends AbstractComponentContainer<C> imp
         serviceRegistration = context.registerService(serviceInterfaces.toArray(new String[serviceInterfaces.size()]),
                 this, properties);
 
-    }
-
-    @Override
-    public void close() {
-        if (serviceRegistration != null) {
-            serviceRegistration.unregister();
-            serviceRegistration = null;
+        ComponentImpl<C> componentImpl = componentAtomicReference.get();
+        if (ConfigurationPolicy.IGNORE.equals(componentMetadata.getConfigurationPolicy()) && componentImpl == null) {
+            componentImpl = new ComponentImpl<C>(componentMetadata);
+            componentAtomicReference.set(componentImpl);
+            componentImpl.open();
+            return;
         }
+
     }
 
     @Override
-    public void updated(Dictionary<String, ?> properties) throws ConfigurationException {
-        // TODO Auto-generated method stub
+    public synchronized void updated(Dictionary<String, ?> properties) throws ConfigurationException {
+        System.out.println("///////////// UPDATE CALLED");
+        ComponentImpl<C> componentImpl = componentAtomicReference.get();
 
+        if (componentImpl != null && properties == null) {
+
+        }
     }
 
 }

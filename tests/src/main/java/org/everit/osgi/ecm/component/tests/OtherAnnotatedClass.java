@@ -17,8 +17,9 @@
 package org.everit.osgi.ecm.component.tests;
 
 import org.everit.osgi.ecm.annotation.Component;
+import org.everit.osgi.ecm.annotation.ConfigurationPolicy;
 
-@Component
+@Component(configurationPolicy = ConfigurationPolicy.IGNORE)
 public class OtherAnnotatedClass {
 
 }

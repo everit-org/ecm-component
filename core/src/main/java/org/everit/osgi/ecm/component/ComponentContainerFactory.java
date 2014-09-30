@@ -19,6 +19,7 @@ package org.everit.osgi.ecm.component;
 import org.everit.osgi.ecm.component.internal.ComponentContainerImpl;
 import org.everit.osgi.ecm.component.internal.FactoryComponentContainerImpl;
 import org.everit.osgi.ecm.metadata.ComponentMetadata;
+import org.everit.osgi.ecm.metadata.ConfigurationPolicy;
 import org.osgi.framework.BundleContext;
 
 public class ComponentContainerFactory {
@@ -30,7 +31,7 @@ public class ComponentContainerFactory {
     }
 
     public <C> ComponentContainerInstance<C> createComponentContainer(ComponentMetadata<C> componentMetadata) {
-        if (componentMetadata.isConfigurationFactory()) {
+        if (ConfigurationPolicy.FACTORY.equals(componentMetadata.getConfigurationPolicy())) {
             return new FactoryComponentContainerImpl<C>(componentMetadata, bundleContext);
         } else {
             return new ComponentContainerImpl<C>(componentMetadata, bundleContext);

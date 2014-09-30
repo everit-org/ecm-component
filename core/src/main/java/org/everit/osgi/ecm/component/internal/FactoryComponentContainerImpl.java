@@ -24,7 +24,6 @@ import java.util.List;
 import org.everit.osgi.ecm.component.resource.ComponentContainer;
 import org.everit.osgi.ecm.component.resource.ComponentRevision;
 import org.everit.osgi.ecm.metadata.ComponentMetadata;
-import org.everit.osgi.ecm.metadata.ConfigurationPolicy;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.Constants;
 import org.osgi.framework.ServiceRegistration;
@@ -41,18 +40,11 @@ public class FactoryComponentContainerImpl<C> extends AbstractComponentContainer
     }
 
     @Override
-    public String getName() {
-        System.out.println("ManagedServiceFactory getName called");
-        // TODO Auto-generated method stub
-        return null;
-    }
-
-    @Override
-    public void updated(String pid, Dictionary<String, ?> properties) throws ConfigurationException {
-        System.out
-                .println("ManagedServiceFactory updated called: pid=" + pid + ", properties=" + properties.toString());
-        // TODO Auto-generated method stub
-
+    public void close() {
+        if (serviceRegistration != null) {
+            serviceRegistration.unregister();
+            serviceRegistration = null;
+        }
     }
 
     @Override
@@ -63,7 +55,14 @@ public class FactoryComponentContainerImpl<C> extends AbstractComponentContainer
     }
 
     @Override
-    public ComponentRevision[] getComponents() {
+    public ComponentRevision[] getComponentRevisions() {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public String getName() {
+        System.out.println("ManagedServiceFactory getName called");
         // TODO Auto-generated method stub
         return null;
     }
@@ -81,10 +80,8 @@ public class FactoryComponentContainerImpl<C> extends AbstractComponentContainer
             serviceInterfaces.add(MetaTypeProvider.class.getName());
         }
 
-        if (!ConfigurationPolicy.IGNORE.equals(componentMetadata.getConfigurationPolicy())) {
-            properties.put(Constants.SERVICE_PID, componentMetadata.getConfigurationPid());
-            serviceInterfaces.add(ManagedServiceFactory.class.getName());
-        }
+        properties.put(Constants.SERVICE_PID, componentMetadata.getConfigurationPid());
+        serviceInterfaces.add(ManagedServiceFactory.class.getName());
 
         serviceRegistration = context.registerService(serviceInterfaces.toArray(new String[serviceInterfaces.size()]),
                 this, properties);
@@ -92,10 +89,10 @@ public class FactoryComponentContainerImpl<C> extends AbstractComponentContainer
     }
 
     @Override
-    public void close() {
-        if (serviceRegistration != null) {
-            serviceRegistration.unregister();
-            serviceRegistration = null;
-        }
+    public void updated(String pid, Dictionary<String, ?> properties) throws ConfigurationException {
+        System.out
+                .println("ManagedServiceFactory updated called: pid=" + pid + ", properties=" + properties.toString());
+        // TODO Auto-generated method stub
+
     }
 }
