@@ -17,30 +17,31 @@
 package org.everit.osgi.ecm.component.tests;
 
 import org.everit.osgi.ecm.annotation.metadatabuilder.MetadataBuilder;
-import org.everit.osgi.ecm.component.Component;
+import org.everit.osgi.ecm.component.ComponentContainerFactory;
+import org.everit.osgi.ecm.component.ComponentContainerInstance;
 import org.everit.osgi.ecm.metadata.ComponentMetadata;
 import org.osgi.framework.BundleActivator;
 import org.osgi.framework.BundleContext;
 
 public class ECMTestActivator implements BundleActivator {
 
-    private Component<AnnotatedClass> component;
-    private Component<OtherAnnotatedClass> otherComponent;
+    private ComponentContainerInstance<AnnotatedClass> component;
+    private ComponentContainerInstance<OtherAnnotatedClass> otherComponent;
 
     @Override
     public void start(BundleContext context) throws Exception {
         ComponentMetadata<AnnotatedClass> componentMetadata = MetadataBuilder
                 .buildComponentMetadata(AnnotatedClass.class);
 
-        component = new Component<AnnotatedClass>(componentMetadata, context);
+        ComponentContainerFactory factory = new ComponentContainerFactory(context);
+
+        component = factory.createComponentContainer(componentMetadata);
         component.open();
 
-        component.pushModifiedService();
-        component.pushModifiedService();
         ComponentMetadata<OtherAnnotatedClass> otherComponentMetadata = MetadataBuilder
                 .buildComponentMetadata(OtherAnnotatedClass.class);
 
-        otherComponent = new Component<OtherAnnotatedClass>(otherComponentMetadata, context);
+        otherComponent = factory.createComponentContainer(otherComponentMetadata);
         otherComponent.open();
     }
 
