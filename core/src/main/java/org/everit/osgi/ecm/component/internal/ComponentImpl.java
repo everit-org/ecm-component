@@ -16,15 +16,29 @@
  */
 package org.everit.osgi.ecm.component.internal;
 
+import java.util.Dictionary;
+import java.util.concurrent.atomic.AtomicReference;
+
 import org.everit.osgi.ecm.component.resource.ComponentRevision;
+import org.everit.osgi.ecm.component.resource.ComponentState;
+import org.everit.osgi.ecm.metadata.AttributeMetadata;
 import org.everit.osgi.ecm.metadata.ComponentMetadata;
 
 public class ComponentImpl<C> {
 
     private final ComponentMetadata<C> componentMetadata;
 
+    private final AtomicReference<ComponentState> state = new AtomicReference<ComponentState>(ComponentState.STOPPED);
+
     public ComponentImpl(ComponentMetadata<C> componentMetadata) {
+        this(componentMetadata, null);
+    }
+
+    public ComponentImpl(ComponentMetadata<C> componentMetadata, Dictionary<String, ?> properties) {
         this.componentMetadata = componentMetadata;
+        AttributeMetadata<?>[] attributes = componentMetadata.getAttributes();
+        for (AttributeMetadata<?> attributeMetadata : attributes) {
+        }
         // TODO Auto-generated constructor stub
     }
 
@@ -38,6 +52,15 @@ public class ComponentImpl<C> {
     }
 
     public void open() {
+        if (!state.compareAndSet(ComponentState.STOPPED, ComponentState.STARTING)) {
+            throw new IllegalStateException("Component instance can be opened only when it is stopped.");
+        }
+
         // TODO
+    }
+
+    public void updateConfiguration(Dictionary<String, ?> properties) {
+        // TODO Auto-generated method stub
+
     }
 }

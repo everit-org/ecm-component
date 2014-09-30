@@ -98,11 +98,22 @@ public class ComponentContainerImpl<C> extends AbstractComponentContainer<C> imp
 
     @Override
     public synchronized void updated(Dictionary<String, ?> properties) throws ConfigurationException {
-        System.out.println("///////////// UPDATE CALLED");
         ComponentImpl<C> componentImpl = componentAtomicReference.get();
+        ComponentMetadata<C> componentMetadata = getComponentMetadata();
+        ConfigurationPolicy configurationPolicy = componentMetadata.getConfigurationPolicy();
 
-        if (componentImpl != null && properties == null) {
+        if (componentImpl == null && (properties != null || ConfigurationPolicy.OPTIONAL.equals(configurationPolicy))) {
+            componentImpl = new ComponentImpl<C>(componentMetadata, properties);
+            componentAtomicReference.set(componentImpl);
+            componentImpl.open();
+        } else if (componentImpl != null && properties == null
+                && !ConfigurationPolicy.OPTIONAL.equals(configurationPolicy)) {
 
+            componentImpl.close();
+            componentAtomicReference.set(null);
+
+        } else if (componentImpl != null) {
+            componentImpl.updateConfiguration(properties);
         }
     }
 
