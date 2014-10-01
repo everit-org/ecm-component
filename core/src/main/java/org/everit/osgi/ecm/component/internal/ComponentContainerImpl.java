@@ -98,8 +98,9 @@ public class ComponentContainerImpl<C> extends AbstractComponentContainer<C> imp
 
     @Override
     public synchronized void updated(Dictionary<String, ?> properties) throws ConfigurationException {
-        ComponentImpl<C> componentImpl = componentAtomicReference.get();
         ComponentMetadata<C> componentMetadata = getComponentMetadata();
+        ComponentImpl<C> componentImpl = componentAtomicReference.get();
+
         ConfigurationPolicy configurationPolicy = componentMetadata.getConfigurationPolicy();
 
         if (componentImpl == null && (properties != null || ConfigurationPolicy.OPTIONAL.equals(configurationPolicy))) {
@@ -116,5 +117,4 @@ public class ComponentContainerImpl<C> extends AbstractComponentContainer<C> imp
             componentImpl.updateConfiguration(properties);
         }
     }
-
 }

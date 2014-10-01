@@ -16,17 +16,24 @@
  */
 package org.everit.osgi.ecm.component.internal;
 
+import java.lang.reflect.Method;
 import java.util.Dictionary;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.everit.osgi.ecm.component.resource.ComponentRevision;
 import org.everit.osgi.ecm.component.resource.ComponentState;
 import org.everit.osgi.ecm.metadata.AttributeMetadata;
 import org.everit.osgi.ecm.metadata.ComponentMetadata;
+import org.everit.osgi.ecm.metadata.PropertyAttributeMetadata;
+import org.everit.osgi.ecm.metadata.ReferenceMetadata;
 
 public class ComponentImpl<C> {
 
     private final ComponentMetadata<C> componentMetadata;
+
+    private final Map<String, Method> settersOfPropertyAttributes = new HashMap<String, Method>();
 
     private final AtomicReference<ComponentState> state = new AtomicReference<ComponentState>(ComponentState.STOPPED);
 
@@ -38,12 +45,31 @@ public class ComponentImpl<C> {
         this.componentMetadata = componentMetadata;
         AttributeMetadata<?>[] attributes = componentMetadata.getAttributes();
         for (AttributeMetadata<?> attributeMetadata : attributes) {
+            if (attributeMetadata instanceof PropertyAttributeMetadata) {
+                fillSettersForPropertyAttributes((PropertyAttributeMetadata<?>) attributeMetadata);
+            } else {
+                fillCapabilityCollectorsForReferenceAttributes((ReferenceMetadata) attributeMetadata);
+            }
         }
-        // TODO Auto-generated constructor stub
+
     }
 
     public void close() {
         // TODO
+    }
+
+    private void fillCapabilityCollectorsForReferenceAttributes(ReferenceMetadata attributeMetadata) {
+        // TODO Auto-generated method stub
+
+    }
+
+    private void fillSettersForPropertyAttributes(PropertyAttributeMetadata<?> attributeMetadata) {
+        // TODO Auto-generated method stub
+
+    }
+
+    public ComponentMetadata<C> getComponentMetadata() {
+        return componentMetadata;
     }
 
     public ComponentRevision getComponentRevision() {
@@ -56,6 +82,13 @@ public class ComponentImpl<C> {
             throw new IllegalStateException("Component instance can be opened only when it is stopped.");
         }
 
+        // TODO
+    }
+
+    /**
+     * Called when when the target of a non-dynamic reference should be replaced).
+     */
+    void restart() {
         // TODO
     }
 
