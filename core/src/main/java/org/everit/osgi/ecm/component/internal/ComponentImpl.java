@@ -16,7 +16,6 @@
  */
 package org.everit.osgi.ecm.component.internal;
 
-import java.lang.reflect.Method;
 import java.util.Dictionary;
 import java.util.HashMap;
 import java.util.Map;
@@ -33,9 +32,12 @@ public class ComponentImpl<C> {
 
     private final ComponentMetadata<C> componentMetadata;
 
-    private final Map<String, Method> settersOfPropertyAttributes = new HashMap<String, Method>();
+    private final Map<String, PropertyAttributeHelper<C, ?>> propertyAttributeHelpers =
+            new HashMap<String, PropertyAttributeHelper<C, ?>>();
 
     private final AtomicReference<ComponentState> state = new AtomicReference<ComponentState>(ComponentState.STOPPED);
+
+    private Object instance;
 
     public ComponentImpl(ComponentMetadata<C> componentMetadata) {
         this(componentMetadata, null);
@@ -46,7 +48,13 @@ public class ComponentImpl<C> {
         AttributeMetadata<?>[] attributes = componentMetadata.getAttributes();
         for (AttributeMetadata<?> attributeMetadata : attributes) {
             if (attributeMetadata instanceof PropertyAttributeMetadata) {
-                fillSettersForPropertyAttributes((PropertyAttributeMetadata<?>) attributeMetadata);
+
+                @SuppressWarnings("unchecked")
+                PropertyAttributeHelper<C, ?> propertyAttributeHelper =
+                        new PropertyAttributeHelper<C, Object>(this,
+                                (PropertyAttributeMetadata<Object>) attributeMetadata);
+
+                propertyAttributeHelpers.put(attributeMetadata.getAttributeId(), propertyAttributeHelper);
             } else {
                 fillCapabilityCollectorsForReferenceAttributes((ReferenceMetadata) attributeMetadata);
             }
@@ -54,16 +62,15 @@ public class ComponentImpl<C> {
 
     }
 
+    Object getInstance() {
+        return instance;
+    }
+
     public void close() {
         // TODO
     }
 
     private void fillCapabilityCollectorsForReferenceAttributes(ReferenceMetadata attributeMetadata) {
-        // TODO Auto-generated method stub
-
-    }
-
-    private void fillSettersForPropertyAttributes(PropertyAttributeMetadata<?> attributeMetadata) {
         // TODO Auto-generated method stub
 
     }
