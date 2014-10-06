@@ -26,7 +26,7 @@ import org.osgi.framework.BundleContext;
 public class ECMTestActivator implements BundleActivator {
 
     private ComponentContainerInstance<AnnotatedClass> component;
-    private ComponentContainerInstance<OtherAnnotatedClass> otherComponent;
+    private ComponentContainerInstance<IgnoredComponent> otherComponent;
 
     @Override
     public void start(BundleContext context) throws Exception {
@@ -38,8 +38,8 @@ public class ECMTestActivator implements BundleActivator {
         component = factory.createComponentContainer(componentMetadata);
         component.open();
 
-        ComponentMetadata<OtherAnnotatedClass> otherComponentMetadata = MetadataBuilder
-                .buildComponentMetadata(OtherAnnotatedClass.class);
+        ComponentMetadata<IgnoredComponent> otherComponentMetadata = MetadataBuilder
+                .buildComponentMetadata(IgnoredComponent.class);
 
         otherComponent = factory.createComponentContainer(otherComponentMetadata);
         otherComponent.open();

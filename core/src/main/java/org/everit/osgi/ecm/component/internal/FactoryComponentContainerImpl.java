@@ -62,9 +62,7 @@ public class FactoryComponentContainerImpl<C> extends AbstractComponentContainer
 
     @Override
     public String getName() {
-        System.out.println("ManagedServiceFactory getName called");
-        // TODO Auto-generated method stub
-        return null;
+        return getComponentMetadata().getComponentId();
     }
 
     @Override
@@ -75,6 +73,7 @@ public class FactoryComponentContainerImpl<C> extends AbstractComponentContainer
         serviceInterfaces.add(ComponentContainer.class.getName());
 
         ComponentMetadata<C> componentMetadata = getComponentMetadata();
+
         if (componentMetadata.isMetatype()) {
             properties.put(MetaTypeProvider.METATYPE_FACTORY_PID, componentMetadata.getConfigurationPid());
             serviceInterfaces.add(MetaTypeProvider.class.getName());
