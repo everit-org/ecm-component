@@ -33,11 +33,11 @@ public class MetatypeProviderImpl<C> implements MetaTypeProvider {
 
     private final BundleContext bundleContext;
 
-    private final ComponentMetadata<C> componentMetadata;
+    private final ComponentMetadata componentMetadata;
 
     private String[] locales;
 
-    public MetatypeProviderImpl(ComponentMetadata<C> componentMetadata, BundleContext bundleContext) {
+    public MetatypeProviderImpl(ComponentMetadata componentMetadata, BundleContext bundleContext) {
         this.componentMetadata = componentMetadata;
         this.bundleContext = bundleContext;
 

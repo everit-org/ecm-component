@@ -39,7 +39,7 @@ public class ComponentContainerImpl<C> extends AbstractComponentContainer<C> imp
 
     private ServiceRegistration<?> serviceRegistration;
 
-    public ComponentContainerImpl(ComponentMetadata<C> componentMetadata, BundleContext bundleContext) {
+    public ComponentContainerImpl(ComponentMetadata componentMetadata, BundleContext bundleContext) {
         super(componentMetadata, bundleContext);
     }
 
@@ -72,7 +72,7 @@ public class ComponentContainerImpl<C> extends AbstractComponentContainer<C> imp
         List<String> serviceInterfaces = new LinkedList<String>();
         serviceInterfaces.add(ComponentContainer.class.getName());
 
-        ComponentMetadata<C> componentMetadata = getComponentMetadata();
+        ComponentMetadata componentMetadata = getComponentMetadata();
 
         if (!ConfigurationPolicy.IGNORE.equals(componentMetadata.getConfigurationPolicy())) {
             if (componentMetadata.isMetatype()) {
@@ -88,7 +88,7 @@ public class ComponentContainerImpl<C> extends AbstractComponentContainer<C> imp
 
         ComponentImpl<C> componentImpl = componentAtomicReference.get();
         if (ConfigurationPolicy.IGNORE.equals(componentMetadata.getConfigurationPolicy()) && componentImpl == null) {
-            componentImpl = new ComponentImpl<C>(componentMetadata);
+            componentImpl = new ComponentImpl<C>(componentMetadata, getBundleContext());
             componentAtomicReference.set(componentImpl);
             componentImpl.open();
             return;
@@ -98,13 +98,16 @@ public class ComponentContainerImpl<C> extends AbstractComponentContainer<C> imp
 
     @Override
     public synchronized void updated(Dictionary<String, ?> properties) throws ConfigurationException {
-        ComponentMetadata<C> componentMetadata = getComponentMetadata();
+        @SuppressWarnings("unchecked")
+        Dictionary<String, Object> props = (Dictionary<String, Object>) properties;
+
+        ComponentMetadata componentMetadata = getComponentMetadata();
         ComponentImpl<C> componentImpl = componentAtomicReference.get();
 
         ConfigurationPolicy configurationPolicy = componentMetadata.getConfigurationPolicy();
 
         if (componentImpl == null && (properties != null || ConfigurationPolicy.OPTIONAL.equals(configurationPolicy))) {
-            componentImpl = new ComponentImpl<C>(componentMetadata, properties);
+            componentImpl = new ComponentImpl<C>(componentMetadata, getBundleContext(), props);
             componentAtomicReference.set(componentImpl);
             componentImpl.open();
         } else if (componentImpl != null && properties == null

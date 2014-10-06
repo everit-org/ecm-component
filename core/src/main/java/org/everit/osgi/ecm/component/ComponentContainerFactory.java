@@ -30,7 +30,7 @@ public class ComponentContainerFactory {
         this.bundleContext = bundleContext;
     }
 
-    public <C> ComponentContainerInstance<C> createComponentContainer(ComponentMetadata<C> componentMetadata) {
+    public <C> ComponentContainerInstance<C> createComponentContainer(ComponentMetadata componentMetadata) {
         if (ConfigurationPolicy.FACTORY.equals(componentMetadata.getConfigurationPolicy())) {
             return new FactoryComponentContainerImpl<C>(componentMetadata, bundleContext);
         } else {

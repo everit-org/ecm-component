@@ -26,7 +26,30 @@ public class PropertyAttributeHelper<C, V> {
         this.component = component;
         this.attributeMetadata = attributeMetadata;
         this.defaultValue = createDefaultValue();
-        this.setter = attributeMetadata.getSetter();
+        this.setter = resolveSetter();
+    }
+
+    private Method resolveSetter() {
+        String setterName = attributeMetadata.getSetter();
+        if (setterName == null) {
+            return null;
+        }
+        Class<C> componentType = component.getComponentType();
+
+        try {
+            return componentType.getMethod(setterName, attributeMetadata.getPrimitiveType());
+        } catch (NoSuchMethodException | SecurityException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+
+        try {
+            return componentType.getMethod(setterName, attributeMetadata.getValueType());
+        } catch (NoSuchMethodException | SecurityException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+        return null;
     }
 
     private Object createDefaultValue() {

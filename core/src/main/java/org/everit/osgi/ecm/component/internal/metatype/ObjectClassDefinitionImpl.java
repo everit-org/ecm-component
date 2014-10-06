@@ -35,11 +35,11 @@ public class ObjectClassDefinitionImpl<C> implements ObjectClassDefinition {
 
     private final ClassLoader classLoader;
 
-    private final ComponentMetadata<C> componentMetadata;
+    private final ComponentMetadata componentMetadata;
 
     private final Localizer localizer;
 
-    public ObjectClassDefinitionImpl(ComponentMetadata<C> componentMetadata, Localizer localizer,
+    public ObjectClassDefinitionImpl(ComponentMetadata componentMetadata, Localizer localizer,
             ClassLoader classLoader) {
         this.componentMetadata = componentMetadata;
         this.localizer = localizer;
@@ -49,7 +49,7 @@ public class ObjectClassDefinitionImpl<C> implements ObjectClassDefinition {
 
     }
 
-    private AttributeDefinition[] createAttributeDefinitions(ComponentMetadata<C> componentMetadata) {
+    private AttributeDefinition[] createAttributeDefinitions(ComponentMetadata componentMetadata) {
         AttributeMetadata<?>[] attributes = componentMetadata.getAttributes();
         if (attributes == null || attributes.length == 0) {
             return null;
