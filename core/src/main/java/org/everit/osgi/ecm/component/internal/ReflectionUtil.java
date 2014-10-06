@@ -3,39 +3,24 @@ package org.everit.osgi.ecm.component.internal;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Parameter;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
+import java.util.Objects;
 
 public class ReflectionUtil {
 
-    public static Collection<Method> getAccessibleMethodsByName(Class<?> clazz, String methodName) {
-        Set<Class<?>> processedClasses = new HashSet<Class<?>>();
+    private static List<String> createParameterTypeNameList(Parameter[] parameters) {
+        List<String> result = new ArrayList<String>(parameters.length);
 
-        Map<List<Class<?>>, Method> methodsByParameters = new HashMap<List<Class<?>>, Method>();
-
-        Class<?> currentClass = clazz;
-
-        while (currentClass != null) {
-            Method[] declaredMethods = currentClass.getDeclaredMethods();
-            for (Method method : declaredMethods) {
-                if (method.getName().equals(methodName)) {
-                    if (isMethodAccessible(clazz, method)) {
-                        Parameter[] parameters = method.getParameters();
-                        List<Parameter> parameterList = Arrays.asList(parameters);
-
-                        methodsByParameters.get(key)
-                    }
-                }
-            }
+        for (Parameter parameter : parameters) {
+            result.add(parameter.getType().getName());
         }
-
-        return methodsByParameters.values();
-
+        return result;
     }
 
     /**
@@ -72,5 +57,64 @@ public class ReflectionUtil {
         }
 
         return false;
+    }
+
+    public static Method locateMethod(Class<?> clazz, String methodName, List<String[]> acceptedParameterTypesList) {
+        Objects.requireNonNull(clazz, "Clazz must not be null");
+        Objects.requireNonNull(methodName, "Method name must not be null");
+        Objects.requireNonNull(acceptedParameterTypesList, "Accepted parameter list must not be null");
+
+        if (acceptedParameterTypesList.size() == 0) {
+            return null;
+        }
+
+        List<String> bestMatch = null;
+
+        Map<List<String>, Method> methodsByParameters = new LinkedHashMap<List<String>, Method>();
+
+        for (String[] preferredParameterTypes : acceptedParameterTypesList) {
+            List<String> paramList = Arrays.asList(preferredParameterTypes);
+
+            if (bestMatch == null) {
+                bestMatch = paramList;
+            }
+
+            methodsByParameters.put(paramList, null);
+        }
+
+        Class<?> currentClass = clazz;
+
+        while (currentClass != null) {
+            Method[] declaredMethods = currentClass.getDeclaredMethods();
+            for (Method method : declaredMethods) {
+                if (method.getName().equals(methodName)) {
+                    if (isMethodAccessible(clazz, method)) {
+                        Parameter[] parameters = method.getParameters();
+                        List<String> parameterList = createParameterTypeNameList(parameters);
+
+                        if (bestMatch.equals(parameterList)) {
+                            return method;
+                        }
+
+                        if (methodsByParameters.containsKey(parameterList)) {
+                            if (methodsByParameters.get(parameterList) == null) {
+                                methodsByParameters.put(parameterList, method);
+                            }
+                        }
+                    }
+                }
+            }
+            currentClass = currentClass.getSuperclass();
+        }
+
+        Method selectedMethod = null;
+
+        Collection<Method> acceptedMethods = methodsByParameters.values();
+        for (Iterator<Method> iterator = acceptedMethods.iterator(); iterator.hasNext() && selectedMethod == null;) {
+            Method acceptedMethod = iterator.next();
+            selectedMethod = acceptedMethod;
+        }
+        return selectedMethod;
+
     }
 }

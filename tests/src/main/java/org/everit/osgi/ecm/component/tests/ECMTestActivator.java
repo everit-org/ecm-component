@@ -30,7 +30,7 @@ public class ECMTestActivator implements BundleActivator {
 
     @Override
     public void start(BundleContext context) throws Exception {
-        ComponentMetadata<AnnotatedClass> componentMetadata = MetadataBuilder
+        ComponentMetadata componentMetadata = MetadataBuilder
                 .buildComponentMetadata(AnnotatedClass.class);
 
         ComponentContainerFactory factory = new ComponentContainerFactory(context);
@@ -38,7 +38,7 @@ public class ECMTestActivator implements BundleActivator {
         component = factory.createComponentContainer(componentMetadata);
         component.open();
 
-        ComponentMetadata<IgnoredComponent> otherComponentMetadata = MetadataBuilder
+        ComponentMetadata otherComponentMetadata = MetadataBuilder
                 .buildComponentMetadata(IgnoredComponent.class);
 
         otherComponent = factory.createComponentContainer(otherComponentMetadata);
