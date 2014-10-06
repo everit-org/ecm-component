@@ -29,9 +29,9 @@ public abstract class AbstractComponentContainer<C> implements MetaTypeProvider,
 
     private BundleContext bundleContext;
 
-    private ComponentMetadata<C> componentMetadata;
+    private ComponentMetadata componentMetadata;
 
-    public AbstractComponentContainer(ComponentMetadata<C> componentMetadata, BundleContext bundleContext) {
+    public AbstractComponentContainer(ComponentMetadata componentMetadata, BundleContext bundleContext) {
         this.componentMetadata = componentMetadata;
         this.bundleContext = bundleContext;
         if (componentMetadata.isMetatype()) {
@@ -42,7 +42,7 @@ public abstract class AbstractComponentContainer<C> implements MetaTypeProvider,
     }
 
     @Override
-    public ComponentMetadata<C> getComponentMetadata() {
+    public ComponentMetadata getComponentMetadata() {
         return componentMetadata;
     }
 

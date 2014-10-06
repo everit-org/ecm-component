@@ -23,7 +23,7 @@ public interface ComponentContainer<C> {
 
     ComponentRevision[] getComponentRevisions();
 
-    ComponentMetadata<C> getComponentMetadata();
+    ComponentMetadata getComponentMetadata();
 
     BundleContext getBundleContext();
 

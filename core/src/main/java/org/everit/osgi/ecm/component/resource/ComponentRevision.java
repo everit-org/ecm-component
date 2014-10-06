@@ -25,4 +25,21 @@ public interface ComponentRevision extends Resource {
     Dictionary<String, ?> getProperties();
 
     ComponentState getState();
+
+    /**
+     * The cause of the failure of the component.
+     * 
+     * @return The cause of the failure or {@code null} if the component is not in {@link ComponentState#FAILED} state.
+     */
+    Throwable getCause();
+
+    /**
+     * In case of {@link ComponentState#STARTING} or {@link ComponentState#STOPPING} state the method returns the thread
+     * that initiatied the state change on the component. This information can be useful if there is a long-running task
+     * or a deadlock during the state change.
+     * 
+     * @return The thread that initiated {@link ComponentState#STARTING} or {@link ComponentState#STOPPING} or
+     *         {@code null} if the component has a different state.
+     */
+    Thread getProcessingThread();
 }

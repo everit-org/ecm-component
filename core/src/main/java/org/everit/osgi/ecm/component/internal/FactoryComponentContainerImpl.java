@@ -35,7 +35,7 @@ public class FactoryComponentContainerImpl<C> extends AbstractComponentContainer
 
     private ServiceRegistration<?> serviceRegistration;
 
-    public FactoryComponentContainerImpl(ComponentMetadata<C> componentMetadata, BundleContext bundleContext) {
+    public FactoryComponentContainerImpl(ComponentMetadata componentMetadata, BundleContext bundleContext) {
         super(componentMetadata, bundleContext);
     }
 
@@ -72,8 +72,7 @@ public class FactoryComponentContainerImpl<C> extends AbstractComponentContainer
         List<String> serviceInterfaces = new LinkedList<String>();
         serviceInterfaces.add(ComponentContainer.class.getName());
 
-        ComponentMetadata<C> componentMetadata = getComponentMetadata();
-
+        ComponentMetadata componentMetadata = getComponentMetadata();
         if (componentMetadata.isMetatype()) {
             properties.put(MetaTypeProvider.METATYPE_FACTORY_PID, componentMetadata.getConfigurationPid());
             serviceInterfaces.add(MetaTypeProvider.class.getName());
