@@ -1,4 +1,4 @@
-package org.everit.osgi.ecm.component.internal;
+package org.everit.osgi.ecm.component.internal.util;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -23,7 +23,12 @@ public class MethodUtil {
         return result;
     }
 
-    public static Method locateMethod(Class<?> clazz, String methodDefinition) {
+    private static MethodDefinition getMethodDefinition(String methodDefinition) {
+        int indexOfOpenParams = methodDefinition.indexOf('(');
+
+        if (indexOfOpenParams == -1) {
+            return new MethodDefinition(methodDefinition, null);
+        }
 
     }
 
@@ -67,6 +72,10 @@ public class MethodUtil {
         Objects.requireNonNull(clazz, "Clazz must not be null");
         Objects.requireNonNull(methodName, "Method name must not be null");
         Objects.requireNonNull(acceptedParameterTypesList, "Accepted parameter list must not be null");
+
+        if (acceptedParameterTypesList.size() == 0) {
+            return null;
+        }
 
         List<String> bestMatch = null;
 
@@ -115,6 +124,5 @@ public class MethodUtil {
             selectedMethod = acceptedMethod;
         }
         return selectedMethod;
-
     }
 }

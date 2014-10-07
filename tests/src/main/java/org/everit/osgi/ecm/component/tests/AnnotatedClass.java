@@ -37,7 +37,4 @@ public class AnnotatedClass {
             @IntegerAttributeOption(label = "option 1", value = 1) }, defaultValue = 1)
     private int selectableInteger;
 
-    public void setLau(short lau) {
-        this.lau = lau;
-    }
 }
