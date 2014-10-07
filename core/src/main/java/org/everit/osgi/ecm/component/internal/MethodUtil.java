@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-public class ReflectionUtil {
+public class MethodUtil {
 
     private static List<String> createParameterTypeNameList(Parameter[] parameters) {
         List<String> result = new ArrayList<String>(parameters.length);
@@ -21,6 +21,10 @@ public class ReflectionUtil {
             result.add(parameter.getType().getName());
         }
         return result;
+    }
+
+    public static Method locateMethod(Class<?> clazz, String methodDefinition) {
+
     }
 
     /**
@@ -63,10 +67,6 @@ public class ReflectionUtil {
         Objects.requireNonNull(clazz, "Clazz must not be null");
         Objects.requireNonNull(methodName, "Method name must not be null");
         Objects.requireNonNull(acceptedParameterTypesList, "Accepted parameter list must not be null");
-
-        if (acceptedParameterTypesList.size() == 0) {
-            return null;
-        }
 
         List<String> bestMatch = null;
 
