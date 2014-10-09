@@ -17,6 +17,7 @@
 package org.everit.osgi.ecm.component.context;
 
 import java.util.Dictionary;
+import java.util.Map;
 
 import org.everit.osgi.ecm.component.resource.ComponentRevision;
 import org.osgi.framework.BundleContext;
@@ -27,11 +28,60 @@ import org.osgi.framework.ServiceRegistration;
 
 public interface ComponentContext<C> {
 
-    Dictionary<String, Object> getProperties();
+    BundleContext getBundleContext();
 
     ComponentRevision getComponentRevision();
 
-    BundleContext getBundleContext();
+    Map<String, Object> getProperties();
+
+    /**
+     * Registers the specified service object with the specified properties under the name of the specified class with
+     * the Framework.
+     *
+     * <p>
+     * This method is otherwise identical to {@link #registerService(String, Object, Dictionary)} and is provided to
+     * return a type safe {@code ServiceRegistration}.
+     *
+     * @param <S>
+     *            Type of Service.
+     * @param clazz
+     *            The class under whose name the service can be located.
+     * @param service
+     *            The service object or a {@code ServiceFactory} object.
+     * @param properties
+     *            The properties for this service.
+     * @return A {@code ServiceRegistration} object for use by the bundle registering the service to update the
+     *         service's properties or to unregister the service.
+     * @throws IllegalStateException
+     *             If this BundleContext is no longer valid.
+     * @see #registerService(String, Object, Dictionary)
+     * @since 1.6
+     */
+    <S> ServiceRegistration<S> registerService(Class<S> clazz, S service, Dictionary<String, ?> properties);
+
+    /**
+     * Registers the specified service object with the specified properties under the specified class name with the
+     * Framework.
+     *
+     * <p>
+     * This method is otherwise identical to {@link #registerService(String[], Object, Dictionary)} and is provided as a
+     * convenience when {@code service} will only be registered under a single class name. Note that even in this case
+     * the value of the service's {@link Constants#OBJECTCLASS} property will be an array of string, rather than just a
+     * single string.
+     *
+     * @param clazz
+     *            The class name under which the service can be located.
+     * @param service
+     *            The service object or a {@code ServiceFactory} object.
+     * @param properties
+     *            The properties for this service.
+     * @return A {@code ServiceRegistration} object for use by the bundle registering the service to update the
+     *         service's properties or to unregister the service.
+     * @throws IllegalStateException
+     *             If this BundleContext is no longer valid.
+     * @see #registerService(String[], Object, Dictionary)
+     */
+    ServiceRegistration<?> registerService(String clazz, Object service, Dictionary<String, ?> properties);
 
     /**
      * Registers the specified service object with the specified properties under the specified class names into the
@@ -40,11 +90,11 @@ public interface ComponentContext<C> {
      * bundle is defined to be the context bundle. Other bundles can locate the service by using one of the
      * {@link #getServiceReferences(Class, String)}, {@link #getServiceReferences(String, String)},
      * {@link #getServiceReference(Class)} or {@link #getServiceReference(String)} methods.
-     * 
+     *
      * <p>
      * A bundle can register a service object that implements the {@link ServiceFactory} interface to have more
      * flexibility in providing service objects to other bundles.
-     * 
+     *
      * <p>
      * The following steps are required to register a service:
      * <ol>
@@ -59,7 +109,7 @@ public interface ComponentContext<C> {
      * <li>A service event of type {@link ServiceEvent#REGISTERED} is fired.
      * <li>A {@code ServiceRegistration} object for this registration is returned.
      * </ol>
-     * 
+     *
      * @param clazzes
      *            The class names under which the service can be located. The class names in this array will be stored
      *            in the service's properties under the key {@link Constants#OBJECTCLASS}.
@@ -89,54 +139,5 @@ public interface ComponentContext<C> {
      * @see ServiceFactory
      */
     ServiceRegistration<?> registerService(String[] clazzes, Object service, Dictionary<String, ?> properties);
-
-    /**
-     * Registers the specified service object with the specified properties under the specified class name with the
-     * Framework.
-     * 
-     * <p>
-     * This method is otherwise identical to {@link #registerService(String[], Object, Dictionary)} and is provided as a
-     * convenience when {@code service} will only be registered under a single class name. Note that even in this case
-     * the value of the service's {@link Constants#OBJECTCLASS} property will be an array of string, rather than just a
-     * single string.
-     * 
-     * @param clazz
-     *            The class name under which the service can be located.
-     * @param service
-     *            The service object or a {@code ServiceFactory} object.
-     * @param properties
-     *            The properties for this service.
-     * @return A {@code ServiceRegistration} object for use by the bundle registering the service to update the
-     *         service's properties or to unregister the service.
-     * @throws IllegalStateException
-     *             If this BundleContext is no longer valid.
-     * @see #registerService(String[], Object, Dictionary)
-     */
-    ServiceRegistration<?> registerService(String clazz, Object service, Dictionary<String, ?> properties);
-
-    /**
-     * Registers the specified service object with the specified properties under the name of the specified class with
-     * the Framework.
-     * 
-     * <p>
-     * This method is otherwise identical to {@link #registerService(String, Object, Dictionary)} and is provided to
-     * return a type safe {@code ServiceRegistration}.
-     * 
-     * @param <S>
-     *            Type of Service.
-     * @param clazz
-     *            The class under whose name the service can be located.
-     * @param service
-     *            The service object or a {@code ServiceFactory} object.
-     * @param properties
-     *            The properties for this service.
-     * @return A {@code ServiceRegistration} object for use by the bundle registering the service to update the
-     *         service's properties or to unregister the service.
-     * @throws IllegalStateException
-     *             If this BundleContext is no longer valid.
-     * @see #registerService(String, Object, Dictionary)
-     * @since 1.6
-     */
-    <S> ServiceRegistration<S> registerService(Class<S> clazz, S service, Dictionary<String, ?> properties);
 
 }

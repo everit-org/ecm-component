@@ -9,6 +9,7 @@ import java.util.Dictionary;
 import javax.naming.ConfigurationException;
 
 import org.everit.osgi.ecm.metadata.PropertyAttributeMetadata;
+import org.everit.osgi.ecm.util.method.MethodDescriptor;
 
 public class PropertyAttributeHelper<C, V> {
 
@@ -16,43 +17,42 @@ public class PropertyAttributeHelper<C, V> {
 
     private final ComponentImpl<C> component;
 
-    private Object storedValue = null;
-
     private final Object defaultValue;
 
     private final Method setter;
 
+    private Object storedValue = null;
+
     public PropertyAttributeHelper(ComponentImpl<C> component, PropertyAttributeMetadata<V> attributeMetadata) {
         this.component = component;
         this.attributeMetadata = attributeMetadata;
-        this.defaultValue = createDefaultValue();
+        this.defaultValue = resolveDefaultValue();
         this.setter = resolveSetter();
     }
 
-    private Method resolveSetter() {
-        String setterName = attributeMetadata.getSetter();
-        if (setterName == null) {
-            return null;
+    public void applyValue(Object newValue) {
+        storedValue = newValue;
+        if (setter != null) {
+            try {
+                setter.invoke(component.getInstance(), newValue);
+            } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+                throw new RuntimeException("Error setting attribute " + attributeMetadata.getAttributeId()
+                        + " of component " + component.getComponentMetadata().getComponentId() + " by calling setter "
+                        + setter.toGenericString() + " with value: " + newValue, e);
+            }
         }
-        Class<C> componentType = component.getComponentType();
-
-        try {
-            return componentType.getMethod(setterName, attributeMetadata.getPrimitiveType());
-        } catch (NoSuchMethodException | SecurityException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
-
-        try {
-            return componentType.getMethod(setterName, attributeMetadata.getValueType());
-        } catch (NoSuchMethodException | SecurityException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
-        return null;
     }
 
-    private Object createDefaultValue() {
+    private Object convertToPrimitiveArray(V[] array, Class<?> primitiveType) {
+        Object primitiveArray = Array.newInstance(primitiveType, array.length);
+        for (int i = 0; i < array.length; i++) {
+            V element = array[i];
+            Array.set(primitiveArray, i, element);
+        }
+        return primitiveArray;
+    }
+
+    private Object resolveDefaultValue() {
         V[] defaultValueArray = attributeMetadata.getDefaultValue();
         if (defaultValueArray == null) {
             return null;
@@ -69,13 +69,41 @@ public class PropertyAttributeHelper<C, V> {
         return defaultValueArray[0];
     }
 
-    private Object convertToPrimitiveArray(V[] array, Class<?> primitiveType) {
-        Object primitiveArray = Array.newInstance(primitiveType, array.length);
-        for (int i = 0; i < array.length; i++) {
-            V element = array[i];
-            Array.set(primitiveArray, i, element);
+    public Object getStoredValue() {
+        return storedValue;
+    }
+
+    public boolean newValueEqualsPrevious(Object newValue) {
+        if (newValue == null && storedValue == null) {
+            return true;
         }
-        return primitiveArray;
+
+        if (newValue == null || storedValue == null) {
+            return false;
+        }
+
+        Class<? extends Object> valueType = newValue.getClass();
+        if (!valueType.isArray()) {
+            return newValue.equals(storedValue);
+        }
+
+        Class<?> componentType = valueType.getComponentType();
+
+        boolean primitiveArray = componentType.isPrimitive();
+        if (!primitiveArray) {
+            return Arrays.equals((Object[]) newValue, (Object[]) storedValue);
+        }
+
+        Class<Arrays> arraysClass = Arrays.class;
+
+        try {
+            Method equalsMethod = arraysClass.getMethod("equals", valueType, valueType);
+            return (Boolean) equalsMethod.invoke(Arrays.class, newValue, storedValue);
+        } catch (NoSuchMethodException | IllegalAccessException | IllegalArgumentException
+                | InvocationTargetException e) {
+            throw new RuntimeException(e);
+        }
+
     }
 
     public Object resolveNewValue(Dictionary<String, Object> properties) throws ConfigurationException {
@@ -132,54 +160,46 @@ public class PropertyAttributeHelper<C, V> {
         return valueObject;
     }
 
-    public boolean newValueEqualsPrevious(Object newValue) {
-        if (newValue == null && storedValue == null) {
-            return true;
+    private Method resolveSetter() {
+        MethodDescriptor setterMethodDescriptor = attributeMetadata.getSetter();
+        if (setterMethodDescriptor == null) {
+            return null;
+        }
+        Method method = setterMethodDescriptor.locate(component.getComponentType(), false);
+
+        Class<?>[] parameterTypes = method.getParameterTypes();
+        if (parameterTypes.length != 1) {
+            throwIllegalSetter(method, "Setter method must have one parameter: " + method.toGenericString());
         }
 
-        if (newValue == null || storedValue == null) {
-            return false;
-        }
-
-        Class<? extends Object> valueType = newValue.getClass();
-        if (!valueType.isArray()) {
-            return newValue.equals(storedValue);
-        }
-
-        Class<?> componentType = valueType.getComponentType();
-
-        boolean primitiveArray = componentType.isPrimitive();
-        if (!primitiveArray) {
-            return Arrays.equals((Object[]) newValue, (Object[]) storedValue);
-        }
-
-        Class<Arrays> arraysClass = Arrays.class;
-
-        try {
-            Method equalsMethod = arraysClass.getMethod("equals", valueType, valueType);
-            return (Boolean) equalsMethod.invoke(Arrays.class, newValue, storedValue);
-        } catch (NoSuchMethodException | IllegalAccessException | IllegalArgumentException
-                | InvocationTargetException e) {
-            throw new RuntimeException(e);
-        }
-
-    }
-
-    public void applyValue(Object newValue) {
-        storedValue = newValue;
-        if (setter != null) {
-            try {
-                setter.invoke(component.getInstance(), newValue);
-            } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
-                throw new RuntimeException("Error setting attribute " + attributeMetadata.getAttributeId()
-                        + " of component " + component.getComponentMetadata().getComponentId() + " by calling setter "
-                        + setter.toGenericString() + " with value: " + newValue, e);
+        if (attributeMetadata.isMultiple()) {
+            if (!parameterTypes[0].isArray()) {
+                throwIllegalSetter(method, "Parameter type should be an array");
+            }
+            Class<?> componentType = parameterTypes[0].getComponentType();
+            Class<?> expectedComponentType = attributeMetadata.getPrimitiveType();
+            if (expectedComponentType == null) {
+                expectedComponentType = attributeMetadata.getValueType();
+            }
+            if (!expectedComponentType.equals(componentType)) {
+                throwIllegalSetter(method, "Parameter array should have '" + expectedComponentType
+                        + "' component type.");
+            }
+        } else {
+            Class<?> primitiveType = attributeMetadata.getPrimitiveType();
+            Class<V> valueType = attributeMetadata.getValueType();
+            if (!valueType.equals(parameterTypes[0])
+                    && (primitiveType == null || !primitiveType.equals(parameterTypes[0]))) {
+                throwIllegalSetter(method, " Parameter type of setter must be " + valueType.getCanonicalName()
+                        + ((primitiveType != null) ? (" or " + primitiveType.getSimpleName()) : ""));
             }
         }
+        return method;
     }
 
-    public Object getStoredValue() {
-        return storedValue;
+    private void throwIllegalSetter(Method method, String additionalMessage) {
+        throw new IllegalMetadataException("Invalid setter defined for attribute '"
+                + attributeMetadata.getAttributeId() + "' of component '"
+                + component.getComponentMetadata().getComponentId() + "'. " + additionalMessage);
     }
-
 }

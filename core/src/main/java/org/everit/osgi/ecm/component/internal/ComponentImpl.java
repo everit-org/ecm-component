@@ -16,16 +16,18 @@
  */
 package org.everit.osgi.ecm.component.internal;
 
-import java.lang.reflect.Method;
-import java.lang.reflect.Parameter;
+import java.lang.reflect.InvocationTargetException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Dictionary;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 import javax.naming.ConfigurationException;
 
+import org.everit.osgi.ecm.component.context.ComponentContext;
 import org.everit.osgi.ecm.component.resource.ComponentRevision;
 import org.everit.osgi.ecm.component.resource.ComponentState;
 import org.everit.osgi.ecm.metadata.AttributeMetadata;
@@ -34,30 +36,60 @@ import org.everit.osgi.ecm.metadata.PropertyAttributeMetadata;
 import org.everit.osgi.ecm.metadata.ReferenceMetadata;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
+import org.osgi.framework.ServiceReference;
+import org.osgi.framework.ServiceRegistration;
 import org.osgi.framework.wiring.BundleWiring;
 
-public class ComponentImpl<C> {
+public class ComponentImpl<C> implements ComponentContext<C> {
+
+    private class ComponentServiceRegistration<S> implements ServiceRegistration<S> {
+
+        private final ServiceRegistration<S> wrapped;
+
+        public ComponentServiceRegistration(ServiceRegistration<S> wrapped) {
+            this.wrapped = wrapped;
+        }
+
+        @Override
+        public ServiceReference<S> getReference() {
+            return wrapped.getReference();
+        }
+
+        @Override
+        public void setProperties(Dictionary<String, ?> properties) {
+            wrapped.setProperties(properties);
+        }
+
+        @Override
+        public void unregister() {
+            registeredServices.remove(this);
+            wrapped.unregister();
+        }
+
+    }
+
+    private ActivateMethodHelper<C> activateMethodHelper;
+
+    private final BundleContext bundleContext;
+
+    private Throwable cause;
 
     private final ComponentMetadata componentMetadata;
+
+    private Class<C> componentType;
+
+    private Object instance;
+
+    private Thread processingThread;
+
+    private Dictionary<String, Object> properties;
 
     private final Map<String, PropertyAttributeHelper<C, Object>> propertyAttributeHelpersByAttributeId =
             new HashMap<String, PropertyAttributeHelper<C, Object>>();
 
+    private final List<ServiceRegistration<?>> registeredServices = new ArrayList<ServiceRegistration<?>>();
+
     private final AtomicReference<ComponentState> state = new AtomicReference<ComponentState>(ComponentState.STOPPED);
-
-    private Object instance;
-
-    private Throwable cause;
-
-    private Thread processingThread;
-
-    private final Class<C> componentType;
-
-    private final BundleContext bundleContext;
-
-    private final Method activateMethod;
-
-    private Dictionary<String, Object> properties;
 
     public ComponentImpl(ComponentMetadata componentMetadata, BundleContext bundleContext) {
         this(componentMetadata, bundleContext, null);
@@ -77,11 +109,11 @@ public class ComponentImpl<C> {
             Class<C> tmpComponentType = (Class<C>) classLoader.loadClass(componentMetadata.getType());
             componentType = tmpComponentType;
         } catch (ClassNotFoundException e) {
-            // TODO
-            throw new RuntimeException(e);
+            fail(e, true);
+            return;
         }
 
-        activateMethod = resolveActivateMethod();
+        activateMethodHelper = new ActivateMethodHelper<C>(componentMetadata, componentType);
 
         AttributeMetadata<?>[] attributes = componentMetadata.getAttributes();
 
@@ -101,12 +133,40 @@ public class ComponentImpl<C> {
         }
     }
 
-    private Method resolveActivateMethod() {
-        String activateMethodName = componentMetadata.getActivateMethod();
-        if (activateMethodName == null) {
-            return null;
-        }
+    public void close() {
+        // TODO
+    }
 
+    private void fail(Throwable e, boolean permanent) {
+        cause = e;
+        processingThread = null;
+        if (permanent) {
+            state.set(ComponentState.FAILED_PERMANENT);
+        } else {
+            state.set(ComponentState.FAILED);
+        }
+        // TODO Auto-generated catch block
+        e.printStackTrace();
+        return;
+    }
+
+    private void fillCapabilityCollectorsForReferenceAttributes(ReferenceMetadata attributeMetadata) {
+        // TODO Auto-generated method stub
+
+    }
+
+    @Override
+    public BundleContext getBundleContext() {
+        return bundleContext;
+    }
+
+    public ComponentMetadata getComponentMetadata() {
+        return componentMetadata;
+    }
+
+    @Override
+    public ComponentRevision getComponentRevision() {
+        // TODO
         return null;
     }
 
@@ -114,8 +174,55 @@ public class ComponentImpl<C> {
         return componentType;
     }
 
-    public BundleContext getBundleContext() {
-        return bundleContext;
+    Object getInstance() {
+        return instance;
+    }
+
+    @Override
+    public Map<String, Object> getProperties() {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    public void open() {
+        if (!state.compareAndSet(ComponentState.STOPPED, ComponentState.STARTING)) {
+            throw new IllegalStateException("Component instance can be opened only when it is stopped.");
+        }
+
+        // TODO do it if all capabilities are satisfied.
+        starting(properties);
+    }
+
+    @Override
+    public <S> ServiceRegistration<S> registerService(Class<S> clazz, S service, Dictionary<String, ?> properties) {
+        ServiceRegistration<S> serviceRegistration = bundleContext.registerService(clazz, service, properties);
+        return registerServiceInternal(serviceRegistration);
+    }
+
+    @Override
+    public ServiceRegistration<?> registerService(String clazz, Object service, Dictionary<String, ?> properties) {
+        ServiceRegistration<?> serviceRegistration = bundleContext.registerService(clazz, service, properties);
+        return registerServiceInternal(serviceRegistration);
+    }
+
+    @Override
+    public ServiceRegistration<?> registerService(String[] clazzes, Object service, Dictionary<String, ?> properties) {
+        ServiceRegistration<?> serviceRegistration = bundleContext.registerService(clazzes, service, properties);
+        return registerServiceInternal(serviceRegistration);
+    }
+
+    private <S> ServiceRegistration<S> registerServiceInternal(ServiceRegistration<S> original) {
+        ComponentServiceRegistration<S> componentServiceRegistration = new ComponentServiceRegistration<S>(
+                original);
+        registeredServices.add(componentServiceRegistration);
+        return componentServiceRegistration;
+    }
+
+    /**
+     * Called when when the target of a non-dynamic reference should be replaced).
+     */
+    void restart() {
+        // TODO
     }
 
     private void starting(Dictionary<String, Object> properties) {
@@ -135,70 +242,16 @@ public class ComponentImpl<C> {
                 Object propertyValue = propertyAttributeHelper.resolveNewValue(properties);
                 propertyAttributeHelper.applyValue(propertyValue);
             }
-            callActivate();
+            activateMethodHelper.call(this, instance);
         } catch (ConfigurationException | RuntimeException e) {
             fail(e, false);
             return;
-        }
-    }
-
-    private void callActivate() {
-        if (activateMethod == null) {
+        } catch (IllegalAccessException e) {
+            fail(e, true);
             return;
+        } catch (InvocationTargetException e) {
+            fail(e.getCause(), false);
         }
-        Parameter[] parameters = activateMethod.getParameters();
-
-    }
-
-    private void fail(Throwable e, boolean permanent) {
-        cause = e;
-        processingThread = null;
-        if (permanent) {
-            state.set(ComponentState.FAILED_PERMANENT);
-        } else {
-            state.set(ComponentState.FAILED);
-        }
-        // TODO Auto-generated catch block
-        e.printStackTrace();
-        return;
-    }
-
-    Object getInstance() {
-        return instance;
-    }
-
-    public void close() {
-        // TODO
-    }
-
-    private void fillCapabilityCollectorsForReferenceAttributes(ReferenceMetadata attributeMetadata) {
-        // TODO Auto-generated method stub
-
-    }
-
-    public ComponentMetadata getComponentMetadata() {
-        return componentMetadata;
-    }
-
-    public ComponentRevision getComponentRevision() {
-        // TODO
-        return null;
-    }
-
-    public void open() {
-        if (!state.compareAndSet(ComponentState.STOPPED, ComponentState.STARTING)) {
-            throw new IllegalStateException("Component instance can be opened only when it is stopped.");
-        }
-
-        // TODO do it if all capabilities are satisfied.
-        starting(properties);
-    }
-
-    /**
-     * Called when when the target of a non-dynamic reference should be replaced).
-     */
-    void restart() {
-        // TODO
     }
 
     public void updateConfiguration(Dictionary<String, ?> properties) {
