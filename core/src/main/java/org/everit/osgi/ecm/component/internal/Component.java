@@ -27,6 +27,8 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import javax.naming.ConfigurationException;
 
+import org.everit.osgi.capabilitycollector.AbstractCapabilityCollector;
+import org.everit.osgi.capabilitycollector.ServiceReferenceCollector;
 import org.everit.osgi.ecm.component.context.ComponentContext;
 import org.everit.osgi.ecm.component.resource.ComponentRevision;
 import org.everit.osgi.ecm.component.resource.ComponentState;
@@ -34,43 +36,20 @@ import org.everit.osgi.ecm.metadata.AttributeMetadata;
 import org.everit.osgi.ecm.metadata.ComponentMetadata;
 import org.everit.osgi.ecm.metadata.PropertyAttributeMetadata;
 import org.everit.osgi.ecm.metadata.ReferenceMetadata;
+import org.everit.osgi.ecm.metadata.ServiceReferenceMetadata;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
-import org.osgi.framework.ServiceReference;
 import org.osgi.framework.ServiceRegistration;
 import org.osgi.framework.wiring.BundleWiring;
 
-public class ComponentImpl<C> implements ComponentContext<C> {
-
-    private class ComponentServiceRegistration<S> implements ServiceRegistration<S> {
-
-        private final ServiceRegistration<S> wrapped;
-
-        public ComponentServiceRegistration(ServiceRegistration<S> wrapped) {
-            this.wrapped = wrapped;
-        }
-
-        @Override
-        public ServiceReference<S> getReference() {
-            return wrapped.getReference();
-        }
-
-        @Override
-        public void setProperties(Dictionary<String, ?> properties) {
-            wrapped.setProperties(properties);
-        }
-
-        @Override
-        public void unregister() {
-            registeredServices.remove(this);
-            wrapped.unregister();
-        }
-
-    }
+public class Component<C> implements ComponentContext<C> {
 
     private ActivateMethodHelper<C> activateMethodHelper;
 
     private final BundleContext bundleContext;
+
+    private final List<AbstractCapabilityCollector<?>> capabilityCollectors =
+            new ArrayList<AbstractCapabilityCollector<?>>();
 
     private Throwable cause;
 
@@ -87,15 +66,15 @@ public class ComponentImpl<C> implements ComponentContext<C> {
     private final Map<String, PropertyAttributeHelper<C, Object>> propertyAttributeHelpersByAttributeId =
             new HashMap<String, PropertyAttributeHelper<C, Object>>();
 
-    private final List<ServiceRegistration<?>> registeredServices = new ArrayList<ServiceRegistration<?>>();
+    final List<ServiceRegistration<?>> registeredServices = new ArrayList<ServiceRegistration<?>>();
 
     private final AtomicReference<ComponentState> state = new AtomicReference<ComponentState>(ComponentState.STOPPED);
 
-    public ComponentImpl(ComponentMetadata componentMetadata, BundleContext bundleContext) {
+    public Component(ComponentMetadata componentMetadata, BundleContext bundleContext) {
         this(componentMetadata, bundleContext, null);
     }
 
-    public ComponentImpl(ComponentMetadata componentMetadata, BundleContext bundleContext,
+    public Component(ComponentMetadata componentMetadata, BundleContext bundleContext,
             Dictionary<String, Object> properties) {
         this.componentMetadata = componentMetadata;
         this.bundleContext = bundleContext;
@@ -131,6 +110,7 @@ public class ComponentImpl<C> implements ComponentContext<C> {
                 fillCapabilityCollectorsForReferenceAttributes((ReferenceMetadata) attributeMetadata);
             }
         }
+
     }
 
     public void close() {
@@ -152,7 +132,15 @@ public class ComponentImpl<C> implements ComponentContext<C> {
 
     private void fillCapabilityCollectorsForReferenceAttributes(ReferenceMetadata attributeMetadata) {
         // TODO Auto-generated method stub
+        AbstractCapabilityCollector<?> collector;
+        if (attributeMetadata instanceof ServiceReferenceMetadata) {
+            ServiceReferenceMetadata serviceReferenceMetadata = (ServiceReferenceMetadata) attributeMetadata;
+            collector = new ServiceReferenceCollector<?>(bundleContext, serviceReferenceMetadata.getServiceInterface(),
+                    null, serviceReferenceMetadata.isDynamic(), actionHandler, false);
+        } else {
 
+        }
+        capabilityCollectors.add(collector);
     }
 
     @Override
@@ -212,8 +200,8 @@ public class ComponentImpl<C> implements ComponentContext<C> {
     }
 
     private <S> ServiceRegistration<S> registerServiceInternal(ServiceRegistration<S> original) {
-        ComponentServiceRegistration<S> componentServiceRegistration = new ComponentServiceRegistration<S>(
-                original);
+        ComponentServiceRegistration<S, C> componentServiceRegistration = new ComponentServiceRegistration<S, C>(
+                this, original);
         registeredServices.add(componentServiceRegistration);
         return componentServiceRegistration;
     }

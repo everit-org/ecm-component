@@ -35,7 +35,7 @@ import org.osgi.service.metatype.MetaTypeProvider;
 
 public class ComponentContainerImpl<C> extends AbstractComponentContainer<C> implements ManagedService {
 
-    private final AtomicReference<ComponentImpl<C>> componentAtomicReference = new AtomicReference<ComponentImpl<C>>();
+    private final AtomicReference<Component<C>> componentAtomicReference = new AtomicReference<Component<C>>();
 
     private ServiceRegistration<?> serviceRegistration;
 
@@ -49,7 +49,7 @@ public class ComponentContainerImpl<C> extends AbstractComponentContainer<C> imp
             serviceRegistration.unregister();
             serviceRegistration = null;
         }
-        ComponentImpl<C> componentImpl = componentAtomicReference.get();
+        Component<C> componentImpl = componentAtomicReference.get();
         if (componentImpl != null) {
             componentImpl.close();
             componentAtomicReference.set(null);
@@ -58,7 +58,7 @@ public class ComponentContainerImpl<C> extends AbstractComponentContainer<C> imp
 
     @Override
     public ComponentRevision[] getComponentRevisions() {
-        ComponentImpl<C> componentImpl = componentAtomicReference.get();
+        Component<C> componentImpl = componentAtomicReference.get();
         if (componentImpl == null) {
             return new ComponentRevision[0];
         }
@@ -86,9 +86,9 @@ public class ComponentContainerImpl<C> extends AbstractComponentContainer<C> imp
         serviceRegistration = context.registerService(serviceInterfaces.toArray(new String[serviceInterfaces.size()]),
                 this, properties);
 
-        ComponentImpl<C> componentImpl = componentAtomicReference.get();
+        Component<C> componentImpl = componentAtomicReference.get();
         if (ConfigurationPolicy.IGNORE.equals(componentMetadata.getConfigurationPolicy()) && componentImpl == null) {
-            componentImpl = new ComponentImpl<C>(componentMetadata, getBundleContext());
+            componentImpl = new Component<C>(componentMetadata, getBundleContext());
             componentAtomicReference.set(componentImpl);
             componentImpl.open();
             return;
@@ -102,12 +102,12 @@ public class ComponentContainerImpl<C> extends AbstractComponentContainer<C> imp
         Dictionary<String, Object> props = (Dictionary<String, Object>) properties;
 
         ComponentMetadata componentMetadata = getComponentMetadata();
-        ComponentImpl<C> componentImpl = componentAtomicReference.get();
+        Component<C> componentImpl = componentAtomicReference.get();
 
         ConfigurationPolicy configurationPolicy = componentMetadata.getConfigurationPolicy();
 
         if (componentImpl == null && (properties != null || ConfigurationPolicy.OPTIONAL.equals(configurationPolicy))) {
-            componentImpl = new ComponentImpl<C>(componentMetadata, getBundleContext(), props);
+            componentImpl = new Component<C>(componentMetadata, getBundleContext(), props);
             componentAtomicReference.set(componentImpl);
             componentImpl.open();
         } else if (componentImpl != null && properties == null
