@@ -14,7 +14,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with Everit - ECM Component.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.everit.osgi.ecm.component.internal;
+package org.everit.osgi.ecm.component.internal.attribute;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.InvocationTargetException;
@@ -24,6 +24,8 @@ import java.util.Dictionary;
 
 import javax.naming.ConfigurationException;
 
+import org.everit.osgi.ecm.component.context.ComponentContext;
+import org.everit.osgi.ecm.component.internal.IllegalMetadataException;
 import org.everit.osgi.ecm.metadata.PropertyAttributeMetadata;
 import org.everit.osgi.ecm.util.method.MethodDescriptor;
 
@@ -31,7 +33,7 @@ public class PropertyAttributeHelper<C, V> {
 
     private final PropertyAttributeMetadata<V> attributeMetadata;
 
-    private final Component<C> component;
+    private final ComponentContext<C> componentContext;
 
     private final Object defaultValue;
 
@@ -39,8 +41,10 @@ public class PropertyAttributeHelper<C, V> {
 
     private Object storedValue = null;
 
-    public PropertyAttributeHelper(Component<C> component, PropertyAttributeMetadata<V> attributeMetadata) {
-        this.component = component;
+    public PropertyAttributeHelper(ComponentContext<C> componentContext,
+            PropertyAttributeMetadata<V> attributeMetadata) {
+
+        this.componentContext = componentContext;
         this.attributeMetadata = attributeMetadata;
         this.defaultValue = resolveDefaultValue();
         this.setter = resolveSetter();
@@ -50,11 +54,11 @@ public class PropertyAttributeHelper<C, V> {
         storedValue = newValue;
         if (setter != null) {
             try {
-                setter.invoke(component.getInstance(), newValue);
-            } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
-                throw new RuntimeException("Error setting attribute " + attributeMetadata.getAttributeId()
-                        + " of component " + component.getComponentMetadata().getComponentId() + " by calling setter "
-                        + setter.toGenericString() + " with value: " + newValue, e);
+                setter.invoke(componentContext.getInstance(), newValue);
+            } catch (IllegalAccessException e) {
+                componentContext.fail(e, true);
+            } catch (InvocationTargetException | IllegalArgumentException e) {
+                componentContext.fail(e, false);
             }
         }
     }
@@ -66,23 +70,6 @@ public class PropertyAttributeHelper<C, V> {
             Array.set(primitiveArray, i, element);
         }
         return primitiveArray;
-    }
-
-    private Object resolveDefaultValue() {
-        V[] defaultValueArray = attributeMetadata.getDefaultValue();
-        if (defaultValueArray == null) {
-            return null;
-        }
-
-        if (attributeMetadata.isMultiple()) {
-            Class<?> primitiveType = attributeMetadata.getPrimitiveType();
-            if (primitiveType != null) {
-                return convertToPrimitiveArray(defaultValueArray, primitiveType);
-            }
-            return defaultValueArray;
-        }
-
-        return defaultValueArray[0];
     }
 
     public Object getStoredValue() {
@@ -122,13 +109,30 @@ public class PropertyAttributeHelper<C, V> {
 
     }
 
+    private Object resolveDefaultValue() {
+        V[] defaultValueArray = attributeMetadata.getDefaultValue();
+        if (defaultValueArray == null) {
+            return null;
+        }
+
+        if (attributeMetadata.isMultiple()) {
+            Class<?> primitiveType = attributeMetadata.getPrimitiveType();
+            if (primitiveType != null) {
+                return convertToPrimitiveArray(defaultValueArray, primitiveType);
+            }
+            return defaultValueArray;
+        }
+
+        return defaultValueArray[0];
+    }
+
     public Object resolveNewValue(Dictionary<String, Object> properties) throws ConfigurationException {
         // Handle default value
         if (properties == null) {
             if (defaultValue == null && !attributeMetadata.isOptional()) {
                 throw new ConfigurationException("No configuration and no default value for attribute '"
                         + attributeMetadata.getAttributeId() + "' of component "
-                        + component.getComponentMetadata().getComponentId());
+                        + componentContext.getComponentMetadata().getComponentId());
             }
             return defaultValue;
         }
@@ -138,7 +142,8 @@ public class PropertyAttributeHelper<C, V> {
         if (valueObject == null) {
             if (!attributeMetadata.isOptional()) {
                 throw new ConfigurationException("Mandatory attribute '" + attributeMetadata.getAttributeId()
-                        + "' is not specified in component " + component.getComponentMetadata().getComponentId());
+                        + "' is not specified in component "
+                        + componentContext.getComponentMetadata().getComponentId());
             }
             return null;
         }
@@ -150,7 +155,7 @@ public class PropertyAttributeHelper<C, V> {
             if (!valueClass.isArray()) {
                 throw new ConfigurationException("Array was expected as value for attribute "
                         + attributeMetadata.getAttributeId() + " of component '"
-                        + component.getComponentMetadata().getComponentId() + "' but got '" + valueClass + "'");
+                        + componentContext.getComponentMetadata().getComponentId() + "' but got '" + valueClass + "'");
             }
 
             Class<?> componentType = valueClass.getComponentType();
@@ -162,7 +167,8 @@ public class PropertyAttributeHelper<C, V> {
             if (!primitiveType.equals(componentType)) {
                 throw new ConfigurationException(primitiveType + " array was expected as value for attribute "
                         + attributeMetadata.getAttributeId() + " of component '"
-                        + component.getComponentMetadata().getComponentId() + "' but got " + componentType + " array");
+                        + componentContext.getComponentMetadata().getComponentId() + "' but got " + componentType
+                        + " array");
             }
             return valueObject;
         }
@@ -171,7 +177,7 @@ public class PropertyAttributeHelper<C, V> {
         if (!valueClass.equals(attributeMetadata.getValueType())) {
             throw new ConfigurationException(attributeMetadata.getValueType() + " was expected as value for attribute "
                     + attributeMetadata.getAttributeId() + " of component '"
-                    + component.getComponentMetadata().getComponentId() + "' but got " + valueClass);
+                    + componentContext.getComponentMetadata().getComponentId() + "' but got " + valueClass);
         }
         return valueObject;
     }
@@ -181,16 +187,18 @@ public class PropertyAttributeHelper<C, V> {
         if (setterMethodDescriptor == null) {
             return null;
         }
-        Method method = setterMethodDescriptor.locate(component.getComponentType(), false);
+        Method method = setterMethodDescriptor.locate(componentContext.getComponentType(), false);
 
         Class<?>[] parameterTypes = method.getParameterTypes();
         if (parameterTypes.length != 1) {
             throwIllegalSetter(method, "Setter method must have one parameter: " + method.toGenericString());
+            return null;
         }
 
         if (attributeMetadata.isMultiple()) {
             if (!parameterTypes[0].isArray()) {
                 throwIllegalSetter(method, "Parameter type should be an array");
+                return null;
             }
             Class<?> componentType = parameterTypes[0].getComponentType();
             Class<?> expectedComponentType = attributeMetadata.getPrimitiveType();
@@ -200,6 +208,7 @@ public class PropertyAttributeHelper<C, V> {
             if (!expectedComponentType.equals(componentType)) {
                 throwIllegalSetter(method, "Parameter array should have '" + expectedComponentType
                         + "' component type.");
+                return null;
             }
         } else {
             Class<?> primitiveType = attributeMetadata.getPrimitiveType();
@@ -208,14 +217,17 @@ public class PropertyAttributeHelper<C, V> {
                     && (primitiveType == null || !primitiveType.equals(parameterTypes[0]))) {
                 throwIllegalSetter(method, " Parameter type of setter must be " + valueType.getCanonicalName()
                         + ((primitiveType != null) ? (" or " + primitiveType.getSimpleName()) : ""));
+                return null;
             }
         }
         return method;
     }
 
     private void throwIllegalSetter(Method method, String additionalMessage) {
-        throw new IllegalMetadataException("Invalid setter defined for attribute '"
+        IllegalMetadataException e = new IllegalMetadataException("Invalid setter defined for attribute '"
                 + attributeMetadata.getAttributeId() + "' of component '"
-                + component.getComponentMetadata().getComponentId() + "'. " + additionalMessage);
+                + componentContext.getComponentMetadata().getComponentId() + "'. " + additionalMessage);
+
+        componentContext.fail(e, true);
     }
 }

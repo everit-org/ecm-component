@@ -18,8 +18,10 @@ package org.everit.osgi.ecm.component.tests;
 
 import org.everit.osgi.ecm.annotation.Component;
 import org.everit.osgi.ecm.annotation.ConfigurationPolicy;
+import org.everit.osgi.ecm.annotation.Service;
 
 @Component(configurationPolicy = ConfigurationPolicy.IGNORE)
+@Service
 public class IgnoredComponent {
 
 }

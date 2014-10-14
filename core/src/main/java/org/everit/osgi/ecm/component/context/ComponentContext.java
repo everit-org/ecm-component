@@ -20,6 +20,8 @@ import java.util.Dictionary;
 import java.util.Map;
 
 import org.everit.osgi.ecm.component.resource.ComponentRevision;
+import org.everit.osgi.ecm.component.resource.ComponentState;
+import org.everit.osgi.ecm.metadata.ComponentMetadata;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.Constants;
 import org.osgi.framework.ServiceEvent;
@@ -28,9 +30,23 @@ import org.osgi.framework.ServiceRegistration;
 
 public interface ComponentContext<C> {
 
+    void fail(Throwable e, boolean permanent);
+
     BundleContext getBundleContext();
 
+    ComponentMetadata getComponentMetadata();
+
     ComponentRevision getComponentRevision();
+
+    Class<C> getComponentType();
+
+    /**
+     * Returns the service instance that was instantiated by this component.
+     * 
+     * @return The instance of the component or <code>null</code> if the component is not in
+     *         {@link ComponentState#ACTIVE}.
+     */
+    C getInstance();
 
     Map<String, Object> getProperties();
 
@@ -140,4 +156,5 @@ public interface ComponentContext<C> {
      */
     ServiceRegistration<?> registerService(String[] clazzes, Object service, Dictionary<String, ?> properties);
 
+    void restart();
 }

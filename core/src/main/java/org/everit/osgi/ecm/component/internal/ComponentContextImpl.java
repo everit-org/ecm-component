@@ -21,35 +21,71 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Dictionary;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
 import javax.naming.ConfigurationException;
 
-import org.everit.osgi.capabilitycollector.AbstractCapabilityCollector;
-import org.everit.osgi.capabilitycollector.ServiceReferenceCollector;
 import org.everit.osgi.ecm.component.context.ComponentContext;
+import org.everit.osgi.ecm.component.internal.attribute.BundleCapabilityReferenceAttributeHelper;
+import org.everit.osgi.ecm.component.internal.attribute.PropertyAttributeHelper;
+import org.everit.osgi.ecm.component.internal.attribute.ReferenceHelper;
+import org.everit.osgi.ecm.component.internal.attribute.ServiceReferenceAttributeHelper;
 import org.everit.osgi.ecm.component.resource.ComponentRevision;
 import org.everit.osgi.ecm.component.resource.ComponentState;
 import org.everit.osgi.ecm.metadata.AttributeMetadata;
+import org.everit.osgi.ecm.metadata.BundleCapabilityReferenceMetadata;
 import org.everit.osgi.ecm.metadata.ComponentMetadata;
 import org.everit.osgi.ecm.metadata.PropertyAttributeMetadata;
 import org.everit.osgi.ecm.metadata.ReferenceMetadata;
+import org.everit.osgi.ecm.metadata.ServiceMetadata;
 import org.everit.osgi.ecm.metadata.ServiceReferenceMetadata;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.ServiceRegistration;
 import org.osgi.framework.wiring.BundleWiring;
 
-public class Component<C> implements ComponentContext<C> {
+public class ComponentContextImpl<C> implements ComponentContext<C> {
+
+    private class ReferenceEventHandlerImpl implements ReferenceEventHandler {
+
+        private int satisfiedCapabilities = 0;
+
+        @Override
+        public synchronized void satisfied() {
+            satisfiedCapabilities++;
+
+            if (satisfiedCapabilities == referenceHelpers.size() && state.get() == ComponentState.UNSATISFIED) {
+                starting();
+            }
+        }
+
+        @Override
+        public synchronized void unsatisfied() {
+            satisfiedCapabilities--;
+
+            if (state.get() == ComponentState.ACTIVE) {
+                stopping();
+            }
+        }
+
+    }
+
+    private static void resolveSuperInterfacesRecurse(Class<?> currentClass, Set<String> interfaces) {
+        Class<?>[] superInterfaces = currentClass.getInterfaces();
+        for (Class<?> superInterface : superInterfaces) {
+            interfaces.add(superInterface.getName());
+            resolveSuperInterfacesRecurse(superInterface, interfaces);
+        }
+    }
 
     private ActivateMethodHelper<C> activateMethodHelper;
 
     private final BundleContext bundleContext;
-
-    private final List<AbstractCapabilityCollector<?>> capabilityCollectors =
-            new ArrayList<AbstractCapabilityCollector<?>>();
 
     private Throwable cause;
 
@@ -57,24 +93,33 @@ public class Component<C> implements ComponentContext<C> {
 
     private Class<C> componentType;
 
-    private Object instance;
+    private C instance;
 
-    private Thread processingThread;
+    private volatile Thread processingThread;
 
-    private Dictionary<String, Object> properties;
+    private volatile Dictionary<String, Object> properties;
 
     private final Map<String, PropertyAttributeHelper<C, Object>> propertyAttributeHelpersByAttributeId =
             new HashMap<String, PropertyAttributeHelper<C, Object>>();
 
+    private final ReferenceEventHandler referenceEventHandler = new ReferenceEventHandlerImpl();
+
+    private final List<ReferenceHelper<?, C>> referenceHelpers =
+            new ArrayList<ReferenceHelper<?, C>>();
+
     final List<ServiceRegistration<?>> registeredServices = new ArrayList<ServiceRegistration<?>>();
+
+    private String[] serviceInterfaces;
+
+    private ServiceRegistration<?> serviceRegistration = null;
 
     private final AtomicReference<ComponentState> state = new AtomicReference<ComponentState>(ComponentState.STOPPED);
 
-    public Component(ComponentMetadata componentMetadata, BundleContext bundleContext) {
+    public ComponentContextImpl(ComponentMetadata componentMetadata, BundleContext bundleContext) {
         this(componentMetadata, bundleContext, null);
     }
 
-    public Component(ComponentMetadata componentMetadata, BundleContext bundleContext,
+    public ComponentContextImpl(ComponentMetadata componentMetadata, BundleContext bundleContext,
             Dictionary<String, Object> properties) {
         this.componentMetadata = componentMetadata;
         this.bundleContext = bundleContext;
@@ -111,15 +156,26 @@ public class Component<C> implements ComponentContext<C> {
             }
         }
 
+        serviceInterfaces = resolveServiceInterfaces();
+
     }
 
     public void close() {
-        // TODO
+        if (referenceHelpers.size() == 0) {
+            stopping();
+        } else {
+            for (ReferenceHelper<?, C> referenceHelper : referenceHelpers) {
+                referenceHelper.close();
+            }
+        }
     }
 
-    private void fail(Throwable e, boolean permanent) {
+    @Override
+    public void fail(Throwable e, boolean permanent) {
         cause = e;
+        unregisterServices();
         processingThread = null;
+        instance = null;
         if (permanent) {
             state.set(ComponentState.FAILED_PERMANENT);
         } else {
@@ -132,15 +188,16 @@ public class Component<C> implements ComponentContext<C> {
 
     private void fillCapabilityCollectorsForReferenceAttributes(ReferenceMetadata attributeMetadata) {
         // TODO Auto-generated method stub
-        AbstractCapabilityCollector<?> collector;
+        ReferenceHelper<?, C> helper;
         if (attributeMetadata instanceof ServiceReferenceMetadata) {
-            ServiceReferenceMetadata serviceReferenceMetadata = (ServiceReferenceMetadata) attributeMetadata;
-            collector = new ServiceReferenceCollector<?>(bundleContext, serviceReferenceMetadata.getServiceInterface(),
-                    null, serviceReferenceMetadata.isDynamic(), actionHandler, false);
+            helper = new ServiceReferenceAttributeHelper<Object, C>((ServiceReferenceMetadata) attributeMetadata,
+                    this, null);
         } else {
-
+            helper = new BundleCapabilityReferenceAttributeHelper<C>(
+                    (BundleCapabilityReferenceMetadata) attributeMetadata, this, null);
         }
-        capabilityCollectors.add(collector);
+        referenceHelpers.add(helper);
+        helper.open();
     }
 
     @Override
@@ -148,6 +205,7 @@ public class Component<C> implements ComponentContext<C> {
         return bundleContext;
     }
 
+    @Override
     public ComponentMetadata getComponentMetadata() {
         return componentMetadata;
     }
@@ -158,11 +216,13 @@ public class Component<C> implements ComponentContext<C> {
         return null;
     }
 
+    @Override
     public Class<C> getComponentType() {
         return componentType;
     }
 
-    Object getInstance() {
+    @Override
+    public C getInstance() {
         return instance;
     }
 
@@ -178,23 +238,35 @@ public class Component<C> implements ComponentContext<C> {
         }
 
         // TODO do it if all capabilities are satisfied.
-        starting(properties);
+        if (referenceHelpers.size() == 0) {
+            starting();
+        } else {
+            state.set(ComponentState.UNSATISFIED);
+            for (Iterator<ReferenceHelper<?, C>> iterator = referenceHelpers.iterator(); iterator.hasNext()
+                    && state.get() == ComponentState.UNSATISFIED;) {
+                ReferenceHelper<?, C> referenceAttributeHelper = iterator.next();
+                referenceAttributeHelper.open();
+            }
+        }
     }
 
     @Override
     public <S> ServiceRegistration<S> registerService(Class<S> clazz, S service, Dictionary<String, ?> properties) {
+        validateComponentStateForServiceRegistration();
         ServiceRegistration<S> serviceRegistration = bundleContext.registerService(clazz, service, properties);
         return registerServiceInternal(serviceRegistration);
     }
 
     @Override
     public ServiceRegistration<?> registerService(String clazz, Object service, Dictionary<String, ?> properties) {
+        validateComponentStateForServiceRegistration();
         ServiceRegistration<?> serviceRegistration = bundleContext.registerService(clazz, service, properties);
         return registerServiceInternal(serviceRegistration);
     }
 
     @Override
     public ServiceRegistration<?> registerService(String[] clazzes, Object service, Dictionary<String, ?> properties) {
+        validateComponentStateForServiceRegistration();
         ServiceRegistration<?> serviceRegistration = bundleContext.registerService(clazzes, service, properties);
         return registerServiceInternal(serviceRegistration);
     }
@@ -206,14 +278,39 @@ public class Component<C> implements ComponentContext<C> {
         return componentServiceRegistration;
     }
 
-    /**
-     * Called when when the target of a non-dynamic reference should be replaced).
-     */
-    void restart() {
+    private String[] resolveServiceInterfaces() {
+        ServiceMetadata serviceMetadata = componentMetadata.getService();
+        if (serviceMetadata == null) {
+            return null;
+        }
+
+        Class<?>[] clazzes = serviceMetadata.getClazzes();
+        if (clazzes.length > 0) {
+            String[] result = new String[clazzes.length];
+            for (int i = 0; i < clazzes.length; i++) {
+                result[i] = clazzes[i].getName();
+            }
+            return result;
+        }
+
+        // Auto detect
+        Set<String> interfaces = new HashSet<String>();
+        Class<?> currentClass = componentType;
+        resolveSuperInterfacesRecurse(currentClass, interfaces);
+
+        if (interfaces.size() != 0) {
+            return interfaces.toArray(new String[interfaces.size()]);
+        }
+        return new String[] { componentType.getName() };
+    }
+
+    @Override
+    public void restart() {
         // TODO
     }
 
-    private void starting(Dictionary<String, Object> properties) {
+    private void starting() {
+        state.set(ComponentState.STARTING);
         processingThread = Thread.currentThread();
         try {
             instance = componentType.newInstance();
@@ -239,11 +336,52 @@ public class Component<C> implements ComponentContext<C> {
             return;
         } catch (InvocationTargetException e) {
             fail(e.getCause(), false);
+            return;
+        }
+
+        if (serviceInterfaces != null) {
+            serviceRegistration = registerService(serviceInterfaces, instance, properties);
         }
     }
 
-    public void updateConfiguration(Dictionary<String, ?> properties) {
+    private void stopping() {
+        state.set(ComponentState.STOPPING);
+        instance = null;
+        unregisterServices();
+
+        state.set(ComponentState.STOPPED);
+
+    }
+
+    private void unregisterServices() {
+        if (serviceRegistration != null) {
+            serviceRegistration.unregister();
+        }
+        for (Iterator<ServiceRegistration<?>> iterator = registeredServices.iterator(); iterator
+                .hasNext();) {
+            ServiceRegistration<?> serviceRegistration = iterator.next();
+            // TODO WARN the user that the code is not stable as the services should have been unregistered at this
+            // point.
+            serviceRegistration.unregister();
+            iterator.remove();
+        }
+
+    }
+
+    public void updateConfiguration(Dictionary<String, Object> properties) {
+        this.properties = properties;
+        if (state.get() == ComponentState.FAILED) {
+            starting();
+        }
         // TODO Auto-generated method stub
 
+    }
+
+    private void validateComponentStateForServiceRegistration() {
+        ComponentState componentState = state.get();
+        if (componentState != ComponentState.ACTIVE && componentState != ComponentState.STARTING) {
+            throw new IllegalStateException(
+                    "Service can only be registered in component if the state of the component is ACTIVE or STARTING");
+        }
     }
 }

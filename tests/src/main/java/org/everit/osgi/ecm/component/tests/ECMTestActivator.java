@@ -25,30 +25,34 @@ import org.osgi.framework.BundleContext;
 
 public class ECMTestActivator implements BundleActivator {
 
-    private ComponentContainerInstance<AnnotatedClass> component;
-    private ComponentContainerInstance<IgnoredComponent> otherComponent;
+    private ComponentContainerInstance<FactoryComponent> factoryComponent;
+    private ComponentContainerInstance<IgnoredComponent> ignoredComponent;
+    private ComponentContainerInstance<Object> testComponent;
 
     @Override
     public void start(BundleContext context) throws Exception {
-        ComponentMetadata componentMetadata = MetadataBuilder
-                .buildComponentMetadata(AnnotatedClass.class);
-
         ComponentContainerFactory factory = new ComponentContainerFactory(context);
 
-        component = factory.createComponentContainer(componentMetadata);
-        component.open();
+        ComponentMetadata factoryComponentMetadata = MetadataBuilder.buildComponentMetadata(FactoryComponent.class);
 
-        ComponentMetadata otherComponentMetadata = MetadataBuilder
-                .buildComponentMetadata(IgnoredComponent.class);
+        factoryComponent = factory.createComponentContainer(factoryComponentMetadata);
+        factoryComponent.open();
 
-        otherComponent = factory.createComponentContainer(otherComponentMetadata);
-        otherComponent.open();
+        ComponentMetadata ignoredComponentMetadata = MetadataBuilder.buildComponentMetadata(IgnoredComponent.class);
+
+        ignoredComponent = factory.createComponentContainer(ignoredComponentMetadata);
+        ignoredComponent.open();
+
+        ComponentMetadata testComponentMetadata = MetadataBuilder.buildComponentMetadata(TestComponent.class);
+        testComponent = factory.createComponentContainer(testComponentMetadata);
+        testComponent.open();
     }
 
     @Override
     public void stop(BundleContext context) throws Exception {
-        component.close();
-        otherComponent.close();
+        testComponent.close();
+        factoryComponent.close();
+        ignoredComponent.close();
     }
 
 }
