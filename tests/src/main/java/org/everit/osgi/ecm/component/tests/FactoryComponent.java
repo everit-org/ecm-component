@@ -29,7 +29,7 @@ import org.everit.osgi.ecm.annotation.attribute.ShortAttribute;
 @Service
 public class FactoryComponent {
 
-    @ShortAttribute(multiple = true)
+    @ShortAttribute
     private short lau;
 
     @PasswordAttribute

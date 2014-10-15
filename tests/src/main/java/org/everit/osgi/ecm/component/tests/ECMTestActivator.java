@@ -16,18 +16,24 @@
  */
 package org.everit.osgi.ecm.component.tests;
 
+import java.util.Dictionary;
+import java.util.Hashtable;
+
+import org.everit.osgi.dev.testrunner.TestRunnerConstants;
 import org.everit.osgi.ecm.annotation.metadatabuilder.MetadataBuilder;
 import org.everit.osgi.ecm.component.ComponentContainerFactory;
 import org.everit.osgi.ecm.component.ComponentContainerInstance;
 import org.everit.osgi.ecm.metadata.ComponentMetadata;
 import org.osgi.framework.BundleActivator;
 import org.osgi.framework.BundleContext;
+import org.osgi.framework.ServiceRegistration;
 
 public class ECMTestActivator implements BundleActivator {
 
     private ComponentContainerInstance<FactoryComponent> factoryComponent;
     private ComponentContainerInstance<IgnoredComponent> ignoredComponent;
     private ComponentContainerInstance<Object> testComponent;
+    private ServiceRegistration<ECMTest> testServiceRegistration;
 
     @Override
     public void start(BundleContext context) throws Exception {
@@ -46,10 +52,17 @@ public class ECMTestActivator implements BundleActivator {
         ComponentMetadata testComponentMetadata = MetadataBuilder.buildComponentMetadata(TestComponent.class);
         testComponent = factory.createComponentContainer(testComponentMetadata);
         testComponent.open();
+
+        ECMTest ecmTest = new ECMTest();
+        Dictionary<String, Object> properties = new Hashtable<String, Object>();
+        properties.put(TestRunnerConstants.SERVICE_PROPERTY_TEST_ID, "ECMTest");
+        properties.put(TestRunnerConstants.SERVICE_PROPERTY_TESTRUNNER_ENGINE_TYPE, "junit4");
+        testServiceRegistration = context.registerService(ECMTest.class, ecmTest, properties);
     }
 
     @Override
     public void stop(BundleContext context) throws Exception {
+        testServiceRegistration.unregister();
         testComponent.close();
         factoryComponent.close();
         ignoredComponent.close();

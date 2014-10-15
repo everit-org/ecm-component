@@ -26,7 +26,9 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import javax.naming.ConfigurationException;
 
@@ -41,7 +43,6 @@ import org.everit.osgi.ecm.metadata.AttributeMetadata;
 import org.everit.osgi.ecm.metadata.BundleCapabilityReferenceMetadata;
 import org.everit.osgi.ecm.metadata.ComponentMetadata;
 import org.everit.osgi.ecm.metadata.PropertyAttributeMetadata;
-import org.everit.osgi.ecm.metadata.ReferenceMetadata;
 import org.everit.osgi.ecm.metadata.ServiceMetadata;
 import org.everit.osgi.ecm.metadata.ServiceReferenceMetadata;
 import org.osgi.framework.Bundle;
@@ -57,19 +58,31 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
 
         @Override
         public synchronized void satisfied() {
-            satisfiedCapabilities++;
+            Lock writeLock = readWriteLock.writeLock();
+            writeLock.lock();
+            try {
+                satisfiedCapabilities++;
 
-            if (satisfiedCapabilities == referenceHelpers.size() && state.get() == ComponentState.UNSATISFIED) {
-                starting();
+                if (satisfiedCapabilities == referenceHelpers.size() && state == ComponentState.UNSATISFIED) {
+                    starting();
+                }
+            } finally {
+                writeLock.unlock();
             }
         }
 
         @Override
         public synchronized void unsatisfied() {
-            satisfiedCapabilities--;
+            Lock writeLock = readWriteLock.writeLock();
+            writeLock.lock();
+            try {
+                satisfiedCapabilities--;
 
-            if (state.get() == ComponentState.ACTIVE) {
-                stopping();
+                if (state == ComponentState.ACTIVE) {
+                    stopping();
+                }
+            } finally {
+                writeLock.unlock();
             }
         }
 
@@ -97,10 +110,12 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
 
     private volatile Thread processingThread;
 
-    private volatile Dictionary<String, Object> properties;
+    private volatile PropertiesHolder properties;
 
     private final Map<String, PropertyAttributeHelper<C, Object>> propertyAttributeHelpersByAttributeId =
             new HashMap<String, PropertyAttributeHelper<C, Object>>();
+
+    private final ReadWriteLock readWriteLock = new ReentrantReadWriteLock();
 
     private final ReferenceEventHandler referenceEventHandler = new ReferenceEventHandlerImpl();
 
@@ -113,7 +128,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
 
     private ServiceRegistration<?> serviceRegistration = null;
 
-    private final AtomicReference<ComponentState> state = new AtomicReference<ComponentState>(ComponentState.STOPPED);
+    private volatile ComponentState state = ComponentState.STOPPED;
 
     public ComponentContextImpl(ComponentMetadata componentMetadata, BundleContext bundleContext) {
         this(componentMetadata, bundleContext, null);
@@ -123,7 +138,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
             Dictionary<String, Object> properties) {
         this.componentMetadata = componentMetadata;
         this.bundleContext = bundleContext;
-        this.properties = properties;
+        this.properties = new PropertiesHolder(properties);
 
         Bundle bundle = bundleContext.getBundle();
         BundleWiring bundleWiring = bundle.adapt(BundleWiring.class);
@@ -141,20 +156,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
 
         AttributeMetadata<?>[] attributes = componentMetadata.getAttributes();
 
-        for (AttributeMetadata<?> attributeMetadata : attributes) {
-            if (attributeMetadata instanceof PropertyAttributeMetadata) {
-
-                @SuppressWarnings("unchecked")
-                PropertyAttributeHelper<C, Object> propertyAttributeHelper =
-                        new PropertyAttributeHelper<C, Object>(this,
-                                (PropertyAttributeMetadata<Object>) attributeMetadata);
-
-                propertyAttributeHelpersByAttributeId
-                        .put(attributeMetadata.getAttributeId(), propertyAttributeHelper);
-            } else {
-                fillCapabilityCollectorsForReferenceAttributes((ReferenceMetadata) attributeMetadata);
-            }
-        }
+        fillAttributeHelpers(attributes);
 
         serviceInterfaces = resolveServiceInterfaces();
 
@@ -177,27 +179,39 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
         processingThread = null;
         instance = null;
         if (permanent) {
-            state.set(ComponentState.FAILED_PERMANENT);
+            state = ComponentState.FAILED_PERMANENT;
         } else {
-            state.set(ComponentState.FAILED);
+            state = ComponentState.FAILED;
         }
         // TODO Auto-generated catch block
         e.printStackTrace();
         return;
     }
 
-    private void fillCapabilityCollectorsForReferenceAttributes(ReferenceMetadata attributeMetadata) {
-        // TODO Auto-generated method stub
-        ReferenceHelper<?, C> helper;
-        if (attributeMetadata instanceof ServiceReferenceMetadata) {
-            helper = new ServiceReferenceAttributeHelper<Object, C>((ServiceReferenceMetadata) attributeMetadata,
-                    this, null);
-        } else {
-            helper = new BundleCapabilityReferenceAttributeHelper<C>(
-                    (BundleCapabilityReferenceMetadata) attributeMetadata, this, null);
+    private void fillAttributeHelpers(AttributeMetadata<?>[] attributes) {
+        for (AttributeMetadata<?> attributeMetadata : attributes) {
+            if (attributeMetadata instanceof PropertyAttributeMetadata) {
+
+                @SuppressWarnings("unchecked")
+                PropertyAttributeHelper<C, Object> propertyAttributeHelper =
+                        new PropertyAttributeHelper<C, Object>(this,
+                                (PropertyAttributeMetadata<Object>) attributeMetadata);
+
+                propertyAttributeHelpersByAttributeId
+                        .put(attributeMetadata.getAttributeId(), propertyAttributeHelper);
+            } else {
+                ReferenceHelper<?, C> helper;
+                if (attributeMetadata instanceof ServiceReferenceMetadata) {
+                    helper = new ServiceReferenceAttributeHelper<Object, C>(
+                            (ServiceReferenceMetadata) attributeMetadata,
+                            this, null);
+                } else {
+                    helper = new BundleCapabilityReferenceAttributeHelper<C>(
+                            (BundleCapabilityReferenceMetadata) attributeMetadata, this, null);
+                }
+                referenceHelpers.add(helper);
+            }
         }
-        referenceHelpers.add(helper);
-        helper.open();
     }
 
     @Override
@@ -228,25 +242,25 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
 
     @Override
     public Map<String, Object> getProperties() {
-        // TODO Auto-generated method stub
-        return null;
+        return properties.getMap();
     }
 
     public void open() {
-        if (!state.compareAndSet(ComponentState.STOPPED, ComponentState.STARTING)) {
-            throw new IllegalStateException("Component instance can be opened only when it is stopped.");
-        }
-
-        // TODO do it if all capabilities are satisfied.
-        if (referenceHelpers.size() == 0) {
-            starting();
-        } else {
-            state.set(ComponentState.UNSATISFIED);
-            for (Iterator<ReferenceHelper<?, C>> iterator = referenceHelpers.iterator(); iterator.hasNext()
-                    && state.get() == ComponentState.UNSATISFIED;) {
-                ReferenceHelper<?, C> referenceAttributeHelper = iterator.next();
-                referenceAttributeHelper.open();
+        Lock writeLock = readWriteLock.writeLock();
+        writeLock.lock();
+        try {
+            if (referenceHelpers.size() == 0) {
+                starting();
+            } else {
+                state = ComponentState.UNSATISFIED;
+                for (Iterator<ReferenceHelper<?, C>> iterator = referenceHelpers.iterator(); iterator.hasNext()
+                        && state == ComponentState.UNSATISFIED;) {
+                    ReferenceHelper<?, C> referenceAttributeHelper = iterator.next();
+                    referenceAttributeHelper.open();
+                }
             }
+        } finally {
+            writeLock.unlock();
         }
     }
 
@@ -310,46 +324,52 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
     }
 
     private void starting() {
-        state.set(ComponentState.STARTING);
-        processingThread = Thread.currentThread();
+        Lock writeLock = readWriteLock.writeLock();
+        writeLock.lock();
         try {
-            instance = componentType.newInstance();
-        } catch (InstantiationException | IllegalAccessException | RuntimeException e) {
-            fail(e, true);
-            return;
-        }
-
-        Collection<PropertyAttributeHelper<C, Object>> propertyAttributeHelpers = propertyAttributeHelpersByAttributeId
-                .values();
-
-        try {
-            for (PropertyAttributeHelper<C, Object> propertyAttributeHelper : propertyAttributeHelpers) {
-                Object propertyValue = propertyAttributeHelper.resolveNewValue(properties);
-                propertyAttributeHelper.applyValue(propertyValue);
+            state = ComponentState.STARTING;
+            processingThread = Thread.currentThread();
+            try {
+                instance = componentType.newInstance();
+            } catch (InstantiationException | IllegalAccessException | RuntimeException e) {
+                fail(e, true);
+                return;
             }
-            activateMethodHelper.call(this, instance);
-        } catch (ConfigurationException | RuntimeException e) {
-            fail(e, false);
-            return;
-        } catch (IllegalAccessException e) {
-            fail(e, true);
-            return;
-        } catch (InvocationTargetException e) {
-            fail(e.getCause(), false);
-            return;
-        }
 
-        if (serviceInterfaces != null) {
-            serviceRegistration = registerService(serviceInterfaces, instance, properties);
+            Collection<PropertyAttributeHelper<C, Object>> propertyAttributeHelpers = propertyAttributeHelpersByAttributeId
+                    .values();
+
+            try {
+                for (PropertyAttributeHelper<C, Object> propertyAttributeHelper : propertyAttributeHelpers) {
+                    Object propertyValue = propertyAttributeHelper.resolveNewValue(properties.getDictionary());
+                    propertyAttributeHelper.applyValue(propertyValue);
+                }
+                activateMethodHelper.call(this, instance);
+            } catch (ConfigurationException | RuntimeException e) {
+                fail(e, false);
+                return;
+            } catch (IllegalAccessException e) {
+                fail(e, true);
+                return;
+            } catch (InvocationTargetException e) {
+                fail(e.getCause(), false);
+                return;
+            }
+
+            if (serviceInterfaces != null) {
+                serviceRegistration = registerService(serviceInterfaces, instance, properties.getDictionary());
+            }
+        } finally {
+            writeLock.unlock();
         }
     }
 
     private void stopping() {
-        state.set(ComponentState.STOPPING);
+        state = ComponentState.STOPPING;
         instance = null;
         unregisterServices();
 
-        state.set(ComponentState.STOPPED);
+        state = ComponentState.STOPPED;
 
     }
 
@@ -369,8 +389,8 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
     }
 
     public void updateConfiguration(Dictionary<String, Object> properties) {
-        this.properties = properties;
-        if (state.get() == ComponentState.FAILED) {
+        this.properties = new PropertiesHolder(properties);
+        if (state == ComponentState.FAILED) {
             starting();
         }
         // TODO Auto-generated method stub
@@ -378,8 +398,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
     }
 
     private void validateComponentStateForServiceRegistration() {
-        ComponentState componentState = state.get();
-        if (componentState != ComponentState.ACTIVE && componentState != ComponentState.STARTING) {
+        if (state != ComponentState.ACTIVE && state != ComponentState.STARTING) {
             throw new IllegalStateException(
                     "Service can only be registered in component if the state of the component is ACTIVE or STARTING");
         }

@@ -9,7 +9,7 @@ import org.everit.osgi.ecm.annotation.attribute.StringAttribute;
 @Service
 public class TestComponent {
 
-    @StringAttribute(multiple = false)
+    @StringAttribute
     private String[] stringArrayAttribute;
 
     @StringAttribute
