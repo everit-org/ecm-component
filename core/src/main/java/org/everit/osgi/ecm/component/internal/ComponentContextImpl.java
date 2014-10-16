@@ -17,6 +17,7 @@
 package org.everit.osgi.ecm.component.internal;
 
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Dictionary;
@@ -45,6 +46,7 @@ import org.everit.osgi.ecm.metadata.ComponentMetadata;
 import org.everit.osgi.ecm.metadata.PropertyAttributeMetadata;
 import org.everit.osgi.ecm.metadata.ServiceMetadata;
 import org.everit.osgi.ecm.metadata.ServiceReferenceMetadata;
+import org.everit.osgi.ecm.util.method.MethodDescriptor;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.ServiceRegistration;
@@ -57,6 +59,20 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
         private int satisfiedCapabilities = 0;
 
         @Override
+        public void changedNonDynamic() {
+            Lock writeLock = readWriteLock.writeLock();
+            writeLock.lock();
+            try {
+                if (state == ComponentState.ACTIVE) {
+                    restart();
+                }
+            } finally {
+                writeLock.unlock();
+            }
+
+        }
+
+        @Override
         public synchronized void satisfied() {
             Lock writeLock = readWriteLock.writeLock();
             writeLock.lock();
@@ -64,6 +80,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
                 satisfiedCapabilities++;
 
                 if (satisfiedCapabilities == referenceHelpers.size() && state == ComponentState.UNSATISFIED) {
+                    // TODO do we want to start if failed?
                     starting();
                 }
             } finally {
@@ -79,6 +96,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
                 satisfiedCapabilities--;
 
                 if (state == ComponentState.ACTIVE) {
+                    // TODO do we want to stop if failed?
                     stopping();
                 }
             } finally {
@@ -106,7 +124,11 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
 
     private Class<C> componentType;
 
+    private Method deactivateMethod;
+
     private C instance;
+
+    private boolean opened = false;
 
     private volatile Thread processingThread;
 
@@ -160,15 +182,27 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
 
         serviceInterfaces = resolveServiceInterfaces();
 
+        deactivateMethod = resolveDeactivateMethod();
+
     }
 
     public void close() {
-        if (referenceHelpers.size() == 0) {
-            stopping();
-        } else {
-            for (ReferenceHelper<?, C> referenceHelper : referenceHelpers) {
-                referenceHelper.close();
+        Lock writeLock = readWriteLock.writeLock();
+        writeLock.lock();
+        try {
+            if (!opened) {
+                throw new IllegalStateException("Cannot close a component context that is not opened");
             }
+            opened = false;
+            if (referenceHelpers.size() == 0) {
+                stopping();
+            } else {
+                for (ReferenceHelper<?, C> referenceHelper : referenceHelpers) {
+                    referenceHelper.close();
+                }
+            }
+        } finally {
+            writeLock.unlock();
         }
     }
 
@@ -204,10 +238,10 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
                 if (attributeMetadata instanceof ServiceReferenceMetadata) {
                     helper = new ServiceReferenceAttributeHelper<Object, C>(
                             (ServiceReferenceMetadata) attributeMetadata,
-                            this, null);
+                            this, referenceEventHandler);
                 } else {
                     helper = new BundleCapabilityReferenceAttributeHelper<C>(
-                            (BundleCapabilityReferenceMetadata) attributeMetadata, this, null);
+                            (BundleCapabilityReferenceMetadata) attributeMetadata, this, referenceEventHandler);
                 }
                 referenceHelpers.add(helper);
             }
@@ -245,10 +279,19 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
         return properties.getMap();
     }
 
+    private boolean isFailed() {
+        return ComponentState.FAILED == state || ComponentState.FAILED_PERMANENT == state;
+    }
+
     public void open() {
         Lock writeLock = readWriteLock.writeLock();
         writeLock.lock();
+
         try {
+            if (opened) {
+                throw new IllegalStateException("Cannot open a component context that is already opened");
+            }
+            opened = true;
             if (referenceHelpers.size() == 0) {
                 starting();
             } else {
@@ -292,6 +335,25 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
         return componentServiceRegistration;
     }
 
+    private Method resolveDeactivateMethod() {
+        MethodDescriptor methodDescriptor = componentMetadata.getDeactivate();
+        if (methodDescriptor == null) {
+            return null;
+        }
+        Method method = methodDescriptor.locate(componentType, false);
+        if (method == null) {
+            Exception e = new IllegalMetadataException("Could not find method '" + methodDescriptor.toString()
+                    + "' for type " + componentType);
+            fail(e, true);
+        }
+        if (method.getParameterTypes().length > 0) {
+            Exception e = new IllegalMetadataException("Deactivate method must not have any parameters. Method '"
+                    + method.toGenericString() + "' of type " + componentType + " does have.");
+            fail(e, true);
+        }
+        return method;
+    }
+
     private String[] resolveServiceInterfaces() {
         ServiceMetadata serviceMetadata = componentMetadata.getService();
         if (serviceMetadata == null) {
@@ -320,12 +382,28 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
 
     @Override
     public void restart() {
+        Lock writeLock = readWriteLock.writeLock();
+        writeLock.lock();
+        try {
+            if (state != ComponentState.ACTIVE && state != ComponentState.FAILED) {
+                throw new IllegalStateException(
+                        "Only ACTIVE and FAILED components can be restarted, while the state of the component "
+                                + componentMetadata.getComponentId() + " is " + state.toString());
+            }
+            stopping();
+            starting();
+        } finally {
+            writeLock.unlock();
+        }
         // TODO
     }
 
     private void starting() {
         Lock writeLock = readWriteLock.writeLock();
         writeLock.lock();
+        if (state == ComponentState.FAILED_PERMANENT) {
+            return;
+        }
         try {
             state = ComponentState.STARTING;
             processingThread = Thread.currentThread();
@@ -333,6 +411,14 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
                 instance = componentType.newInstance();
             } catch (InstantiationException | IllegalAccessException | RuntimeException e) {
                 fail(e, true);
+                return;
+            }
+
+            for (ReferenceHelper<?, C> referenceHelper : referenceHelpers) {
+                referenceHelper.bind();
+            }
+
+            if (isFailed()) {
                 return;
             }
 
@@ -359,18 +445,39 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
             if (serviceInterfaces != null) {
                 serviceRegistration = registerService(serviceInterfaces, instance, properties.getDictionary());
             }
+            state = ComponentState.ACTIVE;
         } finally {
+            processingThread = null;
             writeLock.unlock();
         }
     }
 
     private void stopping() {
-        state = ComponentState.STOPPING;
-        instance = null;
-        unregisterServices();
+        Lock writeLock = readWriteLock.writeLock();
+        writeLock.lock();
+        try {
+            state = ComponentState.STOPPING;
+            processingThread = Thread.currentThread();
+            if (serviceRegistration != null) {
+                serviceRegistration.unregister();
+                serviceRegistration = null;
+            }
+            if (deactivateMethod != null) {
+                try {
+                    deactivateMethod.invoke(instance);
+                } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+                    // TODO Auto-generated catch block
+                    e.printStackTrace();
+                }
+            }
+            unregisterServices();
+            instance = null;
 
-        state = ComponentState.STOPPED;
-
+            state = ComponentState.STOPPED;
+        } finally {
+            processingThread = null;
+            writeLock.unlock();
+        }
     }
 
     private void unregisterServices() {
@@ -385,13 +492,31 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
             serviceRegistration.unregister();
             iterator.remove();
         }
-
     }
 
     public void updateConfiguration(Dictionary<String, Object> properties) {
-        this.properties = new PropertiesHolder(properties);
-        if (state == ComponentState.FAILED) {
-            starting();
+        Lock writeLock = readWriteLock.writeLock();
+        writeLock.lock();
+        try {
+            this.properties = new PropertiesHolder(properties);
+            if (state == ComponentState.FAILED_PERMANENT) {
+                return;
+            }
+            if (state == ComponentState.FAILED) {
+                restart();
+                return;
+            }
+            if (state == ComponentState.ACTIVE) {
+                // TODO check if restart is necessary.
+                stopping();
+                starting();
+                return;
+            }
+            fail(new IllegalStateException(
+                    "Updating component configuration is only possible if the component is in FAILED or ACTIVE state"),
+                    false);
+        } finally {
+            writeLock.unlock();
         }
         // TODO Auto-generated method stub
 

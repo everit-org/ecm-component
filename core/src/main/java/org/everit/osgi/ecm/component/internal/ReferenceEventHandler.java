@@ -18,6 +18,8 @@ package org.everit.osgi.ecm.component.internal;
 
 public interface ReferenceEventHandler {
 
+    void changedNonDynamic();
+
     void satisfied();
 
     void unsatisfied();

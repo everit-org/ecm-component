@@ -22,7 +22,6 @@ import org.everit.osgi.capabilitycollector.RequirementDefinition;
 import org.everit.osgi.ecm.component.context.ComponentContext;
 import org.everit.osgi.ecm.component.internal.ReferenceEventHandler;
 import org.everit.osgi.ecm.metadata.BundleCapabilityReferenceMetadata;
-import org.osgi.framework.Bundle;
 import org.osgi.framework.wiring.BundleCapability;
 
 public class BundleCapabilityReferenceAttributeHelper<COMPONENT> extends
@@ -38,7 +37,6 @@ public class BundleCapabilityReferenceAttributeHelper<COMPONENT> extends
 
     @Override
     protected void bindInternal() {
-        // TODO Auto-generated method stub
 
     }
 
@@ -49,13 +47,8 @@ public class BundleCapabilityReferenceAttributeHelper<COMPONENT> extends
         @SuppressWarnings("unchecked")
         RequirementDefinition<BundleCapability>[] requirements = new RequirementDefinition[0];
         return new BundleCapabilityCollector(getComponentContext().getBundleContext(),
-                bundleCapabilityReferenceMetadata.getNamespace(), requirements, consumer, Bundle.ACTIVE);
-    }
-
-    @Override
-    protected void unbindInternal() {
-        // TODO Auto-generated method stub
-
+                bundleCapabilityReferenceMetadata.getNamespace(), requirements, consumer,
+                bundleCapabilityReferenceMetadata.getStateMask());
     }
 
 }

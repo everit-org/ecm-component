@@ -29,6 +29,7 @@ public abstract class ReferenceHelper<CAPABILITY, COMPONENT> {
 
         @Override
         public void accept(Suiting<CAPABILITY>[] pSuitings, Boolean pSatisfied) {
+            suitings = pSuitings;
             satisfied = pSatisfied;
             if (pSatisfied) {
                 if (!satisfiedNotificationSent) {
@@ -38,7 +39,7 @@ public abstract class ReferenceHelper<CAPABILITY, COMPONENT> {
                     if (referenceMetadata.isDynamic()) {
                         bind();
                     } else {
-                        componentContext.restart();
+                        eventHandler.changedNonDynamic();
                     }
                 }
             } else {
@@ -83,11 +84,6 @@ public abstract class ReferenceHelper<CAPABILITY, COMPONENT> {
 
     public void close() {
         satisfied = false;
-        try {
-            unbindInternal();
-        } catch (RuntimeException e) {
-            componentContext.fail(e, false);
-        }
         collector.close();
     }
 
@@ -108,6 +104,4 @@ public abstract class ReferenceHelper<CAPABILITY, COMPONENT> {
     public void open() {
         collector.open();
     }
-
-    protected abstract void unbindInternal();
 }

@@ -57,10 +57,4 @@ public class ServiceReferenceAttributeHelper<S, COMPONENT> extends
                 serviceInterface, items, consumer, false);
     }
 
-    @Override
-    protected void unbindInternal() {
-        // TODO Auto-generated method stub
-
-    }
-
 }
