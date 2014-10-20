@@ -80,7 +80,6 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
                 satisfiedCapabilities++;
 
                 if (satisfiedCapabilities == referenceHelpers.size() && state == ComponentState.UNSATISFIED) {
-                    // TODO do we want to start if failed?
                     starting();
                 }
             } finally {
@@ -96,7 +95,6 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
                 satisfiedCapabilities--;
 
                 if (state == ComponentState.ACTIVE) {
-                    // TODO do we want to stop if failed?
                     stopping();
                 }
             } finally {

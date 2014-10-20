@@ -31,6 +31,14 @@ public class ServiceReferenceAttributeHelper<S, COMPONENT> extends
 
     private Method bindMethod;
 
+    private int indexOfServiceParameter = -1;
+
+    private int indexOfServiceReferenceParameter = -1;
+
+    private int indexOfAttributesParameter = -1;
+
+    private int indexOfServiceHolderParameter = -1;
+
     private final ServiceReferenceMetadata serviceReferenceMetadata;
 
     public ServiceReferenceAttributeHelper(ServiceReferenceMetadata referenceMetadata,

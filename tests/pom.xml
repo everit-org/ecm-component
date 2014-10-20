@@ -106,9 +106,9 @@
     </dependency>
 
     <dependency>
-      <groupId>org.slf4j</groupId>
-      <artifactId>osgi-over-slf4j</artifactId>
-      <version>1.7.7</version>
+      <groupId>org.everit.osgi</groupId>
+      <artifactId>org.everit.osgi.loglistener.slf4j</artifactId>
+      <version>1.0.0</version>
     </dependency>
 
     <dependency>
