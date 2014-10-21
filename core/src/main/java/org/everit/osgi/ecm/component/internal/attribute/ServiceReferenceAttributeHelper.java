@@ -50,8 +50,9 @@ public class ServiceReferenceAttributeHelper<S, COMPONENT> extends
 
     @Override
     protected void bindInternal() {
-        // TODO Auto-generated method stub
-
+        if (bindMethod == null) {
+            return;
+        }
     }
 
     @Override

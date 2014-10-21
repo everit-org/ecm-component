@@ -34,7 +34,6 @@ public abstract class ReferenceHelper<CAPABILITY, COMPONENT> {
             if (pSatisfied) {
                 if (!satisfiedNotificationSent) {
                     eventHandler.satisfied();
-                    ;
                 } else {
                     if (referenceMetadata.isDynamic()) {
                         bind();
