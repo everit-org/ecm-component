@@ -18,5 +18,17 @@ package org.everit.osgi.ecm.component.resource;
 
 public enum ComponentState {
 
-    STOPPED, UNSATISFIED, STARTING, ACTIVE, STOPPING, FAILED, FAILED_PERMANENT
+    ACTIVE,
+
+    FAILED,
+
+    FAILED_PERMANENT,
+
+    STARTING,
+
+    STOPPED,
+
+    STOPPING,
+
+    UNSATISFIED
 }

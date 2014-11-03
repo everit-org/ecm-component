@@ -30,6 +30,16 @@ import org.osgi.framework.ServiceRegistration;
 
 public interface ComponentContext<C> {
 
+    /**
+     * Causes the component to step into the {@link ComponentState#FAILED} or {@link ComponentState#FAILED_PERMANENT}
+     * state.
+     *
+     * @param e
+     *            The cause of the failure.
+     * @param permanent
+     *            Whether the failure should be permanent or not. In case of permanent failure, the component will not
+     *            be restarted until the bundle that registered the component is updated.
+     */
     void fail(Throwable e, boolean permanent);
 
     BundleContext getBundleContext();
@@ -42,7 +52,7 @@ public interface ComponentContext<C> {
 
     /**
      * Returns the service instance that was instantiated by this component.
-     * 
+     *
      * @return The instance of the component or <code>null</code> if the component is not in
      *         {@link ComponentState#ACTIVE}.
      */
@@ -156,5 +166,8 @@ public interface ComponentContext<C> {
      */
     ServiceRegistration<?> registerService(String[] clazzes, Object service, Dictionary<String, ?> properties);
 
+    /**
+     * Causes the restarting of the component. The old instance will be dropped and a new one will be instantiated.
+     */
     void restart();
 }
