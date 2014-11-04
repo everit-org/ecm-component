@@ -20,11 +20,11 @@ import java.util.Map;
 
 import org.osgi.framework.ServiceReference;
 
-public class ServiceReferenceHolder<S> extends ReferenceHolder<ServiceReference<S>> {
+public class ServiceHolder<S> extends AbstractReferenceHolder<ServiceReference<S>> {
 
     private final S service;
 
-    public ServiceReferenceHolder(String referenceId, ServiceReference<S> reference, S service,
+    public ServiceHolder(String referenceId, ServiceReference<S> reference, S service,
             Map<String, Object> attributes) {
         super(referenceId, reference, attributes);
         this.service = service;

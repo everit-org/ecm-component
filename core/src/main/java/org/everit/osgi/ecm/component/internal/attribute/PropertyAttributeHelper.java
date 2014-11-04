@@ -16,6 +16,9 @@
  */
 package org.everit.osgi.ecm.component.internal.attribute;
 
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodHandles.Lookup;
 import java.lang.reflect.Array;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -37,7 +40,7 @@ public class PropertyAttributeHelper<C, V> {
 
     private final Object defaultValue;
 
-    private final Method setter;
+    private final MethodHandle methodHandle;
 
     private Object storedValue = null;
 
@@ -47,17 +50,15 @@ public class PropertyAttributeHelper<C, V> {
         this.componentContext = componentContext;
         this.attributeMetadata = attributeMetadata;
         this.defaultValue = resolveDefaultValue();
-        this.setter = resolveSetter();
+        this.methodHandle = resolveMethodHandle();
     }
 
     public void applyValue(Object newValue) {
         storedValue = newValue;
-        if (setter != null) {
+        if (methodHandle != null) {
             try {
-                setter.invoke(componentContext.getInstance(), newValue);
-            } catch (IllegalAccessException e) {
-                componentContext.fail(e, true);
-            } catch (InvocationTargetException | IllegalArgumentException e) {
+                methodHandle.invoke(newValue);
+            } catch (Throwable e) {
                 componentContext.fail(e, false);
             }
         }
@@ -124,6 +125,24 @@ public class PropertyAttributeHelper<C, V> {
         }
 
         return defaultValueArray[0];
+    }
+
+    private MethodHandle resolveMethodHandle() {
+        Method setter = resolveSetter();
+        if (setter == null) {
+            return null;
+        }
+
+        Lookup lookup = MethodHandles.lookup();
+        MethodHandle unbindedMethodHandle;
+        try {
+            unbindedMethodHandle = lookup.unreflect(setter);
+            return unbindedMethodHandle.bindTo(componentContext.getInstance());
+        } catch (IllegalAccessException e) {
+            componentContext.fail(e, true);
+        }
+
+        return null;
     }
 
     public Object resolveNewValue(Dictionary<String, Object> properties) throws ConfigurationException {

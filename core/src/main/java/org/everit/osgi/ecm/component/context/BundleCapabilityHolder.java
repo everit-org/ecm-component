@@ -20,7 +20,7 @@ import java.util.Map;
 
 import org.osgi.framework.wiring.BundleCapability;
 
-public class BundleCapabilityHolder extends ReferenceHolder<BundleCapability> {
+public class BundleCapabilityHolder extends AbstractReferenceHolder<BundleCapability> {
 
     public BundleCapabilityHolder(String referenceId, BundleCapability reference, Map<String, Object> attributes) {
         super(referenceId, reference, attributes);

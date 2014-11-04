@@ -14,7 +14,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with Everit - ECM Component.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.everit.osgi.ecm.component;
+package org.everit.osgi.ecm.component.factory;
 
 import org.everit.osgi.ecm.component.resource.ComponentContainer;
 

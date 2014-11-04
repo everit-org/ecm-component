@@ -49,6 +49,7 @@ import org.everit.osgi.ecm.metadata.ServiceReferenceMetadata;
 import org.everit.osgi.ecm.util.method.MethodDescriptor;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
+import org.osgi.framework.ServiceReference;
 import org.osgi.framework.ServiceRegistration;
 import org.osgi.framework.wiring.BundleWiring;
 
@@ -260,6 +261,20 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
     public ComponentRevision getComponentRevision() {
         // TODO
         return null;
+    }
+
+    @Override
+    public ServiceReference<?> getComponentServiceReference() {
+        Lock readLock = readWriteLock.readLock();
+        readLock.lock();
+        try {
+            if (serviceRegistration == null) {
+                return null;
+            }
+            return serviceRegistration.getReference();
+        } finally {
+            readLock.unlock();
+        }
     }
 
     @Override

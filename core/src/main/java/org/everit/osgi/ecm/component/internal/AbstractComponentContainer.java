@@ -16,7 +16,7 @@
  */
 package org.everit.osgi.ecm.component.internal;
 
-import org.everit.osgi.ecm.component.ComponentContainerInstance;
+import org.everit.osgi.ecm.component.factory.ComponentContainerInstance;
 import org.everit.osgi.ecm.component.internal.metatype.MetatypeProviderImpl;
 import org.everit.osgi.ecm.metadata.ComponentMetadata;
 import org.osgi.framework.BundleContext;

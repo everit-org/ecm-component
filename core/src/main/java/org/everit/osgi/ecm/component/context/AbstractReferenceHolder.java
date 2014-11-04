@@ -17,10 +17,10 @@
 package org.everit.osgi.ecm.component.context;
 
 import java.util.Collections;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
-public abstract class ReferenceHolder<R> {
+public abstract class AbstractReferenceHolder<R> {
 
     private final Map<String, Object> attributes;
 
@@ -28,10 +28,10 @@ public abstract class ReferenceHolder<R> {
 
     private final String referenceId;
 
-    public ReferenceHolder(String referenceId, R reference, Map<String, Object> attributes) {
+    public AbstractReferenceHolder(String referenceId, R reference, Map<String, Object> attributes) {
         this.referenceId = referenceId;
         this.reference = reference;
-        this.attributes = Collections.unmodifiableMap(new HashMap<String, Object>(attributes));
+        this.attributes = Collections.unmodifiableMap(new LinkedHashMap<String, Object>(attributes));
     }
 
     protected Map<String, Object> getAttributes() {

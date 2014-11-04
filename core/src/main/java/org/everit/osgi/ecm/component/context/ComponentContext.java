@@ -19,6 +19,7 @@ package org.everit.osgi.ecm.component.context;
 import java.util.Dictionary;
 import java.util.Map;
 
+import org.everit.osgi.ecm.component.resource.ComponentContainer;
 import org.everit.osgi.ecm.component.resource.ComponentRevision;
 import org.everit.osgi.ecm.component.resource.ComponentState;
 import org.everit.osgi.ecm.metadata.ComponentMetadata;
@@ -26,7 +27,9 @@ import org.osgi.framework.BundleContext;
 import org.osgi.framework.Constants;
 import org.osgi.framework.ServiceEvent;
 import org.osgi.framework.ServiceFactory;
+import org.osgi.framework.ServiceReference;
 import org.osgi.framework.ServiceRegistration;
+import org.osgi.service.log.LogService;
 
 public interface ComponentContext<C> {
 
@@ -47,6 +50,14 @@ public interface ComponentContext<C> {
     ComponentMetadata getComponentMetadata();
 
     ComponentRevision getComponentRevision();
+
+    /**
+     * Get the service that was registered when the component was opened. The service reference can be used to log
+     * messages via {@link LogService}.
+     *
+     * @return The {@link ServiceReference} that offers the {@link ComponentContainer} and optionally interfaces.
+     */
+    ServiceReference<?> getComponentServiceReference();
 
     Class<C> getComponentType();
 
