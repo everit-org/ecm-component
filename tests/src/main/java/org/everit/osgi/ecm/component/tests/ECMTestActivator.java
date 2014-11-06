@@ -21,8 +21,8 @@ import java.util.Hashtable;
 
 import org.everit.osgi.dev.testrunner.TestRunnerConstants;
 import org.everit.osgi.ecm.annotation.metadatabuilder.MetadataBuilder;
-import org.everit.osgi.ecm.component.factory.ComponentContainerFactory;
-import org.everit.osgi.ecm.component.factory.ComponentContainerInstance;
+import org.everit.osgi.ecm.component.ComponentContainerFactory;
+import org.everit.osgi.ecm.component.ComponentContainerInstance;
 import org.everit.osgi.ecm.metadata.ComponentMetadata;
 import org.osgi.framework.BundleActivator;
 import org.osgi.framework.BundleContext;

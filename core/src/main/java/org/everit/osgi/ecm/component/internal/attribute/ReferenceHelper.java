@@ -16,12 +16,16 @@
  */
 package org.everit.osgi.ecm.component.internal.attribute;
 
+import java.lang.reflect.Method;
+
 import org.everit.osgi.capabilitycollector.AbstractCapabilityCollector;
 import org.everit.osgi.capabilitycollector.CapabilityConsumer;
 import org.everit.osgi.capabilitycollector.Suiting;
 import org.everit.osgi.ecm.component.ComponentContext;
 import org.everit.osgi.ecm.component.internal.ReferenceEventHandler;
+import org.everit.osgi.ecm.metadata.MetadataValidationException;
 import org.everit.osgi.ecm.metadata.ReferenceMetadata;
+import org.everit.osgi.ecm.util.method.MethodDescriptor;
 
 public abstract class ReferenceHelper<CAPABILITY, COMPONENT> {
 
@@ -55,11 +59,15 @@ public abstract class ReferenceHelper<CAPABILITY, COMPONENT> {
 
     private final ReferenceEventHandler eventHandler;
 
+    private final boolean holder;
+
     private final ReferenceMetadata referenceMetadata;
 
     private volatile boolean satisfied = false;
 
     private volatile boolean satisfiedNotificationSent = false;
+
+    private final Method setter;
 
     private volatile Suiting<CAPABILITY>[] suitings;
 
@@ -69,6 +77,24 @@ public abstract class ReferenceHelper<CAPABILITY, COMPONENT> {
         this.componentContext = componentContext;
         this.eventHandler = eventHandler;
         this.collector = createCollector(new ReferenceCapabilityConsumer());
+
+        MethodDescriptor setterMethodDescriptor = referenceMetadata.getSetter();
+        if (setterMethodDescriptor == null) {
+            holder = false;
+            setter = null;
+        } else {
+            Method setterMethod = setterMethodDescriptor.locate(componentContext.getComponentType(), false);
+            if (setterMethod == null) {
+                throw new MetadataValidationException("Setter method '" + setterMethodDescriptor.toString()
+                        + "' could not be found for class " + componentContext.getComponentType());
+            }
+            Class<?>[] parameterTypes = setterMethod.getParameterTypes();
+            if (parameterTypes.length != 1 || parameterTypes[0].isPrimitive()) {
+                throw new MetadataValidationException("Setter method for reference '" + referenceMetadata.toString()
+                        + "' that is defined in the class '" + componentContext.getComponentType()
+                        + "' must have one non-primitive parameter.");
+            }
+        }
     }
 
     public void bind() {

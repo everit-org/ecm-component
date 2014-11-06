@@ -17,6 +17,8 @@
 package org.everit.osgi.ecm.component.internal.attribute;
 
 import java.lang.reflect.Method;
+import java.util.HashSet;
+import java.util.Set;
 
 import org.everit.osgi.capabilitycollector.AbstractCapabilityCollector;
 import org.everit.osgi.capabilitycollector.RequirementDefinition;
@@ -30,11 +32,11 @@ import org.osgi.framework.ServiceReference;
 public class ServiceReferenceAttributeHelper<S, COMPONENT> extends
         ReferenceHelper<ServiceReference<S>, COMPONENT> {
 
-    private Method setterMethod;
-
     private final ServiceReferenceMetadata serviceReferenceMetadata;
 
-    private final ServiceReference<?>[] usedReferences = new ServiceReference<?>[0];
+    private Method setterMethod;
+
+    private final Set<ServiceReference<?>> usedReferences = new HashSet<>();
 
     public ServiceReferenceAttributeHelper(ServiceReferenceMetadata referenceMetadata,
             ComponentContext<COMPONENT> componentContext, ReferenceEventHandler eventHandler) {
