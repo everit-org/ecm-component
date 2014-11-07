@@ -158,7 +158,7 @@
 
     <dependency>
       <groupId>org.everit.osgi</groupId>
-      <artifactId>org.everit.osgi.ecm.component</artifactId>
+      <artifactId>org.everit.osgi.ecm.component.ri</artifactId>
       <version>${project.version}</version>
     </dependency>
 

@@ -14,7 +14,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with Everit - ECM Component RI.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.everit.osgi.ecm.component.internal.attribute;
+package org.everit.osgi.ecm.component.ri.internal.attribute;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -28,7 +28,7 @@ import java.util.Dictionary;
 import javax.naming.ConfigurationException;
 
 import org.everit.osgi.ecm.component.ComponentContext;
-import org.everit.osgi.ecm.component.internal.IllegalMetadataException;
+import org.everit.osgi.ecm.component.ri.internal.IllegalMetadataException;
 import org.everit.osgi.ecm.metadata.PropertyAttributeMetadata;
 import org.everit.osgi.ecm.util.method.MethodDescriptor;
 
@@ -41,6 +41,8 @@ public class PropertyAttributeHelper<C, V> {
     private final Object defaultValue;
 
     private final MethodHandle methodHandle;
+
+    private Object previousInstance = null;
 
     private Object storedValue = null;
 
@@ -56,8 +58,13 @@ public class PropertyAttributeHelper<C, V> {
     public void applyValue(Object newValue) {
         storedValue = newValue;
         if (methodHandle != null) {
+            C instance = componentContext.getInstance();
+            if (previousInstance == null || !previousInstance.equals(instance)) {
+                methodHandle.bindTo(instance);
+                previousInstance = instance;
+            }
             try {
-                methodHandle.invoke(newValue);
+                methodHandle.invoke(instance, newValue);
             } catch (Throwable e) {
                 componentContext.fail(e, false);
             }
@@ -134,10 +141,8 @@ public class PropertyAttributeHelper<C, V> {
         }
 
         Lookup lookup = MethodHandles.lookup();
-        MethodHandle unbindedMethodHandle;
         try {
-            unbindedMethodHandle = lookup.unreflect(setter);
-            return unbindedMethodHandle.bindTo(componentContext.getInstance());
+            return lookup.unreflect(setter);
         } catch (IllegalAccessException e) {
             componentContext.fail(e, true);
         }

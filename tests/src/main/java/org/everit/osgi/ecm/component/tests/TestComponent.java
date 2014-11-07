@@ -23,11 +23,15 @@ import org.everit.osgi.ecm.annotation.Component;
 import org.everit.osgi.ecm.annotation.ConfigurationPolicy;
 import org.everit.osgi.ecm.annotation.Deactivate;
 import org.everit.osgi.ecm.annotation.Service;
+import org.everit.osgi.ecm.annotation.ServiceRef;
 import org.everit.osgi.ecm.annotation.attribute.StringAttribute;
+import org.osgi.service.cm.ManagedService;
 
 @Component(configurationPolicy = ConfigurationPolicy.REQUIRE)
 @Service
 public class TestComponent {
+
+    private ManagedService someReference;
 
     @StringAttribute
     private String[] stringArrayAttribute;
@@ -44,6 +48,13 @@ public class TestComponent {
     @Deactivate
     public void deactivate() {
         System.out.println("---------------- Deactivate called");
+    }
+
+    @ServiceRef
+    public void setSomeReference(ManagedService someReference) {
+        new RuntimeException().printStackTrace();
+        System.out.println("---------- Setter called: " + someReference);
+        this.someReference = someReference;
     }
 
     public void setStringArrayAttribute(String[] stringArrayAttribute) {

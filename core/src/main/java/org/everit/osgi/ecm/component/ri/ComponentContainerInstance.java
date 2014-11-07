@@ -14,13 +14,13 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with Everit - ECM Component RI.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.everit.osgi.ecm.component.internal;
+package org.everit.osgi.ecm.component.ri;
 
-public interface ReferenceEventHandler {
+import org.everit.osgi.ecm.component.resource.ComponentContainer;
 
-    void changedNonDynamic();
+public interface ComponentContainerInstance<C> extends ComponentContainer<C> {
 
-    void satisfied();
+    void open();
 
-    void unsatisfied();
+    void close();
 }

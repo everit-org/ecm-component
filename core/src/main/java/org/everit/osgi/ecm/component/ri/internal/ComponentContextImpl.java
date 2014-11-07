@@ -14,7 +14,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with Everit - ECM Component RI.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.everit.osgi.ecm.component.internal;
+package org.everit.osgi.ecm.component.ri.internal;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -34,12 +34,12 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import javax.naming.ConfigurationException;
 
 import org.everit.osgi.ecm.component.ComponentContext;
-import org.everit.osgi.ecm.component.internal.attribute.BundleCapabilityReferenceAttributeHelper;
-import org.everit.osgi.ecm.component.internal.attribute.PropertyAttributeHelper;
-import org.everit.osgi.ecm.component.internal.attribute.ReferenceHelper;
-import org.everit.osgi.ecm.component.internal.attribute.ServiceReferenceAttributeHelper;
 import org.everit.osgi.ecm.component.resource.ComponentRevision;
 import org.everit.osgi.ecm.component.resource.ComponentState;
+import org.everit.osgi.ecm.component.ri.internal.attribute.BundleCapabilityReferenceAttributeHelper;
+import org.everit.osgi.ecm.component.ri.internal.attribute.PropertyAttributeHelper;
+import org.everit.osgi.ecm.component.ri.internal.attribute.ReferenceHelper;
+import org.everit.osgi.ecm.component.ri.internal.attribute.ServiceReferenceAttributeHelper;
 import org.everit.osgi.ecm.metadata.AttributeMetadata;
 import org.everit.osgi.ecm.metadata.BundleCapabilityReferenceMetadata;
 import org.everit.osgi.ecm.metadata.ComponentMetadata;
@@ -140,8 +140,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
 
     private final ReferenceEventHandler referenceEventHandler = new ReferenceEventHandlerImpl();
 
-    private final List<ReferenceHelper<?, C>> referenceHelpers =
-            new ArrayList<ReferenceHelper<?, C>>();
+    private final List<ReferenceHelper<?, C, ?>> referenceHelpers = new ArrayList<>();
 
     final List<ServiceRegistration<?>> registeredServices = new ArrayList<ServiceRegistration<?>>();
 
@@ -196,7 +195,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
             if (referenceHelpers.size() == 0) {
                 stopping();
             } else {
-                for (ReferenceHelper<?, C> referenceHelper : referenceHelpers) {
+                for (ReferenceHelper<?, C, ?> referenceHelper : referenceHelpers) {
                     referenceHelper.close();
                 }
             }
@@ -233,14 +232,22 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
                 propertyAttributeHelpersByAttributeId
                         .put(attributeMetadata.getAttributeId(), propertyAttributeHelper);
             } else {
-                ReferenceHelper<?, C> helper;
-                if (attributeMetadata instanceof ServiceReferenceMetadata) {
-                    helper = new ServiceReferenceAttributeHelper<Object, C>(
-                            (ServiceReferenceMetadata) attributeMetadata,
-                            this, referenceEventHandler);
-                } else {
-                    helper = new BundleCapabilityReferenceAttributeHelper<C>(
-                            (BundleCapabilityReferenceMetadata) attributeMetadata, this, referenceEventHandler);
+                ReferenceHelper<?, C, ?> helper;
+                try {
+                    if (attributeMetadata instanceof ServiceReferenceMetadata) {
+
+                        helper = new ServiceReferenceAttributeHelper<Object, C>(
+                                (ServiceReferenceMetadata) attributeMetadata,
+                                this, referenceEventHandler);
+
+                    } else {
+                        helper = new BundleCapabilityReferenceAttributeHelper<C>(
+                                (BundleCapabilityReferenceMetadata) attributeMetadata, this, referenceEventHandler);
+
+                    }
+                } catch (IllegalAccessException e) {
+                    fail(e, true);
+                    return;
                 }
                 referenceHelpers.add(helper);
             }
@@ -309,9 +316,9 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
                 starting();
             } else {
                 state = ComponentState.UNSATISFIED;
-                for (Iterator<ReferenceHelper<?, C>> iterator = referenceHelpers.iterator(); iterator.hasNext()
+                for (Iterator<ReferenceHelper<?, C, ?>> iterator = referenceHelpers.iterator(); iterator.hasNext()
                         && state == ComponentState.UNSATISFIED;) {
-                    ReferenceHelper<?, C> referenceAttributeHelper = iterator.next();
+                    ReferenceHelper<?, C, ?> referenceAttributeHelper = iterator.next();
                     referenceAttributeHelper.open();
                 }
             }
@@ -427,7 +434,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
                 return;
             }
 
-            for (ReferenceHelper<?, C> referenceHelper : referenceHelpers) {
+            for (ReferenceHelper<?, C, ?> referenceHelper : referenceHelpers) {
                 referenceHelper.bind();
             }
 
@@ -442,6 +449,9 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
                 for (PropertyAttributeHelper<C, Object> propertyAttributeHelper : propertyAttributeHelpers) {
                     Object propertyValue = propertyAttributeHelper.resolveNewValue(properties.getDictionary());
                     propertyAttributeHelper.applyValue(propertyValue);
+                    if (isFailed()) {
+                        return;
+                    }
                 }
                 activateMethodHelper.call(this, instance);
             } catch (ConfigurationException | RuntimeException e) {

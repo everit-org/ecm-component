@@ -14,7 +14,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with Everit - ECM Component RI.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.everit.osgi.ecm.component.internal;
+package org.everit.osgi.ecm.component.ri.internal;
 
 import java.util.Collections;
 import java.util.Dictionary;

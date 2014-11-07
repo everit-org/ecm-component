@@ -14,25 +14,23 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with Everit - ECM Component RI.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.everit.osgi.ecm.component.internal.attribute;
+package org.everit.osgi.ecm.component.ri.internal.attribute;
 
 import org.everit.osgi.capabilitycollector.AbstractCapabilityCollector;
 import org.everit.osgi.capabilitycollector.BundleCapabilityCollector;
 import org.everit.osgi.capabilitycollector.RequirementDefinition;
 import org.everit.osgi.ecm.component.ComponentContext;
-import org.everit.osgi.ecm.component.internal.ReferenceEventHandler;
+import org.everit.osgi.ecm.component.ri.internal.ReferenceEventHandler;
 import org.everit.osgi.ecm.metadata.BundleCapabilityReferenceMetadata;
 import org.osgi.framework.wiring.BundleCapability;
 
 public class BundleCapabilityReferenceAttributeHelper<COMPONENT> extends
-        ReferenceHelper<BundleCapability, COMPONENT> {
-
-    private final BundleCapabilityReferenceMetadata bundleCapabilityReferenceMetadata;
+        ReferenceHelper<BundleCapability, COMPONENT, BundleCapabilityReferenceMetadata> {
 
     public BundleCapabilityReferenceAttributeHelper(BundleCapabilityReferenceMetadata referenceMetadata,
-            ComponentContext<COMPONENT> componentContext, ReferenceEventHandler eventHandler) {
+            ComponentContext<COMPONENT> componentContext, ReferenceEventHandler eventHandler)
+            throws IllegalAccessException {
         super(referenceMetadata, componentContext, eventHandler);
-        bundleCapabilityReferenceMetadata = referenceMetadata;
     }
 
     @Override
@@ -47,8 +45,8 @@ public class BundleCapabilityReferenceAttributeHelper<COMPONENT> extends
         @SuppressWarnings("unchecked")
         RequirementDefinition<BundleCapability>[] requirements = new RequirementDefinition[0];
         return new BundleCapabilityCollector(getComponentContext().getBundleContext(),
-                bundleCapabilityReferenceMetadata.getNamespace(), requirements, consumer,
-                bundleCapabilityReferenceMetadata.getStateMask());
+                getReferenceMetadata().getNamespace(), requirements, consumer,
+                getReferenceMetadata().getStateMask());
     }
 
 }

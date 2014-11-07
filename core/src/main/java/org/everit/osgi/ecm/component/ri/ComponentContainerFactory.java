@@ -14,10 +14,10 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with Everit - ECM Component RI.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.everit.osgi.ecm.component.factory;
+package org.everit.osgi.ecm.component.ri;
 
-import org.everit.osgi.ecm.component.internal.ComponentContainerImpl;
-import org.everit.osgi.ecm.component.internal.FactoryComponentContainerImpl;
+import org.everit.osgi.ecm.component.ri.internal.ComponentContainerImpl;
+import org.everit.osgi.ecm.component.ri.internal.FactoryComponentContainerImpl;
 import org.everit.osgi.ecm.metadata.ComponentMetadata;
 import org.everit.osgi.ecm.metadata.ConfigurationPolicy;
 import org.osgi.framework.BundleContext;

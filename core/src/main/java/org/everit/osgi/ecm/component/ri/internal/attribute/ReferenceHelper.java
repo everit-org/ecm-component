@@ -14,20 +14,24 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with Everit - ECM Component RI.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.everit.osgi.ecm.component.internal.attribute;
+package org.everit.osgi.ecm.component.ri.internal.attribute;
 
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodHandles.Lookup;
 import java.lang.reflect.Method;
 
 import org.everit.osgi.capabilitycollector.AbstractCapabilityCollector;
 import org.everit.osgi.capabilitycollector.CapabilityConsumer;
 import org.everit.osgi.capabilitycollector.Suiting;
+import org.everit.osgi.ecm.component.AbstractReferenceHolder;
 import org.everit.osgi.ecm.component.ComponentContext;
-import org.everit.osgi.ecm.component.internal.ReferenceEventHandler;
+import org.everit.osgi.ecm.component.ri.internal.ReferenceEventHandler;
 import org.everit.osgi.ecm.metadata.MetadataValidationException;
 import org.everit.osgi.ecm.metadata.ReferenceMetadata;
 import org.everit.osgi.ecm.util.method.MethodDescriptor;
 
-public abstract class ReferenceHelper<CAPABILITY, COMPONENT> {
+public abstract class ReferenceHelper<CAPABILITY, COMPONENT, METADATA extends ReferenceMetadata> {
 
     protected class ReferenceCapabilityConsumer implements CapabilityConsumer<CAPABILITY> {
 
@@ -37,6 +41,7 @@ public abstract class ReferenceHelper<CAPABILITY, COMPONENT> {
             satisfied = pSatisfied;
             if (pSatisfied) {
                 if (!satisfiedNotificationSent) {
+                    satisfiedNotificationSent = true;
                     eventHandler.satisfied();
                 } else {
                     if (referenceMetadata.isDynamic()) {
@@ -47,11 +52,14 @@ public abstract class ReferenceHelper<CAPABILITY, COMPONENT> {
                 }
             } else {
                 if (satisfiedNotificationSent) {
+                    satisfiedNotificationSent = false;
                     eventHandler.unsatisfied();
                 }
             }
         }
     }
+
+    private final boolean array;
 
     private final AbstractCapabilityCollector<CAPABILITY> collector;
 
@@ -61,18 +69,20 @@ public abstract class ReferenceHelper<CAPABILITY, COMPONENT> {
 
     private final boolean holder;
 
-    private final ReferenceMetadata referenceMetadata;
+    private Object previousInstance = null;
+
+    private final METADATA referenceMetadata;
 
     private volatile boolean satisfied = false;
 
     private volatile boolean satisfiedNotificationSent = false;
 
-    private final Method setter;
+    private final MethodHandle setterMethodHandle;
 
     private volatile Suiting<CAPABILITY>[] suitings;
 
-    public ReferenceHelper(ReferenceMetadata referenceMetadata, ComponentContext<COMPONENT> componentContext,
-            ReferenceEventHandler eventHandler) {
+    public ReferenceHelper(METADATA referenceMetadata, ComponentContext<COMPONENT> componentContext,
+            ReferenceEventHandler eventHandler) throws IllegalAccessException {
         this.referenceMetadata = referenceMetadata;
         this.componentContext = componentContext;
         this.eventHandler = eventHandler;
@@ -81,25 +91,55 @@ public abstract class ReferenceHelper<CAPABILITY, COMPONENT> {
         MethodDescriptor setterMethodDescriptor = referenceMetadata.getSetter();
         if (setterMethodDescriptor == null) {
             holder = false;
-            setter = null;
+            setterMethodHandle = null;
+            array = false;
         } else {
             Method setterMethod = setterMethodDescriptor.locate(componentContext.getComponentType(), false);
             if (setterMethod == null) {
                 throw new MetadataValidationException("Setter method '" + setterMethodDescriptor.toString()
                         + "' could not be found for class " + componentContext.getComponentType());
             }
+
+            Lookup lookup = MethodHandles.lookup();
+
+            this.setterMethodHandle = lookup.unreflect(setterMethod);
+
             Class<?>[] parameterTypes = setterMethod.getParameterTypes();
             if (parameterTypes.length != 1 || parameterTypes[0].isPrimitive()) {
                 throw new MetadataValidationException("Setter method for reference '" + referenceMetadata.toString()
                         + "' that is defined in the class '" + componentContext.getComponentType()
                         + "' must have one non-primitive parameter.");
             }
+
+            if (AbstractReferenceHolder.class.isAssignableFrom(parameterTypes[0])) {
+                holder = true;
+                array = false;
+            } else {
+                if (parameterTypes[0].isArray()) {
+                    if (AbstractReferenceHolder.class.isAssignableFrom(parameterTypes[0].getComponentType())) {
+                        holder = true;
+                    } else {
+                        holder = false;
+                    }
+                    array = true;
+                } else {
+                    array = false;
+                    holder = false;
+                }
+            }
         }
     }
 
     public void bind() {
         try {
-            bindInternal();
+            if (setterMethodHandle != null) {
+                COMPONENT instance = componentContext.getInstance();
+                if (previousInstance == null || !previousInstance.equals(instance)) {
+                    previousInstance = instance;
+                    setterMethodHandle.bindTo(instance);
+                }
+                bindInternal();
+            }
         } catch (RuntimeException e) {
             componentContext.fail(e, false);
         }
@@ -118,8 +158,24 @@ public abstract class ReferenceHelper<CAPABILITY, COMPONENT> {
         return componentContext;
     }
 
+    public METADATA getReferenceMetadata() {
+        return referenceMetadata;
+    }
+
+    public MethodHandle getSetterMethodHandle() {
+        return setterMethodHandle;
+    }
+
     public Suiting<CAPABILITY>[] getSuitings() {
         return suitings.clone();
+    }
+
+    public boolean isArray() {
+        return array;
+    }
+
+    public boolean isHolder() {
+        return holder;
     }
 
     public boolean isSatisfied() {

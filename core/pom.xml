@@ -87,7 +87,7 @@
             <Import-Package>
               *
             </Import-Package>
-            <Export-Package>${project.artifactId},${project.artifactId}.context</Export-Package>
+            <Export-Package>${project.artifactId}</Export-Package>
           </instructions>
         </configuration>
       </plugin>
