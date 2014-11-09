@@ -20,16 +20,22 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodHandles.Lookup;
 import java.lang.reflect.Method;
+import java.util.Map;
+
+import javax.naming.ConfigurationException;
 
 import org.everit.osgi.capabilitycollector.AbstractCapabilityCollector;
 import org.everit.osgi.capabilitycollector.CapabilityConsumer;
+import org.everit.osgi.capabilitycollector.RequirementDefinition;
 import org.everit.osgi.capabilitycollector.Suiting;
 import org.everit.osgi.ecm.component.AbstractReferenceHolder;
 import org.everit.osgi.ecm.component.ComponentContext;
 import org.everit.osgi.ecm.component.ri.internal.ReferenceEventHandler;
 import org.everit.osgi.ecm.metadata.MetadataValidationException;
+import org.everit.osgi.ecm.metadata.ReferenceConfigurationType;
 import org.everit.osgi.ecm.metadata.ReferenceMetadata;
 import org.everit.osgi.ecm.util.method.MethodDescriptor;
+import org.osgi.framework.Constants;
 
 public abstract class ReferenceHelper<CAPABILITY, COMPONENT, METADATA extends ReferenceMetadata> {
 
@@ -86,7 +92,10 @@ public abstract class ReferenceHelper<CAPABILITY, COMPONENT, METADATA extends Re
         this.referenceMetadata = referenceMetadata;
         this.componentContext = componentContext;
         this.eventHandler = eventHandler;
-        this.collector = createCollector(new ReferenceCapabilityConsumer());
+        RequirementDefinition<CAPABILITY>[] requirements = resolveRequirements();
+        // TODO handle null as in that case the component failed
+
+        this.collector = createCollector(new ReferenceCapabilityConsumer(), requirements);
 
         MethodDescriptor setterMethodDescriptor = referenceMetadata.getSetter();
         if (setterMethodDescriptor == null) {
@@ -130,6 +139,42 @@ public abstract class ReferenceHelper<CAPABILITY, COMPONENT, METADATA extends Re
         }
     }
 
+    private RequirementDefinition<CAPABILITY>[] resolveRequirements() {
+        String attributeId = referenceMetadata.getAttributeId();
+        Map<String, Object> properties = componentContext.getProperties();
+        Object requirementAttribute = properties.get(attributeId);
+        if (requirementAttribute == null) {
+
+            @SuppressWarnings("unchecked")
+            RequirementDefinition<CAPABILITY>[] result = createRequirementDefinitionArray(0);
+            return result;
+        }
+
+        String[] requirementStringArray;
+        if (requirementAttribute instanceof String) {
+            requirementStringArray = new String[1];
+        } else if (requirementAttribute instanceof String[]) {
+            requirementStringArray = (String[]) requirementAttribute;
+        } else {
+            componentContext.fail(new ConfigurationException("Invalid type for attribute " + attributeId
+                    + " in configuration defined by service pid  " + properties.get(Constants.SERVICE_PID)), false);
+            return null;
+        }
+
+        ReferenceConfigurationType configurationType = referenceMetadata.getReferenceConfigurationType();
+
+        for (int i = 0, n = requirementStringArray.length; i < n; i++) {
+            ddd
+        }
+        return null;
+    }
+
+    private RequirementDefinition<CAPABILITY>[] createRequirementDefinitionArray(int n) {
+        @SuppressWarnings("unchecked")
+        RequirementDefinition<CAPABILITY>[] result = new RequirementDefinition[n];
+        return result;
+    }
+
     public void bind() {
         try {
             if (setterMethodHandle != null) {
@@ -152,7 +197,8 @@ public abstract class ReferenceHelper<CAPABILITY, COMPONENT, METADATA extends Re
         collector.close();
     }
 
-    protected abstract AbstractCapabilityCollector<CAPABILITY> createCollector(ReferenceCapabilityConsumer consumer);
+    protected abstract AbstractCapabilityCollector<CAPABILITY> createCollector(ReferenceCapabilityConsumer consumer,
+            RequirementDefinition<CAPABILITY>[] items);
 
     public ComponentContext<COMPONENT> getComponentContext() {
         return componentContext;

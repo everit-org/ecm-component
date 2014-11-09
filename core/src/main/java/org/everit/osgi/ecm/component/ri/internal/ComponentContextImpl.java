@@ -23,6 +23,7 @@ import java.util.Collection;
 import java.util.Dictionary;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Hashtable;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -131,7 +132,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
 
     private volatile Thread processingThread;
 
-    private volatile PropertiesHolder properties;
+    private volatile Map<String, Object> properties;
 
     private final Map<String, PropertyAttributeHelper<C, Object>> propertyAttributeHelpersByAttributeId =
             new HashMap<String, PropertyAttributeHelper<C, Object>>();
@@ -158,7 +159,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
             Dictionary<String, Object> properties) {
         this.componentMetadata = componentMetadata;
         this.bundleContext = bundleContext;
-        this.properties = new PropertiesHolder(properties);
+        this.properties = resolveProperties(properties);
 
         Bundle bundle = bundleContext.getBundle();
         BundleWiring bundleWiring = bundle.adapt(BundleWiring.class);
@@ -182,6 +183,11 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
 
         deactivateMethod = resolveDeactivateMethod();
 
+    }
+
+    private Map<String, Object> resolveProperties(Dictionary<String, Object> props) {
+        // TODO
+        return null;
     }
 
     public void close() {
@@ -296,7 +302,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
 
     @Override
     public Map<String, Object> getProperties() {
-        return properties.getMap();
+        return properties;
     }
 
     private boolean isFailed() {
@@ -447,7 +453,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
 
             try {
                 for (PropertyAttributeHelper<C, Object> propertyAttributeHelper : propertyAttributeHelpers) {
-                    Object propertyValue = propertyAttributeHelper.resolveNewValue(properties.getDictionary());
+                    Object propertyValue = propertyAttributeHelper.resolveNewValue(properties);
                     propertyAttributeHelper.applyValue(propertyValue);
                     if (isFailed()) {
                         return;
@@ -466,7 +472,8 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
             }
 
             if (serviceInterfaces != null) {
-                serviceRegistration = registerService(serviceInterfaces, instance, properties.getDictionary());
+                serviceRegistration = registerService(serviceInterfaces, instance, new Hashtable<String, Object>(
+                        properties));
             }
             state = ComponentState.ACTIVE;
         } finally {
@@ -521,7 +528,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
         Lock writeLock = readWriteLock.writeLock();
         writeLock.lock();
         try {
-            this.properties = new PropertiesHolder(properties);
+            this.properties = resolveProperties(properties);
             if (state == ComponentState.FAILED_PERMANENT) {
                 return;
             }

@@ -52,7 +52,6 @@ public class TestComponent {
 
     @ServiceRef
     public void setSomeReference(ManagedService someReference) {
-        new RuntimeException().printStackTrace();
         System.out.println("---------- Setter called: " + someReference);
         this.someReference = someReference;
     }

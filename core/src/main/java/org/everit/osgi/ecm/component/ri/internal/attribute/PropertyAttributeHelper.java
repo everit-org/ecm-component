@@ -23,7 +23,7 @@ import java.lang.reflect.Array;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Arrays;
-import java.util.Dictionary;
+import java.util.Map;
 
 import javax.naming.ConfigurationException;
 
@@ -38,8 +38,6 @@ public class PropertyAttributeHelper<C, V> {
 
     private final ComponentContext<C> componentContext;
 
-    private final Object defaultValue;
-
     private final MethodHandle methodHandle;
 
     private Object previousInstance = null;
@@ -51,7 +49,6 @@ public class PropertyAttributeHelper<C, V> {
 
         this.componentContext = componentContext;
         this.attributeMetadata = attributeMetadata;
-        this.defaultValue = resolveDefaultValue();
         this.methodHandle = resolveMethodHandle();
     }
 
@@ -117,23 +114,6 @@ public class PropertyAttributeHelper<C, V> {
 
     }
 
-    private Object resolveDefaultValue() {
-        V[] defaultValueArray = attributeMetadata.getDefaultValue();
-        if (defaultValueArray == null) {
-            return null;
-        }
-
-        if (attributeMetadata.isMultiple()) {
-            Class<?> primitiveType = attributeMetadata.getPrimitiveType();
-            if (primitiveType != null) {
-                return convertToPrimitiveArray(defaultValueArray, primitiveType);
-            }
-            return defaultValueArray;
-        }
-
-        return defaultValueArray[0];
-    }
-
     private MethodHandle resolveMethodHandle() {
         Method setter = resolveSetter();
         if (setter == null) {
@@ -150,17 +130,7 @@ public class PropertyAttributeHelper<C, V> {
         return null;
     }
 
-    public Object resolveNewValue(Dictionary<String, Object> properties) throws ConfigurationException {
-        // Handle default value
-        if (properties == null) {
-            if (defaultValue == null && !attributeMetadata.isOptional()) {
-                throw new ConfigurationException("No configuration and no default value for attribute '"
-                        + attributeMetadata.getAttributeId() + "' of component "
-                        + componentContext.getComponentMetadata().getComponentId());
-            }
-            return defaultValue;
-        }
-
+    public Object resolveNewValue(Map<String, Object> properties) throws ConfigurationException {
         // Handle null value
         Object valueObject = properties.get(attributeMetadata.getAttributeId());
         if (valueObject == null) {

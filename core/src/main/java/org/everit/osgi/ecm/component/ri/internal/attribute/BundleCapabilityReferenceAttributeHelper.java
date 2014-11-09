@@ -39,11 +39,9 @@ public class BundleCapabilityReferenceAttributeHelper<COMPONENT> extends
     }
 
     @Override
-    protected AbstractCapabilityCollector<BundleCapability> createCollector(ReferenceCapabilityConsumer consumer) {
+    protected AbstractCapabilityCollector<BundleCapability> createCollector(ReferenceCapabilityConsumer consumer,
+            RequirementDefinition<BundleCapability>[] requirements) {
         // TODO handle custom bundle states if we want
-
-        @SuppressWarnings("unchecked")
-        RequirementDefinition<BundleCapability>[] requirements = new RequirementDefinition[0];
         return new BundleCapabilityCollector(getComponentContext().getBundleContext(),
                 getReferenceMetadata().getNamespace(), requirements, consumer,
                 getReferenceMetadata().getStateMask());

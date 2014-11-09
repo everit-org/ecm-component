@@ -164,9 +164,8 @@ public class ServiceReferenceAttributeHelper<S, COMPONENT> extends
     }
 
     @Override
-    protected AbstractCapabilityCollector<ServiceReference<S>> createCollector(ReferenceCapabilityConsumer consumer) {
-        @SuppressWarnings("unchecked")
-        RequirementDefinition<ServiceReference<S>>[] items = new RequirementDefinition[0];
+    protected AbstractCapabilityCollector<ServiceReference<S>> createCollector(ReferenceCapabilityConsumer consumer,
+            RequirementDefinition<ServiceReference<S>>[] items) {
 
         @SuppressWarnings("unchecked")
         Class<S> serviceInterface = (Class<S>) getReferenceMetadata().getServiceInterface();
