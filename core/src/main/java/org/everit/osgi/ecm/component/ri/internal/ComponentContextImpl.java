@@ -19,8 +19,10 @@ package org.everit.osgi.ecm.component.ri.internal;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Dictionary;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Hashtable;
@@ -57,8 +59,6 @@ import org.osgi.framework.wiring.BundleWiring;
 public class ComponentContextImpl<C> implements ComponentContext<C> {
 
     private class ReferenceEventHandlerImpl implements ReferenceEventHandler {
-
-        private int satisfiedCapabilities = 0;
 
         @Override
         public void changedNonDynamic() {
@@ -145,6 +145,8 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
 
     final List<ServiceRegistration<?>> registeredServices = new ArrayList<ServiceRegistration<?>>();
 
+    private int satisfiedCapabilities = 0;
+
     private String[] serviceInterfaces;
 
     private ServiceRegistration<?> serviceRegistration = null;
@@ -183,11 +185,6 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
 
         deactivateMethod = resolveDeactivateMethod();
 
-    }
-
-    private Map<String, Object> resolveProperties(Dictionary<String, Object> props) {
-        // TODO
-        return null;
     }
 
     public void close() {
@@ -309,6 +306,15 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
         return ComponentState.FAILED == state || ComponentState.FAILED_PERMANENT == state;
     }
 
+    @Override
+    public boolean isSatisfied() {
+        Lock readLock = readWriteLock.readLock();
+        readLock.lock();
+        boolean result = satisfiedCapabilities == referenceHelpers.size();
+        readLock.unlock();
+        return result;
+    }
+
     public void open() {
         Lock writeLock = readWriteLock.writeLock();
         writeLock.lock();
@@ -380,6 +386,36 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
         return method;
     }
 
+    private Map<String, Object> resolveProperties(Dictionary<String, Object> props) {
+        Map<String, Object> result = new HashMap<String, Object>();
+
+        if (props != null) {
+            Enumeration<Object> elements = props.elements();
+            Enumeration<String> keys = props.keys();
+            while (keys.hasMoreElements()) {
+                String key = keys.nextElement();
+                Object element = elements.nextElement();
+                result.put(key, element);
+            }
+        }
+
+        AttributeMetadata<?>[] attributes = componentMetadata.getAttributes();
+        for (AttributeMetadata<?> attributeMetadata : attributes) {
+            String attributeId = attributeMetadata.getAttributeId();
+            Object attributeValue = result.get(attributeId);
+            if (attributeValue == null) {
+                Object[] defaultValue = attributeMetadata.getDefaultValue();
+                if (attributeMetadata.isMultiple() && defaultValue != null) {
+                    result.put(attributeId, defaultValue);
+                } else if (defaultValue != null && defaultValue.length > 0) {
+                    result.put(attributeId, defaultValue[0]);
+                }
+            }
+        }
+
+        return result;
+    }
+
     private String[] resolveServiceInterfaces() {
         ServiceMetadata serviceMetadata = componentMetadata.getService();
         if (serviceMetadata == null) {
@@ -411,9 +447,9 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
         Lock writeLock = readWriteLock.writeLock();
         writeLock.lock();
         try {
-            if (state != ComponentState.ACTIVE && state != ComponentState.FAILED) {
+            if (state != ComponentState.ACTIVE) {
                 throw new IllegalStateException(
-                        "Only ACTIVE and FAILED components can be restarted, while the state of the component "
+                        "Only ACTIVE components can be restarted, while the state of the component "
                                 + componentMetadata.getComponentId() + " is " + state.toString());
             }
             stopping();
@@ -421,7 +457,54 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
         } finally {
             writeLock.unlock();
         }
-        // TODO
+    }
+
+    private boolean shouldRestartForNewConfiguraiton(Map<String, Object> newProperties) {
+        AttributeMetadata<?>[] componentAttributes = componentMetadata.getAttributes();
+        for (AttributeMetadata<?> attributeMetadata : componentAttributes) {
+            if (!attributeMetadata.isDynamic()) {
+                String attributeId = attributeMetadata.getAttributeId();
+                Object oldValue = properties.get(attributeId);
+                Object newValue = newProperties.get(attributeId);
+                if ((oldValue == null && newValue != null) || (oldValue != null && newValue == null)) {
+                    return true;
+                }
+                if (oldValue != null && !oldValue.equals(newValue)) {
+
+                    Class<? extends Object> oldValueClass = oldValue.getClass();
+                    Class<? extends Object> newValueClass = newValue.getClass();
+                    if (!oldValueClass.equals(newValueClass) || !oldValueClass.isArray()) {
+                        return true;
+                    }
+
+                    boolean equals;
+                    if (oldValueClass.equals(boolean[].class)) {
+                        equals = Arrays.equals((boolean[]) oldValue, (boolean[]) newValue);
+                    } else if (oldValueClass.equals(byte[].class)) {
+                        equals = Arrays.equals((byte[]) oldValue, (byte[]) newValue);
+                    } else if (oldValueClass.equals(char[].class)) {
+                        equals = Arrays.equals((char[]) oldValue, (char[]) newValue);
+                    } else if (oldValueClass.equals(double[].class)) {
+                        equals = Arrays.equals((double[]) oldValue, (double[]) newValue);
+                    } else if (oldValueClass.equals(float[].class)) {
+                        equals = Arrays.equals((float[]) oldValue, (float[]) newValue);
+                    } else if (oldValueClass.equals(int[].class)) {
+                        equals = Arrays.equals((int[]) oldValue, (int[]) newValue);
+                    } else if (oldValueClass.equals(long[].class)) {
+                        equals = Arrays.equals((long[]) oldValue, (long[]) newValue);
+                    } else if (oldValueClass.equals(short[].class)) {
+                        equals = Arrays.equals((short[]) oldValue, (short[]) newValue);
+                    } else {
+                        equals = Arrays.equals((Object[]) oldValue, (Object[]) newValue);
+                    }
+
+                    if (!equals) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
     }
 
     private void starting() {
@@ -492,16 +575,18 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
                 serviceRegistration.unregister();
                 serviceRegistration = null;
             }
-            if (deactivateMethod != null) {
-                try {
-                    deactivateMethod.invoke(instance);
-                } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
-                    // TODO Auto-generated catch block
-                    e.printStackTrace();
+            if (instance != null) {
+                if (deactivateMethod != null) {
+                    try {
+                        deactivateMethod.invoke(instance);
+                    } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+                        // TODO Auto-generated catch block
+                        e.printStackTrace();
+                    }
                 }
+                unregisterServices();
+                instance = null;
             }
-            unregisterServices();
-            instance = null;
 
             state = ComponentState.STOPPED;
         } finally {
@@ -528,28 +613,23 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
         Lock writeLock = readWriteLock.writeLock();
         writeLock.lock();
         try {
-            this.properties = resolveProperties(properties);
             if (state == ComponentState.FAILED_PERMANENT) {
+                System.out.println("Configuration update has no effect due to permanent failure");
                 return;
             }
-            if (state == ComponentState.FAILED) {
-                restart();
-                return;
-            }
+            Map<String, Object> newProperties = resolveProperties(properties);
             if (state == ComponentState.ACTIVE) {
-                // TODO check if restart is necessary.
-                stopping();
-                starting();
-                return;
+                if (shouldRestartForNewConfiguraiton(newProperties)) {
+                    stopping();
+                }
             }
-            fail(new IllegalStateException(
-                    "Updating component configuration is only possible if the component is in FAILED or ACTIVE state"),
-                    false);
+            this.properties = resolveProperties(properties);
+            for (ReferenceHelper<?, C, ?> referenceHelper : referenceHelpers) {
+                referenceHelper.updateConfiguration();
+            }
         } finally {
             writeLock.unlock();
         }
-        // TODO Auto-generated method stub
-
     }
 
     private void validateComponentStateForServiceRegistration() {

@@ -19,6 +19,7 @@ package org.everit.osgi.ecm.component.ri.internal.attribute;
 import org.everit.osgi.capabilitycollector.AbstractCapabilityCollector;
 import org.everit.osgi.capabilitycollector.BundleCapabilityCollector;
 import org.everit.osgi.capabilitycollector.RequirementDefinition;
+import org.everit.osgi.capabilitycollector.Suiting;
 import org.everit.osgi.ecm.component.ComponentContext;
 import org.everit.osgi.ecm.component.ri.internal.ReferenceEventHandler;
 import org.everit.osgi.ecm.metadata.BundleCapabilityReferenceMetadata;
@@ -35,12 +36,17 @@ public class BundleCapabilityReferenceAttributeHelper<COMPONENT> extends
 
     @Override
     protected void bindInternal() {
+        Suiting<BundleCapability>[] lSuitings = getSuitings();
+        for (Suiting<BundleCapability> suiting : lSuitings) {
+            BundleCapability capability = suiting.getCapability();
 
+        }
     }
 
     @Override
     protected AbstractCapabilityCollector<BundleCapability> createCollector(ReferenceCapabilityConsumer consumer,
             RequirementDefinition<BundleCapability>[] requirements) {
+
         // TODO handle custom bundle states if we want
         return new BundleCapabilityCollector(getComponentContext().getBundleContext(),
                 getReferenceMetadata().getNamespace(), requirements, consumer,
