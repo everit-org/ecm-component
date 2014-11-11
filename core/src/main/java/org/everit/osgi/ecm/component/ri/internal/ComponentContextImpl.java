@@ -20,7 +20,6 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Dictionary;
 import java.util.Enumeration;
 import java.util.HashMap;
@@ -97,7 +96,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
                 satisfiedCapabilities--;
 
                 if (state == ComponentState.ACTIVE) {
-                    stopping();
+                    stopping(ComponentState.UNSATISFIED);
                 }
             } finally {
                 writeLock.unlock();
@@ -134,8 +133,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
 
     private volatile Map<String, Object> properties;
 
-    private final Map<String, PropertyAttributeHelper<C, Object>> propertyAttributeHelpersByAttributeId =
-            new HashMap<String, PropertyAttributeHelper<C, Object>>();
+    private final List<PropertyAttributeHelper<C, Object>> propertyAttributeHelpers = new ArrayList<>();
 
     private final ReadWriteLock readWriteLock = new ReentrantReadWriteLock();
 
@@ -195,8 +193,8 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
                 throw new IllegalStateException("Cannot close a component context that is not opened");
             }
             opened = false;
-            if (referenceHelpers.size() == 0) {
-                stopping();
+            if (state == ComponentState.ACTIVE) {
+                stopping(ComponentState.STOPPED);
             } else {
                 for (ReferenceHelper<?, C, ?> referenceHelper : referenceHelpers) {
                     referenceHelper.close();
@@ -205,6 +203,46 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
         } finally {
             writeLock.unlock();
         }
+    }
+
+    private boolean equals(Object oldValue, Object newValue) {
+        if ((oldValue == null && newValue != null) || (oldValue != null && newValue == null)) {
+            return false;
+        }
+        if (oldValue != null && !oldValue.equals(newValue)) {
+
+            Class<? extends Object> oldValueClass = oldValue.getClass();
+            Class<? extends Object> newValueClass = newValue.getClass();
+            if (!oldValueClass.equals(newValueClass) || !oldValueClass.isArray()) {
+                return false;
+            }
+
+            boolean equals;
+            if (oldValueClass.equals(boolean[].class)) {
+                equals = Arrays.equals((boolean[]) oldValue, (boolean[]) newValue);
+            } else if (oldValueClass.equals(byte[].class)) {
+                equals = Arrays.equals((byte[]) oldValue, (byte[]) newValue);
+            } else if (oldValueClass.equals(char[].class)) {
+                equals = Arrays.equals((char[]) oldValue, (char[]) newValue);
+            } else if (oldValueClass.equals(double[].class)) {
+                equals = Arrays.equals((double[]) oldValue, (double[]) newValue);
+            } else if (oldValueClass.equals(float[].class)) {
+                equals = Arrays.equals((float[]) oldValue, (float[]) newValue);
+            } else if (oldValueClass.equals(int[].class)) {
+                equals = Arrays.equals((int[]) oldValue, (int[]) newValue);
+            } else if (oldValueClass.equals(long[].class)) {
+                equals = Arrays.equals((long[]) oldValue, (long[]) newValue);
+            } else if (oldValueClass.equals(short[].class)) {
+                equals = Arrays.equals((short[]) oldValue, (short[]) newValue);
+            } else {
+                equals = Arrays.equals((Object[]) oldValue, (Object[]) newValue);
+            }
+
+            if (!equals) {
+                return false;
+            }
+        }
+        return true;
     }
 
     @Override
@@ -232,8 +270,8 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
                         new PropertyAttributeHelper<C, Object>(this,
                                 (PropertyAttributeMetadata<Object>) attributeMetadata);
 
-                propertyAttributeHelpersByAttributeId
-                        .put(attributeMetadata.getAttributeId(), propertyAttributeHelper);
+                propertyAttributeHelpers
+                        .add(propertyAttributeHelper);
             } else {
                 ReferenceHelper<?, C, ?> helper;
                 try {
@@ -452,7 +490,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
                         "Only ACTIVE components can be restarted, while the state of the component "
                                 + componentMetadata.getComponentId() + " is " + state.toString());
             }
-            stopping();
+            stopping(ComponentState.STOPPING);
             starting();
         } finally {
             writeLock.unlock();
@@ -466,41 +504,8 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
                 String attributeId = attributeMetadata.getAttributeId();
                 Object oldValue = properties.get(attributeId);
                 Object newValue = newProperties.get(attributeId);
-                if ((oldValue == null && newValue != null) || (oldValue != null && newValue == null)) {
-                    return true;
-                }
-                if (oldValue != null && !oldValue.equals(newValue)) {
-
-                    Class<? extends Object> oldValueClass = oldValue.getClass();
-                    Class<? extends Object> newValueClass = newValue.getClass();
-                    if (!oldValueClass.equals(newValueClass) || !oldValueClass.isArray()) {
-                        return true;
-                    }
-
-                    boolean equals;
-                    if (oldValueClass.equals(boolean[].class)) {
-                        equals = Arrays.equals((boolean[]) oldValue, (boolean[]) newValue);
-                    } else if (oldValueClass.equals(byte[].class)) {
-                        equals = Arrays.equals((byte[]) oldValue, (byte[]) newValue);
-                    } else if (oldValueClass.equals(char[].class)) {
-                        equals = Arrays.equals((char[]) oldValue, (char[]) newValue);
-                    } else if (oldValueClass.equals(double[].class)) {
-                        equals = Arrays.equals((double[]) oldValue, (double[]) newValue);
-                    } else if (oldValueClass.equals(float[].class)) {
-                        equals = Arrays.equals((float[]) oldValue, (float[]) newValue);
-                    } else if (oldValueClass.equals(int[].class)) {
-                        equals = Arrays.equals((int[]) oldValue, (int[]) newValue);
-                    } else if (oldValueClass.equals(long[].class)) {
-                        equals = Arrays.equals((long[]) oldValue, (long[]) newValue);
-                    } else if (oldValueClass.equals(short[].class)) {
-                        equals = Arrays.equals((short[]) oldValue, (short[]) newValue);
-                    } else {
-                        equals = Arrays.equals((Object[]) oldValue, (Object[]) newValue);
-                    }
-
-                    if (!equals) {
-                        return true;
-                    }
+                if (!equals(oldValue, newValue)) {
+                    return false;
                 }
             }
         }
@@ -531,13 +536,13 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
                 return;
             }
 
-            Collection<PropertyAttributeHelper<C, Object>> propertyAttributeHelpers = propertyAttributeHelpersByAttributeId
-                    .values();
-
             try {
-                for (PropertyAttributeHelper<C, Object> propertyAttributeHelper : propertyAttributeHelpers) {
-                    Object propertyValue = propertyAttributeHelper.resolveNewValue(properties);
-                    propertyAttributeHelper.applyValue(propertyValue);
+                for (PropertyAttributeHelper<C, Object> helper : propertyAttributeHelpers) {
+                    PropertyAttributeMetadata<Object> attributeMetadata = helper.getAttributeMetadata();
+                    String attributeId = attributeMetadata.getAttributeId();
+                    Object propertyValue = properties.get(attributeId);
+                    helper.validate(propertyValue);
+                    helper.applyValue(propertyValue);
                     if (isFailed()) {
                         return;
                     }
@@ -565,7 +570,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
         }
     }
 
-    private void stopping() {
+    private void stopping(ComponentState targetState) {
         Lock writeLock = readWriteLock.writeLock();
         writeLock.lock();
         try {
@@ -588,7 +593,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
                 instance = null;
             }
 
-            state = ComponentState.STOPPED;
+            state = targetState;
         } finally {
             processingThread = null;
             writeLock.unlock();
@@ -618,14 +623,50 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
                 return;
             }
             Map<String, Object> newProperties = resolveProperties(properties);
-            if (state == ComponentState.ACTIVE) {
-                if (shouldRestartForNewConfiguraiton(newProperties)) {
-                    stopping();
+            if (state == ComponentState.UNSATISFIED) {
+                state = ComponentState.STOPPED;
+            } else if (state == ComponentState.ACTIVE && shouldRestartForNewConfiguraiton(newProperties)) {
+                stopping(ComponentState.STOPPED);
+            }
+
+            Map<String, Object> oldProperties = this.properties;
+            this.properties = newProperties;
+            for (ReferenceHelper<?, C, ?> referenceHelper : referenceHelpers) {
+                String attributeId = referenceHelper.getReferenceMetadata().getAttributeId();
+
+                Object newValue = newProperties.get(attributeId);
+                Object oldValue = oldProperties.get(attributeId);
+
+                if (!equals(oldValue, newValue)) {
+                    referenceHelper.updateConfiguration();
+                    if (isFailed()) {
+                        return;
+                    }
                 }
             }
-            this.properties = resolveProperties(properties);
-            for (ReferenceHelper<?, C, ?> referenceHelper : referenceHelpers) {
-                referenceHelper.updateConfiguration();
+
+            if (state == ComponentState.ACTIVE) {
+                try {
+                    for (PropertyAttributeHelper<C, Object> helper : propertyAttributeHelpers) {
+                        String attributeId = helper.getAttributeMetadata().getAttributeId();
+
+                        Object oldValue = oldProperties.get(attributeId);
+                        Object newValue = newProperties.get(attributeId);
+
+                        if (!equals(oldValue, newValue)) {
+                            helper.validate(newValue);
+                            helper.applyValue(newValue);
+                            if (isFailed()) {
+                                return;
+                            }
+                        }
+                    }
+                } catch (ConfigurationException | RuntimeException e) {
+                    fail(e, false);
+                    return;
+                }
+            } else if (isSatisfied()) {
+                starting();
             }
         } finally {
             writeLock.unlock();

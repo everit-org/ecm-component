@@ -100,7 +100,7 @@ public abstract class ReferenceHelper<CAPABILITY, COMPONENT, METADATA extends Re
         this.componentContext = componentContext;
         this.eventHandler = eventHandler;
         RequirementDefinition<CAPABILITY>[] requirements = resolveRequirements();
-        // TODO catch all runtime ex and null return
+        // TODO handle null as in that case syntax error in filter
 
         this.collector = createCollector(new ReferenceCapabilityConsumer(), requirements);
 
@@ -286,6 +286,8 @@ public abstract class ReferenceHelper<CAPABILITY, COMPONENT, METADATA extends Re
 
     public void updateConfiguration() {
         RequirementDefinition<CAPABILITY>[] newRequirements = resolveRequirements();
+        // TODO handle null as in that case syntax error in filter
+
         collector.updateRequirements(newRequirements);
     }
 }

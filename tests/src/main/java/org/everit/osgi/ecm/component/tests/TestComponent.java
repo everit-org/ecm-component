@@ -38,7 +38,7 @@ public class TestComponent {
     @StringAttribute
     private String[] stringArrayAttribute;
 
-    @StringAttribute
+    @StringAttribute(dynamic = true)
     private String stringAttribute;
 
     @Activate
@@ -64,10 +64,12 @@ public class TestComponent {
     }
 
     public void setStringArrayAttribute(String[] stringArrayAttribute) {
+        System.out.println("-------Setter stringArrayAttribute: " + stringArrayAttribute);
         this.stringArrayAttribute = stringArrayAttribute;
     }
 
     public void setStringAttribute(String stringAttribute) {
+        System.out.println("-------Setter stringAttribute: " + stringAttribute);
         this.stringAttribute = stringAttribute;
     }
 }

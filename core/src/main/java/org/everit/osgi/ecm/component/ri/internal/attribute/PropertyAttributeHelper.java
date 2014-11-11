@@ -19,11 +19,7 @@ package org.everit.osgi.ecm.component.ri.internal.attribute;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodHandles.Lookup;
-import java.lang.reflect.Array;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.Arrays;
-import java.util.Map;
 
 import javax.naming.ConfigurationException;
 
@@ -40,10 +36,6 @@ public class PropertyAttributeHelper<C, V> {
 
     private final MethodHandle methodHandle;
 
-    private Object previousInstance = null;
-
-    private Object storedValue = null;
-
     public PropertyAttributeHelper(ComponentContext<C> componentContext,
             PropertyAttributeMetadata<V> attributeMetadata) {
 
@@ -53,13 +45,10 @@ public class PropertyAttributeHelper<C, V> {
     }
 
     public void applyValue(Object newValue) {
-        storedValue = newValue;
         if (methodHandle != null) {
             C instance = componentContext.getInstance();
-            if (previousInstance == null || !previousInstance.equals(instance)) {
-                methodHandle.bindTo(instance);
-                previousInstance = instance;
-            }
+
+            methodHandle.bindTo(instance);
             try {
                 methodHandle.invoke(instance, newValue);
             } catch (Throwable e) {
@@ -68,50 +57,8 @@ public class PropertyAttributeHelper<C, V> {
         }
     }
 
-    private Object convertToPrimitiveArray(V[] array, Class<?> primitiveType) {
-        Object primitiveArray = Array.newInstance(primitiveType, array.length);
-        for (int i = 0; i < array.length; i++) {
-            V element = array[i];
-            Array.set(primitiveArray, i, element);
-        }
-        return primitiveArray;
-    }
-
-    public Object getStoredValue() {
-        return storedValue;
-    }
-
-    public boolean newValueEqualsPrevious(Object newValue) {
-        if (newValue == null && storedValue == null) {
-            return true;
-        }
-
-        if (newValue == null || storedValue == null) {
-            return false;
-        }
-
-        Class<? extends Object> valueType = newValue.getClass();
-        if (!valueType.isArray()) {
-            return newValue.equals(storedValue);
-        }
-
-        Class<?> componentType = valueType.getComponentType();
-
-        boolean primitiveArray = componentType.isPrimitive();
-        if (!primitiveArray) {
-            return Arrays.equals((Object[]) newValue, (Object[]) storedValue);
-        }
-
-        Class<Arrays> arraysClass = Arrays.class;
-
-        try {
-            Method equalsMethod = arraysClass.getMethod("equals", valueType, valueType);
-            return (Boolean) equalsMethod.invoke(Arrays.class, newValue, storedValue);
-        } catch (NoSuchMethodException | IllegalAccessException | IllegalArgumentException
-                | InvocationTargetException e) {
-            throw new RuntimeException(e);
-        }
-
+    public PropertyAttributeMetadata<V> getAttributeMetadata() {
+        return attributeMetadata;
     }
 
     private MethodHandle resolveMethodHandle() {
@@ -128,52 +75,6 @@ public class PropertyAttributeHelper<C, V> {
         }
 
         return null;
-    }
-
-    public Object resolveNewValue(Map<String, Object> properties) throws ConfigurationException {
-        // Handle null value
-        Object valueObject = properties.get(attributeMetadata.getAttributeId());
-        if (valueObject == null) {
-            if (!attributeMetadata.isOptional()) {
-                throw new ConfigurationException("Mandatory attribute '" + attributeMetadata.getAttributeId()
-                        + "' is not specified in component "
-                        + componentContext.getComponentMetadata().getComponentId());
-            }
-            return null;
-        }
-
-        Class<? extends Object> valueClass = valueObject.getClass();
-
-        // Handle multiple
-        if (attributeMetadata.isMultiple()) {
-            if (!valueClass.isArray()) {
-                throw new ConfigurationException("Array was expected as value for attribute "
-                        + attributeMetadata.getAttributeId() + " of component '"
-                        + componentContext.getComponentMetadata().getComponentId() + "' but got '" + valueClass + "'");
-            }
-
-            Class<?> componentType = valueClass.getComponentType();
-            Class<?> primitiveType = attributeMetadata.getPrimitiveType();
-            if (primitiveType == null) {
-                primitiveType = attributeMetadata.getValueType();
-            }
-
-            if (!primitiveType.equals(componentType)) {
-                throw new ConfigurationException(primitiveType + " array was expected as value for attribute "
-                        + attributeMetadata.getAttributeId() + " of component '"
-                        + componentContext.getComponentMetadata().getComponentId() + "' but got " + componentType
-                        + " array");
-            }
-            return valueObject;
-        }
-
-        // Handle simple value
-        if (!valueClass.equals(attributeMetadata.getValueType())) {
-            throw new ConfigurationException(attributeMetadata.getValueType() + " was expected as value for attribute "
-                    + attributeMetadata.getAttributeId() + " of component '"
-                    + componentContext.getComponentMetadata().getComponentId() + "' but got " + valueClass);
-        }
-        return valueObject;
     }
 
     private Method resolveSetter() {
@@ -223,5 +124,50 @@ public class PropertyAttributeHelper<C, V> {
                 + componentContext.getComponentMetadata().getComponentId() + "'. " + additionalMessage);
 
         componentContext.fail(e, true);
+    }
+
+    public void validate(Object valueObject) throws ConfigurationException {
+        // Handle null value
+        if (valueObject == null) {
+            if (!attributeMetadata.isOptional()) {
+                throw new ConfigurationException("Mandatory attribute '" + attributeMetadata.getAttributeId()
+                        + "' is not specified in component "
+                        + componentContext.getComponentMetadata().getComponentId());
+            }
+            return;
+        }
+
+        Class<? extends Object> valueClass = valueObject.getClass();
+
+        // Handle multiple
+        if (attributeMetadata.isMultiple()) {
+            if (!valueClass.isArray()) {
+                throw new ConfigurationException("Array was expected as value for attribute "
+                        + attributeMetadata.getAttributeId() + " of component '"
+                        + componentContext.getComponentMetadata().getComponentId() + "' but got '" + valueClass + "'");
+            }
+
+            Class<?> componentType = valueClass.getComponentType();
+            Class<?> primitiveType = attributeMetadata.getPrimitiveType();
+            if (primitiveType == null) {
+                primitiveType = attributeMetadata.getValueType();
+            }
+
+            if (!primitiveType.equals(componentType)) {
+                throw new ConfigurationException(primitiveType + " array was expected as value for attribute "
+                        + attributeMetadata.getAttributeId() + " of component '"
+                        + componentContext.getComponentMetadata().getComponentId() + "' but got " + componentType
+                        + " array");
+            }
+            return;
+        }
+
+        // Handle simple value
+        if (!valueClass.equals(attributeMetadata.getValueType())) {
+            throw new ConfigurationException(attributeMetadata.getValueType() + " was expected as value for attribute "
+                    + attributeMetadata.getAttributeId() + " of component '"
+                    + componentContext.getComponentMetadata().getComponentId() + "' but got " + valueClass);
+        }
+        return;
     }
 }
