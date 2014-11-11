@@ -505,7 +505,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
                 Object oldValue = properties.get(attributeId);
                 Object newValue = newProperties.get(attributeId);
                 if (!equals(oldValue, newValue)) {
-                    return false;
+                    return true;
                 }
             }
         }

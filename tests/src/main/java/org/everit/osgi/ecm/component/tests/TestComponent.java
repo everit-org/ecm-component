@@ -57,7 +57,7 @@ public class TestComponent {
         System.out.println("-----------------Setter called: " + clauseReference.toString());
     }
 
-    @ServiceRef
+    @ServiceRef(dynamic = true)
     public void setSomeReference(ServiceHolder<ManagedService> someReference) {
         System.out.println("---------- Setter called: " + someReference.toString());
         this.someReference = someReference.getService();
