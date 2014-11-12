@@ -16,7 +16,7 @@
  */
 package org.everit.osgi.ecm.component.tests;
 
-import java.util.Arrays;
+import java.util.Map;
 
 import org.everit.osgi.ecm.annotation.Activate;
 import org.everit.osgi.ecm.annotation.Component;
@@ -25,15 +25,30 @@ import org.everit.osgi.ecm.annotation.Deactivate;
 import org.everit.osgi.ecm.annotation.ReferenceConfigurationType;
 import org.everit.osgi.ecm.annotation.Service;
 import org.everit.osgi.ecm.annotation.ServiceRef;
+import org.everit.osgi.ecm.annotation.ThreeStateBoolean;
+import org.everit.osgi.ecm.annotation.attribute.BooleanAttribute;
+import org.everit.osgi.ecm.annotation.attribute.BooleanAttributes;
+import org.everit.osgi.ecm.annotation.attribute.IntegerAttribute;
 import org.everit.osgi.ecm.annotation.attribute.StringAttribute;
+import org.everit.osgi.ecm.component.ComponentContext;
 import org.everit.osgi.ecm.component.ServiceHolder;
 import org.osgi.service.cm.ManagedService;
 
 @Component(configurationPolicy = ConfigurationPolicy.REQUIRE)
+@BooleanAttributes({ @BooleanAttribute(attributeId = "booleanArrayAttribute", multiple = ThreeStateBoolean.TRUE,
+        defaultValue = { false, false, true }) })
 @Service
 public class TestComponent {
 
-    private ManagedService someReference;
+    private Boolean[] booleanArrayAttribute;
+
+    @BooleanAttribute(setter = "bindBooleanAttribute")
+    private Boolean booleanAttribute;
+
+    private int[] intArrayAttribute;
+
+    @IntegerAttribute(defaultValue = 1)
+    private int intAttribute;
 
     @StringAttribute
     private String[] stringArrayAttribute;
@@ -42,34 +57,67 @@ public class TestComponent {
     private String stringAttribute;
 
     @Activate
-    public void activate() {
-        System.out.println("//////////////// activate called: " + stringAttribute + ", "
-                + Arrays.toString(stringArrayAttribute));
+    public void activate(ComponentContext<TestComponent> componentContext) {
+        Map<String, Object> properties = componentContext.getProperties();
+        Object booleanArrayAttribute = properties.get("booleanArrayAttribute");
+        this.booleanArrayAttribute = (Boolean[]) booleanArrayAttribute;
+    }
+
+    public void bindBooleanAttribute(Boolean booleanAttribute) {
+        this.booleanAttribute = booleanAttribute;
     }
 
     @Deactivate
     public void deactivate() {
-        System.out.println("---------------- Deactivate called");
+
+    }
+
+    public Boolean[] getBooleanArrayAttribute() {
+        return booleanArrayAttribute;
+    }
+
+    public Boolean getBooleanAttribute() {
+        return booleanAttribute;
+    }
+
+    public int[] getIntArrayAttribute() {
+        return intArrayAttribute;
+    }
+
+    public int getIntAttribute() {
+        return intAttribute;
+    }
+
+    public String[] getStringArrayAttribute() {
+        return stringArrayAttribute;
+    }
+
+    public String getStringAttribute() {
+        return stringAttribute;
     }
 
     @ServiceRef(configurationType = ReferenceConfigurationType.CLAUSE, optional = true)
     public void setClauseReference(ServiceHolder<ManagedService> clauseReference) {
-        System.out.println("-----------------Setter called: " + clauseReference.toString());
+    }
+
+    @IntegerAttribute
+    public void setIntArrayAttribute(int[] intArrayAttribute) {
+        this.intArrayAttribute = intArrayAttribute;
+    }
+
+    public void setIntAttribute(int intAttribute) {
+        this.intAttribute = intAttribute;
     }
 
     @ServiceRef(dynamic = true)
     public void setSomeReference(ServiceHolder<ManagedService> someReference) {
-        System.out.println("---------- Setter called: " + someReference.toString());
-        this.someReference = someReference.getService();
     }
 
     public void setStringArrayAttribute(String[] stringArrayAttribute) {
-        System.out.println("-------Setter stringArrayAttribute: " + stringArrayAttribute);
         this.stringArrayAttribute = stringArrayAttribute;
     }
 
     public void setStringAttribute(String stringAttribute) {
-        System.out.println("-------Setter stringAttribute: " + stringAttribute);
         this.stringAttribute = stringAttribute;
     }
 }

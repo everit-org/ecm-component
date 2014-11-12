@@ -33,8 +33,6 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-import javax.naming.ConfigurationException;
-
 import org.everit.osgi.ecm.component.ComponentContext;
 import org.everit.osgi.ecm.component.resource.ComponentRevision;
 import org.everit.osgi.ecm.component.resource.ComponentState;
@@ -45,6 +43,7 @@ import org.everit.osgi.ecm.component.ri.internal.attribute.ServiceReferenceAttri
 import org.everit.osgi.ecm.metadata.AttributeMetadata;
 import org.everit.osgi.ecm.metadata.BundleCapabilityReferenceMetadata;
 import org.everit.osgi.ecm.metadata.ComponentMetadata;
+import org.everit.osgi.ecm.metadata.MetadataValidationException;
 import org.everit.osgi.ecm.metadata.PropertyAttributeMetadata;
 import org.everit.osgi.ecm.metadata.ServiceMetadata;
 import org.everit.osgi.ecm.metadata.ServiceReferenceMetadata;
@@ -286,7 +285,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
                                 (BundleCapabilityReferenceMetadata) attributeMetadata, this, referenceEventHandler);
 
                     }
-                } catch (IllegalAccessException e) {
+                } catch (IllegalAccessException | MetadataValidationException e) {
                     fail(e, true);
                     return;
                 }
@@ -541,14 +540,13 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
                     PropertyAttributeMetadata<Object> attributeMetadata = helper.getAttributeMetadata();
                     String attributeId = attributeMetadata.getAttributeId();
                     Object propertyValue = properties.get(attributeId);
-                    helper.validate(propertyValue);
                     helper.applyValue(propertyValue);
                     if (isFailed()) {
                         return;
                     }
                 }
                 activateMethodHelper.call(this, instance);
-            } catch (ConfigurationException | RuntimeException e) {
+            } catch (RuntimeException e) {
                 fail(e, false);
                 return;
             } catch (IllegalAccessException e) {
@@ -646,24 +644,18 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
             }
 
             if (state == ComponentState.ACTIVE) {
-                try {
-                    for (PropertyAttributeHelper<C, Object> helper : propertyAttributeHelpers) {
-                        String attributeId = helper.getAttributeMetadata().getAttributeId();
+                for (PropertyAttributeHelper<C, Object> helper : propertyAttributeHelpers) {
+                    String attributeId = helper.getAttributeMetadata().getAttributeId();
 
-                        Object oldValue = oldProperties.get(attributeId);
-                        Object newValue = newProperties.get(attributeId);
+                    Object oldValue = oldProperties.get(attributeId);
+                    Object newValue = newProperties.get(attributeId);
 
-                        if (!equals(oldValue, newValue)) {
-                            helper.validate(newValue);
-                            helper.applyValue(newValue);
-                            if (isFailed()) {
-                                return;
-                            }
+                    if (!equals(oldValue, newValue)) {
+                        helper.applyValue(newValue);
+                        if (isFailed()) {
+                            return;
                         }
                     }
-                } catch (ConfigurationException | RuntimeException e) {
-                    fail(e, false);
-                    return;
                 }
             } else if (isSatisfied()) {
                 starting();
