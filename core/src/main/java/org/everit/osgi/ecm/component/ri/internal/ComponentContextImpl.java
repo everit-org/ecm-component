@@ -16,6 +16,7 @@
  */
 package org.everit.osgi.ecm.component.ri.internal;
 
+import java.lang.reflect.Array;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -441,11 +442,14 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
             String attributeId = attributeMetadata.getAttributeId();
             Object attributeValue = result.get(attributeId);
             if (attributeValue == null) {
-                Object[] defaultValue = attributeMetadata.getDefaultValue();
+                Object defaultValue = attributeMetadata.getDefaultValue();
                 if (attributeMetadata.isMultiple() && defaultValue != null) {
                     result.put(attributeId, defaultValue);
-                } else if (defaultValue != null && defaultValue.length > 0) {
-                    result.put(attributeId, defaultValue[0]);
+                } else if (defaultValue != null && Array.getLength(defaultValue) > 0) {
+                    Object value = Array.get(defaultValue, 0);
+                    if (value != null) {
+                        result.put(attributeId, value);
+                    }
                 }
             }
         }

@@ -16,9 +16,7 @@
  */
 package org.everit.osgi.ecm.component.ri.internal.metatype;
 
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
+import java.lang.reflect.Array;
 
 import org.everit.osgi.ecm.metadata.AttributeMetadata;
 import org.everit.osgi.ecm.metadata.AttributeMetadataHolder;
@@ -26,9 +24,9 @@ import org.everit.osgi.ecm.metadata.PasswordAttributeMetadata;
 import org.everit.osgi.ecm.metadata.SelectablePropertyAttributeMetadata;
 import org.osgi.service.metatype.AttributeDefinition;
 
-public class AttributeDefinitionImpl<V> implements AttributeDefinition, AttributeMetadataHolder<V> {
+public class AttributeDefinitionImpl<V_ARRAY> implements AttributeDefinition, AttributeMetadataHolder<V_ARRAY> {
 
-    private final AttributeMetadata<V> attributeMetadata;
+    private final AttributeMetadata<V_ARRAY> attributeMetadata;
 
     private final int attributeType;
 
@@ -40,7 +38,7 @@ public class AttributeDefinitionImpl<V> implements AttributeDefinition, Attribut
 
     private final String[] optionValues;
 
-    public AttributeDefinitionImpl(AttributeMetadata<V> attributeMetadata, Localizer localizer) {
+    public AttributeDefinitionImpl(AttributeMetadata<V_ARRAY> attributeMetadata, Localizer localizer) {
         this.attributeMetadata = attributeMetadata;
         this.localizer = localizer;
 
@@ -71,27 +69,38 @@ public class AttributeDefinitionImpl<V> implements AttributeDefinition, Attribut
         defaultValue = createDefaultValueArray();
 
         if (attributeMetadata instanceof SelectablePropertyAttributeMetadata) {
-            SelectablePropertyAttributeMetadata<V> selectableMetadata =
-                    (SelectablePropertyAttributeMetadata<V>) attributeMetadata;
+            SelectablePropertyAttributeMetadata<V_ARRAY> selectableMetadata =
+                    (SelectablePropertyAttributeMetadata<V_ARRAY>) attributeMetadata;
 
-            Map<V, String> options = selectableMetadata.getOptions();
+            String[] tmpOptionLabels = selectableMetadata.getOptionLabels();
 
-            if (options == null || options.size() == 0) {
-                optionLabels = null;
+            V_ARRAY tmpOptionValues = selectableMetadata.getOptionValues();
+            if (tmpOptionValues == null) {
                 optionValues = null;
+                optionLabels = null;
             } else {
-                Set<Entry<V, String>> optionsEntrySet = options.entrySet();
-                optionLabels = new String[options.size()];
-                optionValues = new String[options.size()];
+                int length = Array.getLength(tmpOptionValues);
+                if (tmpOptionLabels == null) {
+                    optionLabels = null;
+                } else {
+                    optionLabels = new String[length];
+                }
 
-                int i = 0;
-                for (Entry<V, String> optionEntry : optionsEntrySet) {
-                    optionLabels[i] = localizer.localize(optionEntry.getValue());
-                    optionValues[i] = String.valueOf(optionEntry.getKey());
-                    i++;
+                optionValues = new String[length];
+                for (int i = 0; i < length; i++) {
+                    Object optionValue = Array.get(tmpOptionValues, i);
+                    if (optionValue != null) {
+                        optionValues[i] = String.valueOf(optionValue);
+                    }
+                    if (optionLabels != null) {
+                        if (tmpOptionLabels[i] != null) {
+                            optionLabels[i] = localizer.localize(tmpOptionLabels[i]);
+                        } else {
+                            optionLabels[i] = optionValues[i];
+                        }
+                    }
                 }
             }
-
         } else {
             optionLabels = null;
             optionValues = null;
@@ -99,15 +108,20 @@ public class AttributeDefinitionImpl<V> implements AttributeDefinition, Attribut
     }
 
     private String[] createDefaultValueArray() {
-        Object[] defaultValue = attributeMetadata.getDefaultValue();
-        if (defaultValue == null || defaultValue.length == 0) {
+        V_ARRAY tmpDefaultValue = attributeMetadata.getDefaultValue();
+        if (tmpDefaultValue == null) {
+            return null;
+        }
+        int length = Array.getLength(tmpDefaultValue);
+        if (length == 0) {
             return null;
         }
 
-        String[] result = new String[defaultValue.length];
+        String[] result = new String[length];
         for (int i = 0; i < result.length; i++) {
-            if (defaultValue[i] != null) {
-                result[i] = String.valueOf(defaultValue[i]);
+            Object element = Array.get(tmpDefaultValue, i);
+            if (element != null) {
+                result[i] = String.valueOf(element);
             }
         }
         return result;
@@ -138,7 +152,7 @@ public class AttributeDefinitionImpl<V> implements AttributeDefinition, Attribut
     }
 
     @Override
-    public AttributeMetadata<V> getMetadata() {
+    public AttributeMetadata<V_ARRAY> getMetadata() {
         return attributeMetadata;
     }
 

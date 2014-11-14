@@ -40,7 +40,7 @@ import org.osgi.service.cm.ManagedService;
 @Service
 public class TestComponent {
 
-    private Boolean[] booleanArrayAttribute;
+    private boolean[] booleanArrayAttribute;
 
     @BooleanAttribute(setter = "bindBooleanAttribute")
     private Boolean booleanAttribute;
@@ -60,7 +60,7 @@ public class TestComponent {
     public void activate(ComponentContext<TestComponent> componentContext) {
         Map<String, Object> properties = componentContext.getProperties();
         Object booleanArrayAttribute = properties.get("booleanArrayAttribute");
-        this.booleanArrayAttribute = (Boolean[]) booleanArrayAttribute;
+        this.booleanArrayAttribute = (boolean[]) booleanArrayAttribute;
     }
 
     public void bindBooleanAttribute(Boolean booleanAttribute) {
@@ -72,7 +72,7 @@ public class TestComponent {
 
     }
 
-    public Boolean[] getBooleanArrayAttribute() {
+    public boolean[] getBooleanArrayAttribute() {
         return booleanArrayAttribute;
     }
 

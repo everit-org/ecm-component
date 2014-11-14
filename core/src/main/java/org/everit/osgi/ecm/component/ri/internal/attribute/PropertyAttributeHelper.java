@@ -19,8 +19,8 @@ package org.everit.osgi.ecm.component.ri.internal.attribute;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodHandles.Lookup;
-import java.lang.reflect.Array;
 import java.lang.reflect.Method;
+import java.util.HashMap;
 import java.util.Map;
 
 import javax.naming.ConfigurationException;
@@ -31,9 +31,23 @@ import org.everit.osgi.ecm.metadata.PropertyAttributeMetadata;
 import org.everit.osgi.ecm.util.method.MethodDescriptor;
 import org.osgi.framework.Constants;
 
-public class PropertyAttributeHelper<C, V> {
+public class PropertyAttributeHelper<C, V_ARRAY> {
 
-    private final PropertyAttributeMetadata<V> attributeMetadata;
+    private static final Map<Class<?>, Class<?>> PRIMITIVE_BOXING_TYPE_MAPPING;
+
+    static {
+        PRIMITIVE_BOXING_TYPE_MAPPING = new HashMap<>();
+        PRIMITIVE_BOXING_TYPE_MAPPING.put(boolean.class, Boolean.class);
+        PRIMITIVE_BOXING_TYPE_MAPPING.put(byte.class, Byte.class);
+        PRIMITIVE_BOXING_TYPE_MAPPING.put(char.class, Character.class);
+        PRIMITIVE_BOXING_TYPE_MAPPING.put(double.class, Double.class);
+        PRIMITIVE_BOXING_TYPE_MAPPING.put(float.class, Float.class);
+        PRIMITIVE_BOXING_TYPE_MAPPING.put(int.class, Integer.class);
+        PRIMITIVE_BOXING_TYPE_MAPPING.put(long.class, Long.class);
+        PRIMITIVE_BOXING_TYPE_MAPPING.put(short.class, Short.class);
+    }
+
+    private final PropertyAttributeMetadata<V_ARRAY> attributeMetadata;
 
     private final ComponentContext<C> componentContext;
 
@@ -42,7 +56,7 @@ public class PropertyAttributeHelper<C, V> {
     private final boolean primitive;
 
     public PropertyAttributeHelper(ComponentContext<C> componentContext,
-            PropertyAttributeMetadata<V> attributeMetadata) {
+            PropertyAttributeMetadata<V_ARRAY> attributeMetadata) {
 
         this.componentContext = componentContext;
         this.attributeMetadata = attributeMetadata;
@@ -66,26 +80,6 @@ public class PropertyAttributeHelper<C, V> {
         }
     }
 
-    /**
-     * Converts an array to another array with the target type. This function is used to convert primitive arrays to
-     * Object arrays and vice-versa.
-     *
-     * @param array
-     *            The array object.
-     * @param targetType
-     *            The target type.
-     * @return The converted array or null if there was a failure.
-     */
-    private Object convertArray(Object array, Class<?> targetType) {
-        int length = Array.getLength(array);
-        Object result = Array.newInstance(targetType, length);
-        for (int i = 0; i < length; i++) {
-            Object element = Array.get(array, i);
-            Array.set(result, i, element);
-        }
-        return result;
-    }
-
     private void failDuringValueResolution(String message) {
         Map<String, Object> properties = componentContext.getProperties();
         String servicePid = (String) properties.get(Constants.SERVICE_PID);
@@ -98,7 +92,7 @@ public class PropertyAttributeHelper<C, V> {
         componentContext.fail(e, false);
     }
 
-    public PropertyAttributeMetadata<V> getAttributeMetadata() {
+    public PropertyAttributeMetadata<V_ARRAY> getAttributeMetadata() {
         return attributeMetadata;
     }
 
@@ -151,23 +145,28 @@ public class PropertyAttributeHelper<C, V> {
                 return null;
             }
             Class<?> componentType = parameterTypes[0].getComponentType();
-            Class<?> expectedComponentType = attributeMetadata.getPrimitiveType();
-            if (expectedComponentType == null) {
-                expectedComponentType = attributeMetadata.getValueType();
-            }
+            Class<?> expectedComponentType = attributeMetadata.getValueType();
+
             if (!expectedComponentType.equals(componentType)) {
                 throwIllegalSetter(method, "Parameter array should have '" + expectedComponentType
                         + "' component type.");
                 return null;
             }
         } else {
-            Class<?> primitiveType = attributeMetadata.getPrimitiveType();
-            Class<V> valueType = attributeMetadata.getValueType();
-            if (!valueType.equals(parameterTypes[0])
-                    && (primitiveType == null || !primitiveType.equals(parameterTypes[0]))) {
-                throwIllegalSetter(method, " Parameter type of setter must be " + valueType.getCanonicalName()
-                        + ((primitiveType != null) ? (" or " + primitiveType.getSimpleName()) : ""));
-                return null;
+            Class<?> valueType = attributeMetadata.getValueType();
+            if (!valueType.equals(parameterTypes[0])) {
+                if (valueType.isPrimitive()) {
+                    Class<?> boxingType = PRIMITIVE_BOXING_TYPE_MAPPING.get(valueType);
+                    if (!boxingType.equals(parameterTypes[0])) {
+                        throwIllegalSetter(
+                                method, " Parameter should be " + valueType.getCanonicalName() + " or "
+                                        + boxingType.getCanonicalName() + ": " + method.toGenericString());
+                    }
+                } else {
+                    throwIllegalSetter(
+                            method, " Parameter type should be " + valueType.getCanonicalName() + ": "
+                                    + method.toGenericString());
+                }
             }
         }
         return method;
@@ -185,8 +184,7 @@ public class PropertyAttributeHelper<C, V> {
 
         Class<? extends Object> valueClass = valueObject.getClass();
 
-        Class<?> primitiveType = attributeMetadata.getPrimitiveType();
-        Class<V> valueType = attributeMetadata.getValueType();
+        Class<?> attributeType = attributeMetadata.getValueType();
 
         // Handle multiple
         if (attributeMetadata.isMultiple()) {
@@ -198,42 +196,39 @@ public class PropertyAttributeHelper<C, V> {
 
             Class<?> componentType = valueClass.getComponentType();
 
-            if ((primitiveType == null || !primitiveType.equals(componentType)) && !valueType.equals(componentType)) {
+            if (!attributeType.equals(componentType)) {
                 StringBuilder sb = new StringBuilder();
-                if (primitiveType != null) {
-                    sb.append("Either '").append(primitiveType).append("[]' or ");
-                }
-                sb.append("'").append(valueType).append("[]' was expected for attribute '")
+                sb.append("'").append(attributeType).append("[]' was expected for attribute '")
                         .append(attributeMetadata.getAttributeId()).append("' but got '").append(componentType)
                         .append("'");
                 failDuringValueResolution(sb.toString());
                 return null;
             }
 
-            Object parameterObject = valueObject;
-            if (primitive && valueType.equals(componentType)) {
-                parameterObject = convertArray(parameterObject, primitiveType);
-            } else if (!primitive && primitiveType != null && primitiveType.equals(componentType)) {
-                parameterObject = convertArray(parameterObject, valueType);
-            }
-            return parameterObject;
+            return valueObject;
         }
 
         // Handle simple value
-        if (!(valueClass.equals(valueType) || (primitiveType != null && primitiveType.equals(valueClass)))) {
-            Throwable e = new ConfigurationException(attributeMetadata.getValueType()
-                    + " was expected as value for attribute "
-                    + attributeMetadata.getAttributeId() + " of component '"
-                    + componentContext.getComponentMetadata().getComponentId() + "' but got " + valueClass);
-            componentContext.fail(e, false);
+        if (!valueClass.equals(attributeType)
+                && (!attributeType.isPrimitive() || !PRIMITIVE_BOXING_TYPE_MAPPING.get(attributeType)
+                        .equals(valueClass))) {
+
+            StringBuilder sb = new StringBuilder();
+            if (attributeType.isPrimitive()) {
+                sb.append("Either ").append(PRIMITIVE_BOXING_TYPE_MAPPING.get(attributeType).getCanonicalName())
+                        .append(" or ");
+            }
+            sb.append(attributeType.getCanonicalName()).append(" was expected but got ")
+                    .append(valueClass.getCanonicalName());
+            failDuringValueResolution(sb.toString());
             return null;
         }
         return valueObject;
     }
 
     private void throwIllegalSetter(Method method, String additionalMessage) {
-        IllegalMetadataException e = new IllegalMetadataException("Invalid setter defined for attribute '"
-                + attributeMetadata.getAttributeId() + "' of component '"
+        IllegalMetadataException e = new IllegalMetadataException("Invalid setter '" + method.toGenericString()
+                + "' defined for attribute '" + attributeMetadata.getAttributeId() + "' of component '"
                 + componentContext.getComponentMetadata().getComponentId() + "'. " + additionalMessage);
 
         componentContext.fail(e, true);

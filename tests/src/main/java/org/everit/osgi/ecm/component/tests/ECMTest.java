@@ -72,8 +72,6 @@ public class ECMTest {
             properties.put("intArrayAttribute", new int[] { 1 });
             properties.put("stringAttribute", "Hello World");
             properties.put("stringArrayAttribute", new String[] { "Hello World" });
-            properties.put("someReference", "(service.id>=0)");
-            properties.put("clauseReference", "myClause;filter:=(service.id>=0)");
 
             configuration.update(properties);
 
