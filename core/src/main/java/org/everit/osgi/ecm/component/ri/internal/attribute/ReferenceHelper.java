@@ -230,15 +230,20 @@ public abstract class ReferenceHelper<CAPABILITY, COMPONENT, METADATA extends Re
             return null;
         }
 
+        for (int i = 0; i < requirementStringArray.length; i++) {
+            String requirementString = requirementStringArray[i];
+            if (requirementString != null && "".equals(requirementString.trim())) {
+                requirementStringArray[i] = null;
+            }
+        }
+
         ReferenceConfigurationType configurationType = referenceMetadata.getReferenceConfigurationType();
 
         RequirementDefinition<CAPABILITY>[] result = createRequirementDefinitionArray(requirementStringArray.length);
 
         for (int i = 0; i < requirementStringArray.length; i++) {
             String requirementString = requirementStringArray[i];
-            if (requirementString != null && "".equals(requirementString.trim())) {
-                requirementString = null;
-            }
+
             Map<String, Object> attributes = new LinkedHashMap<>();
             String requirementId = "" + i;
             String filterString = requirementString;
