@@ -34,6 +34,9 @@ import org.everit.osgi.ecm.component.ComponentContext;
 import org.everit.osgi.ecm.component.ServiceHolder;
 import org.osgi.service.cm.ManagedService;
 
+import aQute.bnd.annotation.headers.ProvideCapability;
+
+@ProvideCapability(ns = "ssssss")
 @Component(configurationPolicy = ConfigurationPolicy.REQUIRE)
 @BooleanAttributes({ @BooleanAttribute(attributeId = "booleanArrayAttribute", multiple = ThreeStateBoolean.TRUE,
         defaultValue = { false, false, true }) })
@@ -57,13 +60,13 @@ public class TestComponent {
     private String stringAttribute;
 
     @Activate
-    public void activate(ComponentContext<TestComponent> componentContext) {
+    public void activate(final ComponentContext<TestComponent> componentContext) {
         Map<String, Object> properties = componentContext.getProperties();
         Object booleanArrayAttribute = properties.get("booleanArrayAttribute");
         this.booleanArrayAttribute = (boolean[]) booleanArrayAttribute;
     }
 
-    public void bindBooleanAttribute(Boolean booleanAttribute) {
+    public void bindBooleanAttribute(final Boolean booleanAttribute) {
         this.booleanAttribute = booleanAttribute;
     }
 
@@ -97,27 +100,27 @@ public class TestComponent {
     }
 
     @ServiceRef(configurationType = ReferenceConfigurationType.CLAUSE, optional = true)
-    public void setClauseReference(ServiceHolder<ManagedService> clauseReference) {
+    public void setClauseReference(final ServiceHolder<ManagedService> clauseReference) {
     }
 
     @IntegerAttribute
-    public void setIntArrayAttribute(int[] intArrayAttribute) {
+    public void setIntArrayAttribute(final int[] intArrayAttribute) {
         this.intArrayAttribute = intArrayAttribute;
     }
 
-    public void setIntAttribute(int intAttribute) {
+    public void setIntAttribute(final int intAttribute) {
         this.intAttribute = intAttribute;
     }
 
     @ServiceRef(dynamic = true)
-    public void setSomeReference(ServiceHolder<ManagedService> someReference) {
+    public void setSomeReference(final ServiceHolder<ManagedService> someReference) {
     }
 
-    public void setStringArrayAttribute(String[] stringArrayAttribute) {
+    public void setStringArrayAttribute(final String[] stringArrayAttribute) {
         this.stringArrayAttribute = stringArrayAttribute;
     }
 
-    public void setStringAttribute(String stringAttribute) {
+    public void setStringAttribute(final String stringAttribute) {
         this.stringAttribute = stringAttribute;
     }
 }
