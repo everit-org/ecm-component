@@ -39,7 +39,7 @@ public class ComponentContainerImpl<C> extends AbstractComponentContainer<C> imp
 
     private ServiceRegistration<?> serviceRegistration;
 
-    public ComponentContainerImpl(ComponentMetadata componentMetadata, BundleContext bundleContext) {
+    public ComponentContainerImpl(final ComponentMetadata componentMetadata, final BundleContext bundleContext) {
         super(componentMetadata, bundleContext);
     }
 
@@ -50,7 +50,8 @@ public class ComponentContainerImpl<C> extends AbstractComponentContainer<C> imp
             serviceRegistration = null;
         }
         ComponentContextImpl<C> componentImpl = componentAtomicReference.get();
-        if (componentImpl != null) {
+        if (componentImpl != null
+                && componentImpl.getComponentMetadata().getConfigurationPolicy() == ConfigurationPolicy.IGNORE) {
             componentImpl.close();
             componentAtomicReference.set(null);
         }
@@ -97,7 +98,7 @@ public class ComponentContainerImpl<C> extends AbstractComponentContainer<C> imp
     }
 
     @Override
-    public synchronized void updated(Dictionary<String, ?> properties) throws ConfigurationException {
+    public synchronized void updated(final Dictionary<String, ?> properties) throws ConfigurationException {
         @SuppressWarnings("unchecked")
         Dictionary<String, Object> props = (Dictionary<String, Object>) properties;
 
