@@ -35,7 +35,7 @@ public class FactoryComponentContainerImpl<C> extends AbstractComponentContainer
 
     private ServiceRegistration<?> serviceRegistration;
 
-    public FactoryComponentContainerImpl(ComponentMetadata componentMetadata, BundleContext bundleContext) {
+    public FactoryComponentContainerImpl(final ComponentMetadata componentMetadata, final BundleContext bundleContext) {
         super(componentMetadata, bundleContext);
     }
 
@@ -48,7 +48,7 @@ public class FactoryComponentContainerImpl<C> extends AbstractComponentContainer
     }
 
     @Override
-    public void deleted(String pid) {
+    public void deleted(final String pid) {
         System.out.println("ManagedServiceFactory deleted called with pid: " + pid);
         // TODO Auto-generated method stub
 
@@ -57,7 +57,7 @@ public class FactoryComponentContainerImpl<C> extends AbstractComponentContainer
     @Override
     public ComponentRevision[] getComponentRevisions() {
         // TODO Auto-generated method stub
-        return null;
+        return new ComponentRevision[] {};
     }
 
     @Override
@@ -87,7 +87,7 @@ public class FactoryComponentContainerImpl<C> extends AbstractComponentContainer
     }
 
     @Override
-    public void updated(String pid, Dictionary<String, ?> properties) throws ConfigurationException {
+    public void updated(final String pid, final Dictionary<String, ?> properties) throws ConfigurationException {
         System.out
                 .println("ManagedServiceFactory updated called: pid=" + pid + ", properties=" + properties.toString());
         // TODO Auto-generated method stub

@@ -29,9 +29,12 @@ import org.everit.osgi.ecm.annotation.ServiceRef;
 import org.everit.osgi.ecm.annotation.attribute.StringAttribute;
 import org.everit.osgi.ecm.annotation.attribute.StringAttributes;
 import org.everit.osgi.ecm.component.ComponentContext;
+import org.junit.Assert;
 import org.junit.Test;
+import org.osgi.framework.BundleContext;
 import org.osgi.service.cm.Configuration;
 import org.osgi.service.cm.ConfigurationAdmin;
+import org.osgi.util.tracker.ServiceTracker;
 
 @Component(configurationPolicy = ConfigurationPolicy.IGNORE)
 @StringAttributes({
@@ -49,13 +52,12 @@ public class ECMTest {
     private ConfigurationAdmin configAdmin;
 
     @Activate
-    public void activate(ComponentContext<ECMTest> componentContext) {
-        System.out.println("------------ Activate called");
+    public void activate(final ComponentContext<ECMTest> componentContext) {
         this.componentContext = componentContext;
     }
 
     @ServiceRef(defaultValue = "(service.id>=0)")
-    public void setConfigAdmin(ConfigurationAdmin configAdmin) {
+    public void setConfigAdmin(final ConfigurationAdmin configAdmin) {
         this.configAdmin = configAdmin;
     }
 
@@ -67,15 +69,35 @@ public class ECMTest {
 
             Hashtable<String, Object> properties = new Hashtable<String, Object>();
             properties.put("booleanAttribute", true);
-            // properties.put("booleanArrayAttribute", new boolean[] {true});
+            properties.put("booleanArrayAttribute", new boolean[] { true });
+
+            // Testing if one size array is passed to a non-multiple attribute
+            properties.put("byteAttribute", new byte[] { 1 });
+            properties.put("byteArrayAttribute", new byte[] { 1 });
+
+            properties.put("charAttribute", 'a');
+            properties.put("charArrayAttribute", new char[] { 'a' });
+
             properties.put("intAttribute", 1);
             properties.put("intArrayAttribute", new int[] { 1 });
+
             properties.put("stringAttribute", "Hello World");
             properties.put("stringArrayAttribute", new String[] { "Hello World" });
 
             configuration.update(properties);
 
-            configuration.delete();
+            BundleContext bundleContext = componentContext.getBundleContext();
+            ServiceTracker<TestComponent, TestComponent> testComponentTracker = new ServiceTracker<TestComponent, TestComponent>(
+                    bundleContext, TestComponent.class, null);
+
+            try {
+                TestComponent testComponent = testComponentTracker.waitForService(10000);
+                Assert.assertEquals((byte) 1, testComponent.getByteAttribute());
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            } finally {
+                configuration.delete();
+            }
         } catch (IOException e) {
             // TODO Auto-generated catch block
             e.printStackTrace();

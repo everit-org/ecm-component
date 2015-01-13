@@ -105,7 +105,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
 
     }
 
-    private static void resolveSuperInterfacesRecurse(Class<?> currentClass, Set<String> interfaces) {
+    private static void resolveSuperInterfacesRecurse(final Class<?> currentClass, final Set<String> interfaces) {
         Class<?>[] superInterfaces = currentClass.getInterfaces();
         for (Class<?> superInterface : superInterfaces) {
             interfaces.add(superInterface.getName());
@@ -141,6 +141,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
 
     private final List<ReferenceHelper<?, C, ?>> referenceHelpers = new ArrayList<>();
 
+    // TODO create add and remove methods with write lock
     final List<ServiceRegistration<?>> registeredServices = new ArrayList<ServiceRegistration<?>>();
 
     private int satisfiedCapabilities = 0;
@@ -149,14 +150,15 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
 
     private ServiceRegistration<?> serviceRegistration = null;
 
-    private volatile ComponentState state = ComponentState.STOPPED;
+    private ComponentState state = ComponentState.STOPPED;
 
-    public ComponentContextImpl(ComponentMetadata componentMetadata, BundleContext bundleContext) {
+    public ComponentContextImpl(final ComponentMetadata componentMetadata, final BundleContext bundleContext) {
         this(componentMetadata, bundleContext, null);
     }
 
-    public ComponentContextImpl(ComponentMetadata componentMetadata, BundleContext bundleContext,
-            Dictionary<String, Object> properties) {
+    public ComponentContextImpl(final ComponentMetadata componentMetadata, final BundleContext bundleContext,
+            final Dictionary<String, Object> properties) {
+
         this.componentMetadata = componentMetadata;
         this.bundleContext = bundleContext;
         this.properties = resolveProperties(properties);
@@ -205,7 +207,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
         }
     }
 
-    private boolean equals(Object oldValue, Object newValue) {
+    private boolean equals(final Object oldValue, final Object newValue) {
         if ((oldValue == null && newValue != null) || (oldValue != null && newValue == null)) {
             return false;
         }
@@ -246,7 +248,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
     }
 
     @Override
-    public void fail(Throwable e, boolean permanent) {
+    public void fail(final Throwable e, final boolean permanent) {
         cause = e;
         unregisterServices();
         processingThread = null;
@@ -261,7 +263,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
         return;
     }
 
-    private void fillAttributeHelpers(AttributeMetadata<?>[] attributes) {
+    private void fillAttributeHelpers(final AttributeMetadata<?>[] attributes) {
         for (AttributeMetadata<?> attributeMetadata : attributes) {
             if (attributeMetadata instanceof PropertyAttributeMetadata) {
 
@@ -307,8 +309,9 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
 
     @Override
     public ComponentRevision getComponentRevision() {
-        // TODO
-        return null;
+        ComponentRevisionImpl.Builder builder = new ComponentRevisionImpl.Builder();
+        builder.setState(state);
+        return builder.build();
     }
 
     @Override
@@ -378,27 +381,30 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
     }
 
     @Override
-    public <S> ServiceRegistration<S> registerService(Class<S> clazz, S service, Dictionary<String, ?> properties) {
+    public <S> ServiceRegistration<S> registerService(final Class<S> clazz, final S service,
+            final Dictionary<String, ?> properties) {
         validateComponentStateForServiceRegistration();
         ServiceRegistration<S> serviceRegistration = bundleContext.registerService(clazz, service, properties);
         return registerServiceInternal(serviceRegistration);
     }
 
     @Override
-    public ServiceRegistration<?> registerService(String clazz, Object service, Dictionary<String, ?> properties) {
+    public ServiceRegistration<?> registerService(final String clazz, final Object service,
+            final Dictionary<String, ?> properties) {
         validateComponentStateForServiceRegistration();
         ServiceRegistration<?> serviceRegistration = bundleContext.registerService(clazz, service, properties);
         return registerServiceInternal(serviceRegistration);
     }
 
     @Override
-    public ServiceRegistration<?> registerService(String[] clazzes, Object service, Dictionary<String, ?> properties) {
+    public ServiceRegistration<?> registerService(final String[] clazzes, final Object service,
+            final Dictionary<String, ?> properties) {
         validateComponentStateForServiceRegistration();
         ServiceRegistration<?> serviceRegistration = bundleContext.registerService(clazzes, service, properties);
         return registerServiceInternal(serviceRegistration);
     }
 
-    private <S> ServiceRegistration<S> registerServiceInternal(ServiceRegistration<S> original) {
+    private <S> ServiceRegistration<S> registerServiceInternal(final ServiceRegistration<S> original) {
         ComponentServiceRegistration<S, C> componentServiceRegistration = new ComponentServiceRegistration<S, C>(
                 this, original);
         registeredServices.add(componentServiceRegistration);
@@ -424,7 +430,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
         return method;
     }
 
-    private Map<String, Object> resolveProperties(Dictionary<String, Object> props) {
+    private Map<String, Object> resolveProperties(final Dictionary<String, Object> props) {
         Map<String, Object> result = new HashMap<String, Object>();
 
         if (props != null) {
@@ -500,7 +506,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
         }
     }
 
-    private boolean shouldRestartForNewConfiguraiton(Map<String, Object> newProperties) {
+    private boolean shouldRestartForNewConfiguraiton(final Map<String, Object> newProperties) {
         AttributeMetadata<?>[] componentAttributes = componentMetadata.getAttributes();
         for (AttributeMetadata<?> attributeMetadata : componentAttributes) {
             if (!attributeMetadata.isDynamic()) {
@@ -572,7 +578,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
         }
     }
 
-    private void stopping(ComponentState targetState) {
+    private void stopping(final ComponentState targetState) {
         Lock writeLock = readWriteLock.writeLock();
         writeLock.lock();
         try {
@@ -616,7 +622,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
         }
     }
 
-    public void updateConfiguration(Dictionary<String, Object> properties) {
+    public void updateConfiguration(final Dictionary<String, Object> properties) {
         Lock writeLock = readWriteLock.writeLock();
         writeLock.lock();
         try {

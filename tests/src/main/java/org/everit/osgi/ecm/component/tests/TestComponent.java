@@ -28,26 +28,43 @@ import org.everit.osgi.ecm.annotation.ServiceRef;
 import org.everit.osgi.ecm.annotation.ThreeStateBoolean;
 import org.everit.osgi.ecm.annotation.attribute.BooleanAttribute;
 import org.everit.osgi.ecm.annotation.attribute.BooleanAttributes;
+import org.everit.osgi.ecm.annotation.attribute.ByteAttribute;
+import org.everit.osgi.ecm.annotation.attribute.CharacterAttribute;
 import org.everit.osgi.ecm.annotation.attribute.IntegerAttribute;
 import org.everit.osgi.ecm.annotation.attribute.StringAttribute;
 import org.everit.osgi.ecm.component.ComponentContext;
 import org.everit.osgi.ecm.component.ServiceHolder;
 import org.osgi.service.cm.ManagedService;
 
-import aQute.bnd.annotation.headers.ProvideCapability;
-
-@ProvideCapability(ns = "ssssss")
 @Component(configurationPolicy = ConfigurationPolicy.REQUIRE)
 @BooleanAttributes({ @BooleanAttribute(attributeId = "booleanArrayAttribute", multiple = ThreeStateBoolean.TRUE,
         defaultValue = { false, false, true }) })
 @Service
 public class TestComponent {
 
+    /**
+     * Variable is initialized from Activate method
+     */
     private boolean[] booleanArrayAttribute;
 
     @BooleanAttribute(setter = "bindBooleanAttribute")
     private Boolean booleanAttribute;
 
+    @ByteAttribute
+    private byte[] byteArrayAttribute;
+
+    @ByteAttribute
+    private byte byteAttribute;
+
+    @CharacterAttribute
+    private char charArrayAttribute;
+
+    @CharacterAttribute
+    private char charAttribute;
+
+    /**
+     * Annotation is defined on setter.
+     */
     private int[] intArrayAttribute;
 
     @IntegerAttribute(defaultValue = 1)
@@ -83,6 +100,14 @@ public class TestComponent {
         return booleanAttribute;
     }
 
+    public byte[] getByteArrayAttribute() {
+        return byteArrayAttribute;
+    }
+
+    public byte getByteAttribute() {
+        return byteAttribute;
+    }
+
     public int[] getIntArrayAttribute() {
         return intArrayAttribute;
     }
@@ -97,6 +122,10 @@ public class TestComponent {
 
     public String getStringAttribute() {
         return stringAttribute;
+    }
+
+    public void setByteAttribute(final byte byteAttribute) {
+        this.byteAttribute = byteAttribute;
     }
 
     @ServiceRef(configurationType = ReferenceConfigurationType.CLAUSE, optional = true)
