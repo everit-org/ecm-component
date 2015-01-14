@@ -12,21 +12,59 @@ public class ComponentRevisionImpl implements ComponentRevision {
 
     public static class Builder {
 
-        private ComponentState state;
+        private Throwable cause = null;
 
-        public ComponentRevisionImpl build() {
+        private Thread processingThread = null;
+
+        private ComponentState state = ComponentState.STOPPED;
+
+        public synchronized ComponentRevisionImpl build() {
             return new ComponentRevisionImpl(this);
         }
 
-        public void setState(final ComponentState state) {
-            this.state = state;
+        public synchronized void fail(final Throwable cause, final boolean permanent) {
+            this.cause = cause;
+            if (permanent) {
+                this.state = ComponentState.FAILED_PERMANENT;
+            } else {
+                this.state = ComponentState.FAILED;
+            }
+        }
+
+        public ComponentState getState() {
+            return state;
+        }
+
+        public synchronized void starting() {
+            this.state = ComponentState.STARTING;
+            this.cause = null;
+            this.processingThread = Thread.currentThread();
+        }
+
+        public synchronized void stopped(final ComponentState targetState) {
+            this.processingThread = null;
+            if (targetState == ComponentState.STOPPED) {
+                cause = null;
+            }
+            state = targetState;
+        }
+
+        public synchronized void stopping() {
+            this.state = ComponentState.STOPPING;
+            this.processingThread = Thread.currentThread();
         }
     }
+
+    private final Throwable cause;
+
+    private final Thread processingThread;
 
     private final ComponentState state;
 
     private ComponentRevisionImpl(final Builder builder) {
         this.state = builder.state;
+        this.processingThread = builder.processingThread;
+        this.cause = builder.cause;
     }
 
     @Override
@@ -37,14 +75,12 @@ public class ComponentRevisionImpl implements ComponentRevision {
 
     @Override
     public Throwable getCause() {
-        // TODO Auto-generated method stub
-        return null;
+        return cause;
     }
 
     @Override
     public Thread getProcessingThread() {
-        // TODO Auto-generated method stub
-        return null;
+        return processingThread;
     }
 
     @Override

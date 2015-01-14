@@ -89,6 +89,7 @@ public class ECMTest {
             BundleContext bundleContext = componentContext.getBundleContext();
             ServiceTracker<TestComponent, TestComponent> testComponentTracker = new ServiceTracker<TestComponent, TestComponent>(
                     bundleContext, TestComponent.class, null);
+            testComponentTracker.open();
 
             try {
                 TestComponent testComponent = testComponentTracker.waitForService(10000);
@@ -96,6 +97,7 @@ public class ECMTest {
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             } finally {
+                testComponentTracker.close();
                 configuration.delete();
             }
         } catch (IOException e) {

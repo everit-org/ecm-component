@@ -64,7 +64,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
             Lock writeLock = readWriteLock.writeLock();
             writeLock.lock();
             try {
-                if (state == ComponentState.ACTIVE) {
+                if (getState() == ComponentState.ACTIVE) {
                     restart();
                 }
             } finally {
@@ -80,7 +80,8 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
             try {
                 satisfiedCapabilities++;
 
-                if (satisfiedCapabilities == referenceHelpers.size() && state == ComponentState.UNSATISFIED) {
+                if (satisfiedCapabilities == referenceHelpers.size()
+                        && getState() == ComponentState.UNSATISFIED) {
                     starting();
                 }
             } finally {
@@ -95,7 +96,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
             try {
                 satisfiedCapabilities--;
 
-                if (state == ComponentState.ACTIVE) {
+                if (getState() == ComponentState.ACTIVE) {
                     stopping(ComponentState.UNSATISFIED);
                 }
             } finally {
@@ -129,8 +130,6 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
 
     private boolean opened = false;
 
-    private volatile Thread processingThread;
-
     private volatile Map<String, Object> properties;
 
     private final List<PropertyAttributeHelper<C, Object>> propertyAttributeHelpers = new ArrayList<>();
@@ -144,13 +143,13 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
     // TODO create add and remove methods with write lock
     final List<ServiceRegistration<?>> registeredServices = new ArrayList<ServiceRegistration<?>>();
 
+    private final ComponentRevisionImpl.Builder revisionBuilder = new ComponentRevisionImpl.Builder();
+
     private int satisfiedCapabilities = 0;
 
     private String[] serviceInterfaces;
 
     private ServiceRegistration<?> serviceRegistration = null;
-
-    private ComponentState state = ComponentState.STOPPED;
 
     public ComponentContextImpl(final ComponentMetadata componentMetadata, final BundleContext bundleContext) {
         this(componentMetadata, bundleContext, null);
@@ -195,7 +194,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
                 throw new IllegalStateException("Cannot close a component context that is not opened");
             }
             opened = false;
-            if (state == ComponentState.ACTIVE) {
+            if (getState() == ComponentState.ACTIVE) {
                 stopping(ComponentState.STOPPED);
             } else {
                 for (ReferenceHelper<?, C, ?> referenceHelper : referenceHelpers) {
@@ -249,17 +248,12 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
 
     @Override
     public void fail(final Throwable e, final boolean permanent) {
+        revisionBuilder.fail(e, permanent);
+
         cause = e;
         unregisterServices();
-        processingThread = null;
         instance = null;
-        if (permanent) {
-            state = ComponentState.FAILED_PERMANENT;
-        } else {
-            state = ComponentState.FAILED;
-        }
-        // TODO Auto-generated catch block
-        e.printStackTrace();
+
         return;
     }
 
@@ -309,9 +303,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
 
     @Override
     public ComponentRevision getComponentRevision() {
-        ComponentRevisionImpl.Builder builder = new ComponentRevisionImpl.Builder();
-        builder.setState(state);
-        return builder.build();
+        return revisionBuilder.build();
     }
 
     @Override
@@ -343,7 +335,12 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
         return properties;
     }
 
+    public ComponentState getState() {
+        return revisionBuilder.getState();
+    }
+
     private boolean isFailed() {
+        ComponentState state = getState();
         return ComponentState.FAILED == state || ComponentState.FAILED_PERMANENT == state;
     }
 
@@ -494,6 +491,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
         Lock writeLock = readWriteLock.writeLock();
         writeLock.lock();
         try {
+            ComponentState state = getState();
             if (state != ComponentState.ACTIVE) {
                 throw new IllegalStateException(
                         "Only ACTIVE components can be restarted, while the state of the component "
@@ -524,12 +522,12 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
     private void starting() {
         Lock writeLock = readWriteLock.writeLock();
         writeLock.lock();
-        if (state == ComponentState.FAILED_PERMANENT) {
+        if (getState() == ComponentState.FAILED_PERMANENT) {
             return;
         }
         try {
-            state = ComponentState.STARTING;
-            processingThread = Thread.currentThread();
+            revisionBuilder.starting();
+
             try {
                 instance = componentType.newInstance();
             } catch (InstantiationException | IllegalAccessException | RuntimeException e) {
@@ -573,7 +571,6 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
             }
             state = ComponentState.ACTIVE;
         } finally {
-            processingThread = null;
             writeLock.unlock();
         }
     }
@@ -582,8 +579,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
         Lock writeLock = readWriteLock.writeLock();
         writeLock.lock();
         try {
-            state = ComponentState.STOPPING;
-            processingThread = Thread.currentThread();
+            revisionBuilder.stopping();
             if (serviceRegistration != null) {
                 serviceRegistration.unregister();
                 serviceRegistration = null;
@@ -601,9 +597,8 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
                 instance = null;
             }
 
-            state = targetState;
         } finally {
-            processingThread = null;
+            revisionBuilder.stopped(targetState);
             writeLock.unlock();
         }
     }
@@ -626,6 +621,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
         Lock writeLock = readWriteLock.writeLock();
         writeLock.lock();
         try {
+            ComponentState state = getState();
             if (state == ComponentState.FAILED_PERMANENT) {
                 System.out.println("Configuration update has no effect due to permanent failure");
                 return;
@@ -676,6 +672,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
     }
 
     private void validateComponentStateForServiceRegistration() {
+        ComponentState state = getState();
         if (state != ComponentState.ACTIVE && state != ComponentState.STARTING) {
             throw new IllegalStateException(
                     "Service can only be registered in component if the state of the component is ACTIVE or STARTING");
