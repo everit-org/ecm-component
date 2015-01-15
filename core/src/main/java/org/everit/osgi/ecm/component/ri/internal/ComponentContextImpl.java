@@ -245,7 +245,6 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
         return true;
     }
 
-    @Override
     public void fail(final Throwable e, final boolean permanent) {
         revisionBuilder.fail(e, permanent);
 
@@ -341,7 +340,6 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
         return ComponentState.FAILED == state || ComponentState.FAILED_PERMANENT == state;
     }
 
-    @Override
     public boolean isSatisfied() {
         Lock readLock = readWriteLock.readLock();
         readLock.lock();
@@ -483,7 +481,6 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
         return new String[] { componentType.getName() };
     }
 
-    @Override
     public void restart() {
         Lock writeLock = readWriteLock.writeLock();
         writeLock.lock();

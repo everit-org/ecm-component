@@ -33,7 +33,6 @@ import org.everit.osgi.capabilitycollector.CapabilityConsumer;
 import org.everit.osgi.capabilitycollector.RequirementDefinition;
 import org.everit.osgi.capabilitycollector.Suiting;
 import org.everit.osgi.ecm.component.AbstractReferenceHolder;
-import org.everit.osgi.ecm.component.ComponentContext;
 import org.everit.osgi.ecm.component.ri.internal.ComponentContextImpl;
 import org.everit.osgi.ecm.component.ri.internal.ReferenceEventHandler;
 import org.everit.osgi.ecm.metadata.MetadataValidationException;
@@ -178,7 +177,7 @@ public abstract class ReferenceHelper<CAPABILITY, COMPONENT, METADATA extends Re
         return result;
     }
 
-    public ComponentContext<COMPONENT> getComponentContext() {
+    public ComponentContextImpl<COMPONENT> getComponentContext() {
         return componentContext;
     }
 
