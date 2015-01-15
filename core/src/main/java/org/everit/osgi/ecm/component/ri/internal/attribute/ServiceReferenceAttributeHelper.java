@@ -28,8 +28,8 @@ import org.everit.osgi.capabilitycollector.AbstractCapabilityCollector;
 import org.everit.osgi.capabilitycollector.RequirementDefinition;
 import org.everit.osgi.capabilitycollector.ServiceReferenceCollector;
 import org.everit.osgi.capabilitycollector.Suiting;
-import org.everit.osgi.ecm.component.ComponentContext;
 import org.everit.osgi.ecm.component.ServiceHolder;
+import org.everit.osgi.ecm.component.ri.internal.ComponentContextImpl;
 import org.everit.osgi.ecm.component.ri.internal.ReferenceEventHandler;
 import org.everit.osgi.ecm.metadata.ServiceReferenceMetadata;
 import org.osgi.framework.BundleContext;
@@ -48,13 +48,13 @@ public class ServiceReferenceAttributeHelper<S, COMPONENT> extends
 
     private final Map<ServiceReference<S>, Integer> usedServiceReferences = new HashMap<>();
 
-    public ServiceReferenceAttributeHelper(ServiceReferenceMetadata referenceMetadata,
-            ComponentContext<COMPONENT> componentContext, ReferenceEventHandler eventHandler)
+    public ServiceReferenceAttributeHelper(final ServiceReferenceMetadata referenceMetadata,
+            final ComponentContextImpl<COMPONENT> componentContext, final ReferenceEventHandler eventHandler)
             throws IllegalAccessException {
         super(referenceMetadata, componentContext, eventHandler);
     }
 
-    private void addToUsedServiceReferences(ServiceReference<S> serviceReference) {
+    private void addToUsedServiceReferences(final ServiceReference<S> serviceReference) {
         Integer count = usedServiceReferences.get(serviceReference);
         if (count == null) {
             count = 0;
@@ -164,8 +164,9 @@ public class ServiceReferenceAttributeHelper<S, COMPONENT> extends
     }
 
     @Override
-    protected AbstractCapabilityCollector<ServiceReference<S>> createCollector(ReferenceCapabilityConsumer consumer,
-            RequirementDefinition<ServiceReference<S>>[] items) {
+    protected AbstractCapabilityCollector<ServiceReference<S>> createCollector(
+            final ReferenceCapabilityConsumer consumer,
+            final RequirementDefinition<ServiceReference<S>>[] items) {
 
         @SuppressWarnings("unchecked")
         Class<S> serviceInterface = (Class<S>) getReferenceMetadata().getServiceInterface();
@@ -173,7 +174,7 @@ public class ServiceReferenceAttributeHelper<S, COMPONENT> extends
                 serviceInterface, items, consumer, false);
     }
 
-    private void removeFromUsedServiceReferences(ServiceReference<S> serviceReference) {
+    private void removeFromUsedServiceReferences(final ServiceReference<S> serviceReference) {
         Integer count = usedServiceReferences.get(serviceReference);
         if (count == null) {
             return;

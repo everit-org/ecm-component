@@ -38,7 +38,7 @@ public class ActivateMethodHelper<C> {
 
     private Method method = null;
 
-    public ActivateMethodHelper(ComponentMetadata componentMetadata, Class<?> clazz) {
+    public ActivateMethodHelper(final ComponentMetadata componentMetadata, final Class<?> clazz) {
         MethodDescriptor methodDescriptor = componentMetadata.getActivate();
         if (methodDescriptor == null) {
             return;
@@ -81,8 +81,8 @@ public class ActivateMethodHelper<C> {
 
     }
 
-    public void call(ComponentContext<C> componentContext, Object instance) throws IllegalAccessException,
-            InvocationTargetException {
+    public void call(final ComponentContextImpl<C> componentContext, final Object instance)
+            throws IllegalAccessException, InvocationTargetException {
         if (method == null) {
             return;
         }
@@ -119,7 +119,7 @@ public class ActivateMethodHelper<C> {
         }
     }
 
-    private Method locateMethodWithMinTwoParams(Class<?> clazz) {
+    private Method locateMethodWithMinTwoParams(final Class<?> clazz) {
         Class<?> currentClass = clazz;
 
         Method foundMethod = null;
@@ -144,7 +144,7 @@ public class ActivateMethodHelper<C> {
         return foundMethod;
     }
 
-    private boolean validateMethod(Method method) {
+    private boolean validateMethod(final Method method) {
         Class<?>[] parameterTypes = method.getParameterTypes();
         if (parameterTypes.length > 3) {
             return false;

@@ -78,7 +78,7 @@ public class TestComponent {
 
     @Activate
     public void activate(final ComponentContext<TestComponent> componentContext) {
-        Map<String, Object> properties = componentContext.getProperties();
+        Map<String, Object> properties = componentContext.getComponentRevision().getProperties();
         Object booleanArrayAttribute = properties.get("booleanArrayAttribute");
         this.booleanArrayAttribute = (boolean[]) booleanArrayAttribute;
     }

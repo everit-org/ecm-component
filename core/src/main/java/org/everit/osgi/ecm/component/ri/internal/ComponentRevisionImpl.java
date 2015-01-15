@@ -1,7 +1,7 @@
 package org.everit.osgi.ecm.component.ri.internal;
 
-import java.util.Dictionary;
 import java.util.List;
+import java.util.Map;
 
 import org.everit.osgi.ecm.component.resource.ComponentRevision;
 import org.everit.osgi.ecm.component.resource.ComponentState;
@@ -16,7 +16,19 @@ public class ComponentRevisionImpl implements ComponentRevision {
 
         private Thread processingThread = null;
 
+        private Map<String, Object> properties;
+
         private ComponentState state = ComponentState.STOPPED;
+
+        public Builder(final Map<String, Object> properties) {
+            this.properties = properties;
+        }
+
+        public synchronized void active() {
+            this.state = ComponentState.ACTIVE;
+            this.processingThread = null;
+
+        }
 
         public synchronized ComponentRevisionImpl build() {
             return new ComponentRevisionImpl(this);
@@ -31,6 +43,10 @@ public class ComponentRevisionImpl implements ComponentRevision {
             }
         }
 
+        public Map<String, Object> getProperties() {
+            return properties;
+        }
+
         public ComponentState getState() {
             return state;
         }
@@ -42,8 +58,10 @@ public class ComponentRevisionImpl implements ComponentRevision {
         }
 
         public synchronized void stopped(final ComponentState targetState) {
-            this.processingThread = null;
-            if (targetState == ComponentState.STOPPED) {
+            if (targetState != ComponentState.UPDATING_CONFIGURATION) {
+                this.processingThread = null;
+            }
+            if (targetState == ComponentState.STOPPED || targetState == ComponentState.UPDATING_CONFIGURATION) {
                 cause = null;
             }
             state = targetState;
@@ -53,11 +71,18 @@ public class ComponentRevisionImpl implements ComponentRevision {
             this.state = ComponentState.STOPPING;
             this.processingThread = Thread.currentThread();
         }
+
+        public synchronized void updateProperties(final Map<String, Object> properties) {
+            this.properties = properties;
+            this.state = ComponentState.UPDATING_CONFIGURATION;
+        }
     }
 
     private final Throwable cause;
 
     private final Thread processingThread;
+
+    private final Map<String, Object> properties;
 
     private final ComponentState state;
 
@@ -65,6 +90,7 @@ public class ComponentRevisionImpl implements ComponentRevision {
         this.state = builder.state;
         this.processingThread = builder.processingThread;
         this.cause = builder.cause;
+        this.properties = builder.properties;
     }
 
     @Override
@@ -84,9 +110,8 @@ public class ComponentRevisionImpl implements ComponentRevision {
     }
 
     @Override
-    public Dictionary<String, ?> getProperties() {
-        // TODO Auto-generated method stub
-        return null;
+    public Map<String, Object> getProperties() {
+        return properties;
     }
 
     @Override

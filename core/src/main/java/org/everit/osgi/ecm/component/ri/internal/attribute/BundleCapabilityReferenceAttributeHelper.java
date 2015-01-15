@@ -20,7 +20,7 @@ import org.everit.osgi.capabilitycollector.AbstractCapabilityCollector;
 import org.everit.osgi.capabilitycollector.BundleCapabilityCollector;
 import org.everit.osgi.capabilitycollector.RequirementDefinition;
 import org.everit.osgi.capabilitycollector.Suiting;
-import org.everit.osgi.ecm.component.ComponentContext;
+import org.everit.osgi.ecm.component.ri.internal.ComponentContextImpl;
 import org.everit.osgi.ecm.component.ri.internal.ReferenceEventHandler;
 import org.everit.osgi.ecm.metadata.BundleCapabilityReferenceMetadata;
 import org.osgi.framework.wiring.BundleCapability;
@@ -28,8 +28,8 @@ import org.osgi.framework.wiring.BundleCapability;
 public class BundleCapabilityReferenceAttributeHelper<COMPONENT> extends
         ReferenceHelper<BundleCapability, COMPONENT, BundleCapabilityReferenceMetadata> {
 
-    public BundleCapabilityReferenceAttributeHelper(BundleCapabilityReferenceMetadata referenceMetadata,
-            ComponentContext<COMPONENT> componentContext, ReferenceEventHandler eventHandler)
+    public BundleCapabilityReferenceAttributeHelper(final BundleCapabilityReferenceMetadata referenceMetadata,
+            final ComponentContextImpl<COMPONENT> componentContext, final ReferenceEventHandler eventHandler)
             throws IllegalAccessException {
         super(referenceMetadata, componentContext, eventHandler);
     }
@@ -44,8 +44,8 @@ public class BundleCapabilityReferenceAttributeHelper<COMPONENT> extends
     }
 
     @Override
-    protected AbstractCapabilityCollector<BundleCapability> createCollector(ReferenceCapabilityConsumer consumer,
-            RequirementDefinition<BundleCapability>[] requirements) {
+    protected AbstractCapabilityCollector<BundleCapability> createCollector(final ReferenceCapabilityConsumer consumer,
+            final RequirementDefinition<BundleCapability>[] requirements) {
 
         // TODO handle custom bundle states if we want
         return new BundleCapabilityCollector(getComponentContext().getBundleContext(),

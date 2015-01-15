@@ -92,7 +92,7 @@ public class ECMTest {
             testComponentTracker.open();
 
             try {
-                TestComponent testComponent = testComponentTracker.waitForService(10000);
+                TestComponent testComponent = testComponentTracker.waitForService(1000);
                 Assert.assertEquals((byte) 1, testComponent.getByteAttribute());
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);

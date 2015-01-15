@@ -21,6 +21,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Dictionary;
 import java.util.Enumeration;
 import java.util.HashMap;
@@ -80,8 +81,9 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
             try {
                 satisfiedCapabilities++;
 
+                ComponentState state = getState();
                 if (satisfiedCapabilities == referenceHelpers.size()
-                        && getState() == ComponentState.UNSATISFIED) {
+                        && (state == ComponentState.UNSATISFIED || state == ComponentState.UPDATING_CONFIGURATION)) {
                     starting();
                 }
             } finally {
@@ -96,7 +98,8 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
             try {
                 satisfiedCapabilities--;
 
-                if (getState() == ComponentState.ACTIVE) {
+                ComponentState state = getState();
+                if (state == ComponentState.ACTIVE || state == ComponentState.UPDATING_CONFIGURATION) {
                     stopping(ComponentState.UNSATISFIED);
                 }
             } finally {
@@ -118,8 +121,6 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
 
     private final BundleContext bundleContext;
 
-    private Throwable cause;
-
     private final ComponentMetadata componentMetadata;
 
     private Class<C> componentType;
@@ -129,8 +130,6 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
     private C instance;
 
     private boolean opened = false;
-
-    private volatile Map<String, Object> properties;
 
     private final List<PropertyAttributeHelper<C, Object>> propertyAttributeHelpers = new ArrayList<>();
 
@@ -143,7 +142,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
     // TODO create add and remove methods with write lock
     final List<ServiceRegistration<?>> registeredServices = new ArrayList<ServiceRegistration<?>>();
 
-    private final ComponentRevisionImpl.Builder revisionBuilder = new ComponentRevisionImpl.Builder();
+    private final ComponentRevisionImpl.Builder revisionBuilder;
 
     private int satisfiedCapabilities = 0;
 
@@ -160,7 +159,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
 
         this.componentMetadata = componentMetadata;
         this.bundleContext = bundleContext;
-        this.properties = resolveProperties(properties);
+        this.revisionBuilder = new ComponentRevisionImpl.Builder(resolveProperties(properties));
 
         Bundle bundle = bundleContext.getBundle();
         BundleWiring bundleWiring = bundle.adapt(BundleWiring.class);
@@ -250,7 +249,6 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
     public void fail(final Throwable e, final boolean permanent) {
         revisionBuilder.fail(e, permanent);
 
-        cause = e;
         unregisterServices();
         instance = null;
 
@@ -330,9 +328,8 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
         return instance;
     }
 
-    @Override
     public Map<String, Object> getProperties() {
-        return properties;
+        return revisionBuilder.getProperties();
     }
 
     public ComponentState getState() {
@@ -362,12 +359,12 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
                 throw new IllegalStateException("Cannot open a component context that is already opened");
             }
             opened = true;
+            revisionBuilder.updateProperties(revisionBuilder.getProperties());
             if (referenceHelpers.size() == 0) {
                 starting();
             } else {
-                state = ComponentState.UNSATISFIED;
                 for (Iterator<ReferenceHelper<?, C, ?>> iterator = referenceHelpers.iterator(); iterator.hasNext()
-                        && state == ComponentState.UNSATISFIED;) {
+                        && !isFailed();) {
                     ReferenceHelper<?, C, ?> referenceAttributeHelper = iterator.next();
                     referenceAttributeHelper.open();
                 }
@@ -457,7 +454,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
             }
         }
 
-        return result;
+        return Collections.unmodifiableMap(result);
     }
 
     private String[] resolveServiceInterfaces() {
@@ -506,9 +503,11 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
 
     private boolean shouldRestartForNewConfiguraiton(final Map<String, Object> newProperties) {
         AttributeMetadata<?>[] componentAttributes = componentMetadata.getAttributes();
+        Map<String, Object> properties = getProperties();
         for (AttributeMetadata<?> attributeMetadata : componentAttributes) {
             if (!attributeMetadata.isDynamic()) {
                 String attributeId = attributeMetadata.getAttributeId();
+
                 Object oldValue = properties.get(attributeId);
                 Object newValue = newProperties.get(attributeId);
                 if (!equals(oldValue, newValue)) {
@@ -543,6 +542,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
                 return;
             }
 
+            Map<String, Object> properties = getProperties();
             try {
                 for (PropertyAttributeHelper<C, Object> helper : propertyAttributeHelpers) {
                     PropertyAttributeMetadata<Object> attributeMetadata = helper.getAttributeMetadata();
@@ -569,7 +569,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
                 serviceRegistration = registerService(serviceInterfaces, instance, new Hashtable<String, Object>(
                         properties));
             }
-            state = ComponentState.ACTIVE;
+            revisionBuilder.active();
         } finally {
             writeLock.unlock();
         }
@@ -621,20 +621,20 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
         Lock writeLock = readWriteLock.writeLock();
         writeLock.lock();
         try {
-            ComponentState state = getState();
+            final ComponentState state = getState();
             if (state == ComponentState.FAILED_PERMANENT) {
                 System.out.println("Configuration update has no effect due to permanent failure");
                 return;
             }
             Map<String, Object> newProperties = resolveProperties(properties);
             if (state == ComponentState.UNSATISFIED) {
-                state = ComponentState.STOPPED;
+                revisionBuilder.stopped(ComponentState.UPDATING_CONFIGURATION);
             } else if (state == ComponentState.ACTIVE && shouldRestartForNewConfiguraiton(newProperties)) {
-                stopping(ComponentState.STOPPED);
+                stopping(ComponentState.UPDATING_CONFIGURATION);
             }
 
-            Map<String, Object> oldProperties = this.properties;
-            this.properties = newProperties;
+            Map<String, Object> oldProperties = getProperties();
+            revisionBuilder.updateProperties(newProperties);
             for (ReferenceHelper<?, C, ?> referenceHelper : referenceHelpers) {
                 String attributeId = referenceHelper.getReferenceMetadata().getAttributeId();
 
@@ -649,7 +649,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
                 }
             }
 
-            if (state == ComponentState.ACTIVE) {
+            if (getState() == ComponentState.ACTIVE) {
                 for (PropertyAttributeHelper<C, Object> helper : propertyAttributeHelpers) {
                     String attributeId = helper.getAttributeMetadata().getAttributeId();
 
@@ -663,7 +663,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
                         }
                     }
                 }
-            } else if (isSatisfied()) {
+            } else if (getState() == ComponentState.UPDATING_CONFIGURATION && isSatisfied()) {
                 starting();
             }
         } finally {

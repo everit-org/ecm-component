@@ -34,6 +34,7 @@ import org.everit.osgi.capabilitycollector.RequirementDefinition;
 import org.everit.osgi.capabilitycollector.Suiting;
 import org.everit.osgi.ecm.component.AbstractReferenceHolder;
 import org.everit.osgi.ecm.component.ComponentContext;
+import org.everit.osgi.ecm.component.ri.internal.ComponentContextImpl;
 import org.everit.osgi.ecm.component.ri.internal.ReferenceEventHandler;
 import org.everit.osgi.ecm.metadata.MetadataValidationException;
 import org.everit.osgi.ecm.metadata.ReferenceConfigurationType;
@@ -49,7 +50,7 @@ public abstract class ReferenceHelper<CAPABILITY, COMPONENT, METADATA extends Re
     protected class ReferenceCapabilityConsumer implements CapabilityConsumer<CAPABILITY> {
 
         @Override
-        public void accept(Suiting<CAPABILITY>[] pSuitings, Boolean pSatisfied) {
+        public void accept(final Suiting<CAPABILITY>[] pSuitings, final Boolean pSatisfied) {
             suitings = pSuitings;
             satisfied = pSatisfied;
             if (pSatisfied) {
@@ -76,7 +77,7 @@ public abstract class ReferenceHelper<CAPABILITY, COMPONENT, METADATA extends Re
 
     private final AbstractCapabilityCollector<CAPABILITY> collector;
 
-    private final ComponentContext<COMPONENT> componentContext;
+    private final ComponentContextImpl<COMPONENT> componentContext;
 
     private final ReferenceEventHandler eventHandler;
 
@@ -94,8 +95,8 @@ public abstract class ReferenceHelper<CAPABILITY, COMPONENT, METADATA extends Re
 
     private volatile Suiting<CAPABILITY>[] suitings;
 
-    public ReferenceHelper(METADATA referenceMetadata, ComponentContext<COMPONENT> componentContext,
-            ReferenceEventHandler eventHandler) throws IllegalAccessException {
+    public ReferenceHelper(final METADATA referenceMetadata, final ComponentContextImpl<COMPONENT> componentContext,
+            final ReferenceEventHandler eventHandler) throws IllegalAccessException {
         this.referenceMetadata = referenceMetadata;
         this.componentContext = componentContext;
         this.eventHandler = eventHandler;
@@ -171,7 +172,7 @@ public abstract class ReferenceHelper<CAPABILITY, COMPONENT, METADATA extends Re
     protected abstract AbstractCapabilityCollector<CAPABILITY> createCollector(ReferenceCapabilityConsumer consumer,
             RequirementDefinition<CAPABILITY>[] items);
 
-    private RequirementDefinition<CAPABILITY>[] createRequirementDefinitionArray(int n) {
+    private RequirementDefinition<CAPABILITY>[] createRequirementDefinitionArray(final int n) {
         @SuppressWarnings("unchecked")
         RequirementDefinition<CAPABILITY>[] result = new RequirementDefinition[n];
         return result;
