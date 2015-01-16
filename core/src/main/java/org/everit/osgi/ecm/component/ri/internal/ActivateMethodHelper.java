@@ -24,11 +24,14 @@ import java.util.Set;
 
 import org.everit.osgi.ecm.component.ComponentContext;
 import org.everit.osgi.ecm.metadata.ComponentMetadata;
+import org.everit.osgi.ecm.metadata.MetadataValidationException;
 import org.everit.osgi.ecm.util.method.MethodDescriptor;
 import org.everit.osgi.ecm.util.method.MethodUtil;
 import org.osgi.framework.BundleContext;
 
 public class ActivateMethodHelper<C> {
+
+    private final ComponentContextImpl<C> componentContext;
 
     private int indexOfBundleContextParameter = -1;
 
@@ -38,7 +41,9 @@ public class ActivateMethodHelper<C> {
 
     private Method method = null;
 
-    public ActivateMethodHelper(final ComponentMetadata componentMetadata, final Class<?> clazz) {
+    public ActivateMethodHelper(final ComponentContextImpl<C> componentContext, final Class<?> clazz) {
+        this.componentContext = componentContext;
+        ComponentMetadata componentMetadata = componentContext.getComponentMetadata();
         MethodDescriptor methodDescriptor = componentMetadata.getActivate();
         if (methodDescriptor == null) {
             return;
@@ -72,8 +77,12 @@ public class ActivateMethodHelper<C> {
             }
         }
         if (locatedMethod == null) {
-            throw new IllegalMetadataException("Could not find activate method for component '"
+            Exception e = new MetadataValidationException("Could not find activate method for component '"
                     + componentMetadata.getComponentId() + " based on descriptor: " + methodDescriptor.toString());
+
+            componentContext.fail(e, true);
+
+            return;
         }
 
         method = locatedMethod;
@@ -81,7 +90,7 @@ public class ActivateMethodHelper<C> {
 
     }
 
-    public void call(final ComponentContextImpl<C> componentContext, final Object instance)
+    public void call(final Object instance)
             throws IllegalAccessException, InvocationTargetException {
         if (method == null) {
             return;
@@ -113,8 +122,11 @@ public class ActivateMethodHelper<C> {
                 indexOfComponentContextParameter = i;
             } else if (parameterType.equals(BundleContext.class)) {
                 indexOfBundleContextParameter = i;
-            } else {
+            } else if (Map.class.isAssignableFrom(parameterType)) {
                 indexOfPropertiesParameter = i;
+            } else {
+                componentContext.fail(new MetadataValidationException("Unrecognized type in Activate method: "
+                        + parameterType), true);
             }
         }
     }

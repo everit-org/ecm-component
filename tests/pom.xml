@@ -63,7 +63,7 @@
         <configuration>
           <sourceDistPath>${source.dist.folder}</sourceDistPath>
           <jacoco>
-            <includes>org.everit.osgi.ecm.component.*</includes>
+            <includes>org.everit.osgi.ecm.*</includes>
             <output>$${ if (System.getenv("EOSGI_STOP_AFTER_TESTS").equals("true")) "file"; else "tcpserver"; }</output>
           </jacoco>
           <environments>

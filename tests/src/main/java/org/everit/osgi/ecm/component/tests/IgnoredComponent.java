@@ -19,9 +19,31 @@ package org.everit.osgi.ecm.component.tests;
 import org.everit.osgi.ecm.annotation.Component;
 import org.everit.osgi.ecm.annotation.ConfigurationPolicy;
 import org.everit.osgi.ecm.annotation.Service;
+import org.everit.osgi.ecm.annotation.attribute.StringAttribute;
 
 @Component(configurationPolicy = ConfigurationPolicy.IGNORE)
 @Service
 public class IgnoredComponent {
 
+    @StringAttribute(defaultValue = "Default")
+    private String propertyWithDefaultValue;
+
+    @StringAttribute(optional = true)
+    private String propertyWithoutDefaultValue;
+
+    public String getPropertyWithDefaultValue() {
+        return propertyWithDefaultValue;
+    }
+
+    public String getPropertyWithoutDefaultValue() {
+        return propertyWithoutDefaultValue;
+    }
+
+    public void setPropertyWithDefaultValue(final String propertyWithDefaultValue) {
+        this.propertyWithDefaultValue = propertyWithDefaultValue;
+    }
+
+    public void setPropertyWithoutDefaultValue(final String propertyWithoutDefaultValue) {
+        this.propertyWithoutDefaultValue = propertyWithoutDefaultValue;
+    }
 }

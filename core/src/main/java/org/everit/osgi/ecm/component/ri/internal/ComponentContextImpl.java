@@ -161,6 +161,10 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
         this.bundleContext = bundleContext;
         this.revisionBuilder = new ComponentRevisionImpl.Builder(resolveProperties(properties));
 
+        if (isFailed()) {
+            return;
+        }
+
         Bundle bundle = bundleContext.getBundle();
         BundleWiring bundleWiring = bundle.adapt(BundleWiring.class);
         ClassLoader classLoader = bundleWiring.getClassLoader();
@@ -173,7 +177,11 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
             return;
         }
 
-        activateMethodHelper = new ActivateMethodHelper<C>(componentMetadata, componentType);
+        activateMethodHelper = new ActivateMethodHelper<C>(this, componentType);
+
+        if (isFailed()) {
+            return;
+        }
 
         AttributeMetadata<?>[] attributes = componentMetadata.getAttributes();
 
@@ -357,6 +365,9 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
                 throw new IllegalStateException("Cannot open a component context that is already opened");
             }
             opened = true;
+            if (getState() != ComponentState.STOPPED) {
+                return;
+            }
             revisionBuilder.updateProperties(revisionBuilder.getProperties());
             if (referenceHelpers.size() == 0) {
                 starting();
@@ -438,8 +449,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
         AttributeMetadata<?>[] attributes = componentMetadata.getAttributes();
         for (AttributeMetadata<?> attributeMetadata : attributes) {
             String attributeId = attributeMetadata.getAttributeId();
-            Object attributeValue = result.get(attributeId);
-            if (attributeValue == null) {
+            if (!result.containsKey(attributeId)) {
                 Object defaultValue = attributeMetadata.getDefaultValue();
                 if (attributeMetadata.isMultiple() && defaultValue != null) {
                     result.put(attributeId, defaultValue);
@@ -550,7 +560,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
                         return;
                     }
                 }
-                activateMethodHelper.call(this, instance);
+                activateMethodHelper.call(instance);
             } catch (RuntimeException e) {
                 fail(e, false);
                 return;

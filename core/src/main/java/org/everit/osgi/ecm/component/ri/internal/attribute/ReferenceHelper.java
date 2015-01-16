@@ -23,8 +23,6 @@ import java.lang.reflect.Method;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import javax.naming.ConfigurationException;
-
 import org.apache.felix.utils.manifest.Attribute;
 import org.apache.felix.utils.manifest.Clause;
 import org.apache.felix.utils.manifest.Parser;
@@ -33,6 +31,7 @@ import org.everit.osgi.capabilitycollector.CapabilityConsumer;
 import org.everit.osgi.capabilitycollector.RequirementDefinition;
 import org.everit.osgi.capabilitycollector.Suiting;
 import org.everit.osgi.ecm.component.AbstractReferenceHolder;
+import org.everit.osgi.ecm.component.ConfigurationException;
 import org.everit.osgi.ecm.component.ri.internal.ComponentContextImpl;
 import org.everit.osgi.ecm.component.ri.internal.ReferenceEventHandler;
 import org.everit.osgi.ecm.metadata.MetadataValidationException;
@@ -177,6 +176,19 @@ public abstract class ReferenceHelper<CAPABILITY, COMPONENT, METADATA extends Re
         return result;
     }
 
+    private void failConfiguration(final String message, final Exception e) {
+        String attributeId = referenceMetadata.getAttributeId();
+        Map<String, Object> properties = componentContext.getProperties();
+        String servicePid = String.valueOf(properties.get(Constants.SERVICE_PID));
+        String finalMessage = "Error in configuration of attribute '" + attributeId
+                + "' in '" + servicePid + "': " + message;
+        if (e != null) {
+            componentContext.fail(new ConfigurationException(finalMessage, e), false);
+        } else {
+            componentContext.fail(new ConfigurationException(finalMessage), false);
+        }
+    }
+
     public ComponentContextImpl<COMPONENT> getComponentContext() {
         return componentContext;
     }
@@ -225,8 +237,8 @@ public abstract class ReferenceHelper<CAPABILITY, COMPONENT, METADATA extends Re
         } else if (requirementAttribute instanceof String[]) {
             requirementStringArray = (String[]) requirementAttribute;
         } else {
-            componentContext.fail(new ConfigurationException("Invalid type for attribute " + attributeId
-                    + " in configuration defined by service pid  " + properties.get(Constants.SERVICE_PID)), false);
+            failConfiguration("Only String and String[] is accepted: "
+                    + requirementAttribute.getClass().getCanonicalName(), null);
             return null;
         }
 
@@ -250,9 +262,8 @@ public abstract class ReferenceHelper<CAPABILITY, COMPONENT, METADATA extends Re
 
             if (configurationType == ReferenceConfigurationType.CLAUSE) {
                 if (requirementString == null) {
-                    componentContext.fail(new ConfigurationException("Entry of " + referenceMetadata.getAttributeId()
-                            + " of configuration " + componentContext.getProperties().get(Constants.SERVICE_PID)
-                            + " is not a valid clause: " + requirementString), false);
+                    failConfiguration("Value must be defined", null);
+                    return null;
                 }
                 try {
                     Clause[] clauses = Parser.parseClauses(new String[] { requirementString });
@@ -265,9 +276,7 @@ public abstract class ReferenceHelper<CAPABILITY, COMPONENT, METADATA extends Re
                         filterString = clauses[0].getDirective("filter");
                     }
                 } catch (IllegalArgumentException e) {
-                    componentContext.fail(new RuntimeException("Entry of " + referenceMetadata.getAttributeId()
-                            + " of configuration " + componentContext.getProperties().get(Constants.SERVICE_PID)
-                            + " is not a valid clause: " + requirementString, e), false);
+                    failConfiguration("Invalid clause: " + requirementString, e);
                     return null;
                 }
             }
@@ -277,9 +286,7 @@ public abstract class ReferenceHelper<CAPABILITY, COMPONENT, METADATA extends Re
                 try {
                     filter = FrameworkUtil.createFilter(filterString);
                 } catch (InvalidSyntaxException e) {
-                    componentContext.fail(new RuntimeException("Entry of " + referenceMetadata.getAttributeId()
-                            + " of configuration " + componentContext.getProperties().get(Constants.SERVICE_PID)
-                            + " contains invalid filter: " + requirementString, e), false);
+                    failConfiguration("Invalid OSGi filter expression: " + requirementString, e);
                     return null;
                 }
             }
@@ -292,10 +299,14 @@ public abstract class ReferenceHelper<CAPABILITY, COMPONENT, METADATA extends Re
     public void updateConfiguration() {
         RequirementDefinition<CAPABILITY>[] newRequirements = resolveRequirements();
         if (newRequirements == null) {
-            // This is a failure
+            // Means that resolving failed so we must return
             return;
         }
 
-        collector.updateRequirements(newRequirements);
+        try {
+            collector.updateRequirements(newRequirements);
+        } catch (RuntimeException e) {
+            failConfiguration("Cannot update requirements on tracker: " + newRequirements, e);
+        }
     }
 }

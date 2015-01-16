@@ -30,7 +30,12 @@ import org.everit.osgi.ecm.annotation.attribute.BooleanAttribute;
 import org.everit.osgi.ecm.annotation.attribute.BooleanAttributes;
 import org.everit.osgi.ecm.annotation.attribute.ByteAttribute;
 import org.everit.osgi.ecm.annotation.attribute.CharacterAttribute;
+import org.everit.osgi.ecm.annotation.attribute.DoubleAttribute;
+import org.everit.osgi.ecm.annotation.attribute.FloatAttribute;
 import org.everit.osgi.ecm.annotation.attribute.IntegerAttribute;
+import org.everit.osgi.ecm.annotation.attribute.LongAttribute;
+import org.everit.osgi.ecm.annotation.attribute.PasswordAttribute;
+import org.everit.osgi.ecm.annotation.attribute.ShortAttribute;
 import org.everit.osgi.ecm.annotation.attribute.StringAttribute;
 import org.everit.osgi.ecm.component.ComponentContext;
 import org.everit.osgi.ecm.component.ServiceHolder;
@@ -57,11 +62,22 @@ public class TestComponent {
     private byte byteAttribute;
 
     @CharacterAttribute
-    private char charArrayAttribute;
+    private char[] charArrayAttribute;
 
     @CharacterAttribute
     private char charAttribute;
 
+    @DoubleAttribute
+    private double[] doubleArrayAttribute;
+
+    @DoubleAttribute
+    private double doubleAttribute;
+
+    @FloatAttribute
+    private float[] floatArrayAttribute;
+
+    @FloatAttribute
+    private float floatAttribute;
     /**
      * Annotation is defined on setter.
      */
@@ -69,6 +85,24 @@ public class TestComponent {
 
     @IntegerAttribute(defaultValue = 1)
     private int intAttribute;
+
+    @LongAttribute
+    private long[] longArrayAttribute;
+
+    @LongAttribute
+    private long longAttribute;
+
+    @PasswordAttribute
+    private String[] passwordArrayAttribute;
+
+    @PasswordAttribute
+    private String passwordAttribute;
+
+    @ShortAttribute
+    private short[] shortArrayAttribute;
+
+    @ShortAttribute
+    private short shortAttribute;
 
     @StringAttribute
     private String[] stringArrayAttribute;
@@ -108,12 +142,60 @@ public class TestComponent {
         return byteAttribute;
     }
 
+    public char[] getCharArrayAttribute() {
+        return charArrayAttribute;
+    }
+
+    public char getCharAttribute() {
+        return charAttribute;
+    }
+
+    public double[] getDoubleArrayAttribute() {
+        return doubleArrayAttribute;
+    }
+
+    public double getDoubleAttribute() {
+        return doubleAttribute;
+    }
+
+    public float[] getFloatArrayAttribute() {
+        return floatArrayAttribute;
+    }
+
+    public float getFloatAttribute() {
+        return floatAttribute;
+    }
+
     public int[] getIntArrayAttribute() {
         return intArrayAttribute;
     }
 
     public int getIntAttribute() {
         return intAttribute;
+    }
+
+    public long[] getLongArrayAttribute() {
+        return longArrayAttribute;
+    }
+
+    public long getLongAttribute() {
+        return longAttribute;
+    }
+
+    public String[] getPasswordArrayAttribute() {
+        return passwordArrayAttribute;
+    }
+
+    public String getPasswordAttribute() {
+        return passwordAttribute;
+    }
+
+    public short[] getShortArrayAttribute() {
+        return shortArrayAttribute;
+    }
+
+    public short getShortAttribute() {
+        return shortAttribute;
     }
 
     public String[] getStringArrayAttribute() {
@@ -124,12 +206,44 @@ public class TestComponent {
         return stringAttribute;
     }
 
+    public void setBooleanAttribute(final Boolean booleanAttribute) {
+        this.booleanAttribute = booleanAttribute;
+    }
+
+    public void setByteArrayAttribute(final byte[] byteArrayAttribute) {
+        this.byteArrayAttribute = byteArrayAttribute;
+    }
+
     public void setByteAttribute(final byte byteAttribute) {
         this.byteAttribute = byteAttribute;
     }
 
+    public void setCharArrayAttribute(final char[] charArrayAttribute) {
+        this.charArrayAttribute = charArrayAttribute;
+    }
+
+    public void setCharAttribute(final char charAttribute) {
+        this.charAttribute = charAttribute;
+    }
+
     @ServiceRef(configurationType = ReferenceConfigurationType.CLAUSE, optional = true)
     public void setClauseReference(final ServiceHolder<ManagedService> clauseReference) {
+    }
+
+    public void setDoubleArrayAttribute(final double[] doubleArrayAttribute) {
+        this.doubleArrayAttribute = doubleArrayAttribute;
+    }
+
+    public void setDoubleAttribute(final double doubleAttribute) {
+        this.doubleAttribute = doubleAttribute;
+    }
+
+    public void setFloatArrayAttribute(final float[] floatArrayAttribute) {
+        this.floatArrayAttribute = floatArrayAttribute;
+    }
+
+    public void setFloatAttribute(final float floatAttribute) {
+        this.floatAttribute = floatAttribute;
     }
 
     @IntegerAttribute
@@ -139,6 +253,30 @@ public class TestComponent {
 
     public void setIntAttribute(final int intAttribute) {
         this.intAttribute = intAttribute;
+    }
+
+    public void setLongArrayAttribute(final long[] longArrayAttribute) {
+        this.longArrayAttribute = longArrayAttribute;
+    }
+
+    public void setLongAttribute(final long longAttribute) {
+        this.longAttribute = longAttribute;
+    }
+
+    public void setPasswordArrayAttribute(final String[] passwordArrayAttribute) {
+        this.passwordArrayAttribute = passwordArrayAttribute;
+    }
+
+    public void setPasswordAttribute(final String passwordAttribute) {
+        this.passwordAttribute = passwordAttribute;
+    }
+
+    public void setShortArrayAttribute(final short[] shortArrayAttribute) {
+        this.shortArrayAttribute = shortArrayAttribute;
+    }
+
+    public void setShortAttribute(final short shortAttribute) {
+        this.shortAttribute = shortAttribute;
     }
 
     @ServiceRef(dynamic = true)
