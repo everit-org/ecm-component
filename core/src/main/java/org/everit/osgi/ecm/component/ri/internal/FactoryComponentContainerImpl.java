@@ -77,6 +77,7 @@ public class FactoryComponentContainerImpl<C> extends AbstractComponentContainer
             properties.put(MetaTypeProvider.METATYPE_FACTORY_PID, componentMetadata.getConfigurationPid());
             serviceInterfaces.add(MetaTypeProvider.class.getName());
         }
+        addCommonServiceProperties(properties);
 
         properties.put(Constants.SERVICE_PID, componentMetadata.getConfigurationPid());
         serviceInterfaces.add(ManagedServiceFactory.class.getName());

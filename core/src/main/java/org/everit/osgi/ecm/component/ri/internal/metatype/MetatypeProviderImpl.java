@@ -35,9 +35,9 @@ public class MetatypeProviderImpl<C> implements MetaTypeProvider {
 
     private final ComponentMetadata componentMetadata;
 
-    private String[] locales;
+    private final String[] locales;
 
-    public MetatypeProviderImpl(ComponentMetadata componentMetadata, BundleContext bundleContext) {
+    public MetatypeProviderImpl(final ComponentMetadata componentMetadata, final BundleContext bundleContext) {
         this.componentMetadata = componentMetadata;
         this.bundleContext = bundleContext;
 
@@ -73,7 +73,7 @@ public class MetatypeProviderImpl<C> implements MetaTypeProvider {
         Set<String> result = new HashSet<String>();
         int propertiesExtensionLength = propertiesPattern.length() - 1;
         for (String resource : resources) {
-            String locale = resource.substring(localizationBaseLength - 1, resource.length()
+            String locale = resource.substring(localizationBaseLength, resource.length()
                     - propertiesExtensionLength);
             if (locale.length() == 0) {
                 result.add("");
@@ -94,7 +94,7 @@ public class MetatypeProviderImpl<C> implements MetaTypeProvider {
     }
 
     @Override
-    public ObjectClassDefinition getObjectClassDefinition(String id, String localeString) {
+    public ObjectClassDefinition getObjectClassDefinition(final String id, final String localeString) {
         BundleWiring bundleWiring = bundleContext.getBundle().adapt(BundleWiring.class);
         ClassLoader classLoader = bundleWiring.getClassLoader();
         Localizer localizer;

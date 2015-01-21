@@ -16,6 +16,9 @@
  */
 package org.everit.osgi.ecm.component.ri.internal;
 
+import java.util.Dictionary;
+
+import org.everit.osgi.ecm.component.ECMComponentConstants;
 import org.everit.osgi.ecm.component.ri.ComponentContainerInstance;
 import org.everit.osgi.ecm.component.ri.internal.metatype.MetatypeProviderImpl;
 import org.everit.osgi.ecm.metadata.ComponentMetadata;
@@ -25,25 +28,22 @@ import org.osgi.service.metatype.ObjectClassDefinition;
 
 public abstract class AbstractComponentContainer<C> implements MetaTypeProvider, ComponentContainerInstance<C> {
 
+    private final BundleContext bundleContext;
+
+    private final ComponentMetadata componentMetadata;
+
     private final MetatypeProviderImpl<C> metatypeProvider;
 
-    private BundleContext bundleContext;
-
-    private ComponentMetadata componentMetadata;
-
-    public AbstractComponentContainer(ComponentMetadata componentMetadata, BundleContext bundleContext) {
+    public AbstractComponentContainer(final ComponentMetadata componentMetadata, final BundleContext bundleContext) {
         this.componentMetadata = componentMetadata;
         this.bundleContext = bundleContext;
-        if (componentMetadata.isMetatype()) {
-            this.metatypeProvider = new MetatypeProviderImpl<C>(componentMetadata, bundleContext);
-        } else {
-            this.metatypeProvider = null;
-        }
+        this.metatypeProvider = new MetatypeProviderImpl<C>(componentMetadata, bundleContext);
     }
 
-    @Override
-    public ComponentMetadata getComponentMetadata() {
-        return componentMetadata;
+    protected void addCommonServiceProperties(final Dictionary<String, Object> properties) {
+        properties.put(ECMComponentConstants.SERVICE_PROP_COMPONENT_CLASS, componentMetadata.getType());
+        properties.put(ECMComponentConstants.SERVICE_PROP_COMPONENT_NAME, this.metatypeProvider
+                .getObjectClassDefinition(null, null).getName());
     }
 
     @Override
@@ -52,18 +52,17 @@ public abstract class AbstractComponentContainer<C> implements MetaTypeProvider,
     }
 
     @Override
+    public ComponentMetadata getComponentMetadata() {
+        return componentMetadata;
+    }
+
+    @Override
     public String[] getLocales() {
-        if (metatypeProvider == null) {
-            return null;
-        }
         return metatypeProvider.getLocales();
     }
 
     @Override
-    public ObjectClassDefinition getObjectClassDefinition(String id, String locale) {
-        if (metatypeProvider == null) {
-            return null;
-        }
+    public ObjectClassDefinition getObjectClassDefinition(final String id, final String locale) {
         return metatypeProvider.getObjectClassDefinition(id, locale);
     }
 

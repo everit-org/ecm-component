@@ -22,7 +22,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
-import org.everit.osgi.ecm.component.ECMComponentConstants;
 import org.everit.osgi.ecm.component.resource.ComponentContainer;
 import org.everit.osgi.ecm.component.resource.ComponentRevision;
 import org.everit.osgi.ecm.metadata.ComponentMetadata;
@@ -76,7 +75,7 @@ public class ComponentContainerImpl<C> extends AbstractComponentContainer<C> imp
 
         ComponentMetadata componentMetadata = getComponentMetadata();
 
-        properties.put(ECMComponentConstants.SERVICE_PROP_COMPONENT_CLASS, componentMetadata.getType());
+        addCommonServiceProperties(properties);
 
         if (!ConfigurationPolicy.IGNORE.equals(componentMetadata.getConfigurationPolicy())) {
             if (componentMetadata.isMetatype()) {
