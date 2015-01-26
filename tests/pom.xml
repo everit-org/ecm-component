@@ -36,7 +36,7 @@
 
   <properties>
     <source.dist.folder>${basedir}/src/dist/</source.dist.folder>
-    <eosgi.testnum>0</eosgi.testnum>
+    <eosgi.testnum>3</eosgi.testnum>
     <maven.compiler.source>1.7</maven.compiler.source>
     <maven.compiler.target>1.7</maven.compiler.target>
   </properties>
@@ -114,7 +114,7 @@
     <dependency>
       <groupId>org.osgi</groupId>
       <artifactId>org.osgi.core</artifactId>
-      <version>4.3.1</version>
+      <version>5.0.0</version>
       <scope>provided</scope>
     </dependency>
 
