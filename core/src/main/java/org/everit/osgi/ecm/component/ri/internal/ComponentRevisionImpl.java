@@ -52,6 +52,7 @@ public class ComponentRevisionImpl implements ComponentRevision {
 
         public synchronized void fail(final Throwable cause, final boolean permanent) {
             this.cause = cause;
+            this.processingThread = null;
             if (permanent) {
                 this.state = ComponentState.FAILED_PERMANENT;
             } else {

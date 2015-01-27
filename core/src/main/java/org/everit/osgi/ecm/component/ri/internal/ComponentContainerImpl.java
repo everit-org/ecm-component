@@ -45,15 +45,15 @@ public class ComponentContainerImpl<C> extends AbstractComponentContainer<C> imp
 
     @Override
     public void close() {
-        if (serviceRegistration != null) {
-            serviceRegistration.unregister();
-            serviceRegistration = null;
-        }
         ComponentContextImpl<C> componentImpl = componentAtomicReference.get();
         if (componentImpl != null
                 && componentImpl.getComponentMetadata().getConfigurationPolicy() == ConfigurationPolicy.IGNORE) {
             componentImpl.close();
             componentAtomicReference.set(null);
+        }
+        if (serviceRegistration != null) {
+            serviceRegistration.unregister();
+            serviceRegistration = null;
         }
     }
 
