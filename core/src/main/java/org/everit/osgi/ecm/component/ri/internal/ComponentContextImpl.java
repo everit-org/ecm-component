@@ -433,11 +433,11 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
         return method;
     }
 
-    private Map<String, Object> resolveProperties(final Dictionary<String, Object> props) {
+    private Map<String, Object> resolveProperties(final Dictionary<String, ?> props) {
         Map<String, Object> result = new HashMap<String, Object>();
 
         if (props != null) {
-            Enumeration<Object> elements = props.elements();
+            Enumeration<?> elements = props.elements();
             Enumeration<String> keys = props.keys();
             while (keys.hasMoreElements()) {
                 String key = keys.nextElement();
@@ -624,7 +624,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
         }
     }
 
-    public void updateConfiguration(final Dictionary<String, Object> properties) {
+    public void updateConfiguration(final Dictionary<String, ?> properties) {
         Lock writeLock = readWriteLock.writeLock();
         writeLock.lock();
         try {

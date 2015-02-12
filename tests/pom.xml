@@ -71,6 +71,7 @@
               <id>ecmFelix</id>
               <framework>felix</framework>
               <systemProperties>
+                <mvel2.disable.jit>true</mvel2.disable.jit>
                 <felix.cm.dir>${wrapper_home}/../conf/configadmin</felix.cm.dir>
               </systemProperties>
               <vmOptions>

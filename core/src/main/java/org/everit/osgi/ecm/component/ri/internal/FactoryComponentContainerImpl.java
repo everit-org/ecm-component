@@ -16,10 +16,15 @@
  */
 package org.everit.osgi.ecm.component.ri.internal;
 
+import java.util.Collection;
 import java.util.Dictionary;
 import java.util.Hashtable;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.everit.osgi.ecm.component.resource.ComponentContainer;
 import org.everit.osgi.ecm.component.resource.ComponentRevision;
@@ -33,6 +38,8 @@ import org.osgi.service.metatype.MetaTypeProvider;
 
 public class FactoryComponentContainerImpl<C> extends AbstractComponentContainer<C> implements ManagedServiceFactory {
 
+    private final Map<String, ComponentContextImpl<?>> components = new ConcurrentHashMap<String, ComponentContextImpl<?>>();
+
     private ServiceRegistration<?> serviceRegistration;
 
     public FactoryComponentContainerImpl(final ComponentMetadata componentMetadata, final BundleContext bundleContext) {
@@ -41,6 +48,16 @@ public class FactoryComponentContainerImpl<C> extends AbstractComponentContainer
 
     @Override
     public void close() {
+        Iterator<Entry<String, ComponentContextImpl<?>>> iterator = components.entrySet().iterator();
+        while (iterator.hasNext()) {
+            Map.Entry<java.lang.String, ComponentContextImpl<?>> entry = iterator
+                    .next();
+
+            ComponentContextImpl<?> componentContextImpl = entry.getValue();
+            componentContextImpl.close();
+            iterator.remove();
+        }
+
         if (serviceRegistration != null) {
             serviceRegistration.unregister();
             serviceRegistration = null;
@@ -49,15 +66,26 @@ public class FactoryComponentContainerImpl<C> extends AbstractComponentContainer
 
     @Override
     public void deleted(final String pid) {
-        System.out.println("ManagedServiceFactory deleted called with pid: " + pid);
-        // TODO Auto-generated method stub
-
+        ComponentContextImpl<?> component = components.get(pid);
+        if (component != null) {
+            component.close();
+            components.remove(pid);
+        }
     }
 
     @Override
     public ComponentRevision[] getComponentRevisions() {
-        // TODO Auto-generated method stub
-        return new ComponentRevision[] {};
+        Collection<ComponentContextImpl<?>> values = components.values();
+
+        ComponentRevision[] result = new ComponentRevision[values.size()];
+
+        int i = 0;
+        for (ComponentContextImpl<?> componentContextImpl : values) {
+            result[i] = componentContextImpl.getComponentRevision();
+            i++;
+        }
+
+        return result;
     }
 
     @Override
@@ -89,9 +117,15 @@ public class FactoryComponentContainerImpl<C> extends AbstractComponentContainer
 
     @Override
     public void updated(final String pid, final Dictionary<String, ?> properties) throws ConfigurationException {
-        System.out
-                .println("ManagedServiceFactory updated called: pid=" + pid + ", properties=" + properties.toString());
-        // TODO Auto-generated method stub
-
+        ComponentContextImpl<?> componentContextImpl = components.get(pid);
+        if (componentContextImpl != null) {
+            componentContextImpl.updateConfiguration(properties);
+        } else {
+            ComponentContextImpl<?> newComponent = new ComponentContextImpl<C>(getComponentMetadata(),
+                    getBundleContext());
+            newComponent.updateConfiguration(properties);
+            components.put(pid, newComponent);
+            newComponent.open();
+        }
     }
 }

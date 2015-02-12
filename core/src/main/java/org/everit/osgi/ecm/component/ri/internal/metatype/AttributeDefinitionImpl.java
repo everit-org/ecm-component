@@ -38,7 +38,7 @@ public class AttributeDefinitionImpl<V_ARRAY> implements AttributeDefinition, At
 
     private final String[] optionValues;
 
-    public AttributeDefinitionImpl(AttributeMetadata<V_ARRAY> attributeMetadata, Localizer localizer) {
+    public AttributeDefinitionImpl(final AttributeMetadata<V_ARRAY> attributeMetadata, final Localizer localizer) {
         this.attributeMetadata = attributeMetadata;
         this.localizer = localizer;
 
@@ -46,19 +46,19 @@ public class AttributeDefinitionImpl<V_ARRAY> implements AttributeDefinition, At
 
         if (valueType.equals(Boolean.class)) {
             attributeType = AttributeDefinition.BOOLEAN;
-        } else if (valueType.equals(Byte.class)) {
+        } else if (valueType.equals(byte.class)) {
             attributeType = AttributeDefinition.BYTE;
-        } else if (valueType.equals(Character.class)) {
+        } else if (valueType.equals(char.class)) {
             attributeType = AttributeDefinition.CHARACTER;
-        } else if (valueType.equals(Double.class)) {
+        } else if (valueType.equals(double.class)) {
             attributeType = AttributeDefinition.DOUBLE;
-        } else if (valueType.equals(Float.class)) {
+        } else if (valueType.equals(float.class)) {
             attributeType = AttributeDefinition.FLOAT;
-        } else if (valueType.equals(Integer.class)) {
+        } else if (valueType.equals(int.class)) {
             attributeType = AttributeDefinition.INTEGER;
-        } else if (valueType.equals(Long.class)) {
+        } else if (valueType.equals(long.class)) {
             attributeType = AttributeDefinition.LONG;
-        } else if (valueType.equals(Short.class)) {
+        } else if (valueType.equals(short.class)) {
             attributeType = AttributeDefinition.SHORT;
         } else if (attributeMetadata.getClass().equals(PasswordAttributeMetadata.class)) {
             attributeType = AttributeDefinition.PASSWORD;
@@ -177,7 +177,7 @@ public class AttributeDefinitionImpl<V_ARRAY> implements AttributeDefinition, At
     }
 
     @Override
-    public String validate(String value) {
+    public String validate(final String value) {
         // TODO Auto-generated method stub
         return null;
     }
