@@ -16,11 +16,16 @@
  */
 package org.everit.osgi.ecm.component.ri.internal;
 
+import org.everit.osgi.ecm.component.ri.internal.attribute.ReferenceHelper;
+import org.everit.osgi.ecm.metadata.ReferenceMetadata;
+
 public interface ReferenceEventHandler {
 
-    void changedNonDynamic();
+    void updateWithoutSatisfactionChange(ReferenceHelper<?, ?, ? extends ReferenceMetadata> referenceHelper);
 
-    void satisfied();
+    void updateNonDynamic(ReferenceHelper<?, ?, ? extends ReferenceMetadata> referenceHelper);
 
-    void unsatisfied();
+    void satisfied(ReferenceHelper<?, ?, ? extends ReferenceMetadata> referenceHelper);
+
+    void unsatisfied(ReferenceHelper<?, ?, ? extends ReferenceMetadata> referenceHelper);
 }

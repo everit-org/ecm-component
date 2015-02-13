@@ -47,6 +47,12 @@ public abstract class ReferenceHelper<CAPABILITY, COMPONENT, METADATA extends Re
 
     protected class ReferenceCapabilityConsumer implements CapabilityConsumer<CAPABILITY> {
 
+        private final ReferenceHelper<CAPABILITY, COMPONENT, METADATA> owner;
+
+        public ReferenceCapabilityConsumer(final ReferenceHelper<CAPABILITY, COMPONENT, METADATA> owner) {
+            this.owner = owner;
+        }
+
         @Override
         public void accept(final Suiting<CAPABILITY>[] pSuitings, final Boolean pSatisfied) {
             suitings = pSuitings;
@@ -54,18 +60,21 @@ public abstract class ReferenceHelper<CAPABILITY, COMPONENT, METADATA extends Re
             if (pSatisfied) {
                 if (!satisfiedNotificationSent) {
                     satisfiedNotificationSent = true;
-                    eventHandler.satisfied();
+                    eventHandler.satisfied(owner);
                 } else {
                     if (referenceMetadata.isDynamic()) {
+                        eventHandler.updateWithoutSatisfactionChange(owner);
                         bind();
                     } else {
-                        eventHandler.changedNonDynamic();
+                        eventHandler.updateNonDynamic(owner);
                     }
                 }
             } else {
                 if (satisfiedNotificationSent) {
                     satisfiedNotificationSent = false;
-                    eventHandler.unsatisfied();
+                    eventHandler.unsatisfied(owner);
+                } else {
+                    eventHandler.updateWithoutSatisfactionChange(owner);
                 }
             }
         }
@@ -101,7 +110,7 @@ public abstract class ReferenceHelper<CAPABILITY, COMPONENT, METADATA extends Re
         RequirementDefinition<CAPABILITY>[] requirements = resolveRequirements();
         // TODO handle null as in that case syntax error in filter
 
-        this.collector = createCollector(new ReferenceCapabilityConsumer(), requirements);
+        this.collector = createCollector(new ReferenceCapabilityConsumer(this), requirements);
 
         MethodDescriptor setterMethodDescriptor = referenceMetadata.getSetter();
         if (setterMethodDescriptor == null) {

@@ -42,11 +42,13 @@ import org.everit.osgi.ecm.component.ri.internal.attribute.BundleCapabilityRefer
 import org.everit.osgi.ecm.component.ri.internal.attribute.PropertyAttributeHelper;
 import org.everit.osgi.ecm.component.ri.internal.attribute.ReferenceHelper;
 import org.everit.osgi.ecm.component.ri.internal.attribute.ServiceReferenceAttributeHelper;
+import org.everit.osgi.ecm.component.ri.internal.resource.ComponentRevisionImpl;
 import org.everit.osgi.ecm.metadata.AttributeMetadata;
 import org.everit.osgi.ecm.metadata.BundleCapabilityReferenceMetadata;
 import org.everit.osgi.ecm.metadata.ComponentMetadata;
 import org.everit.osgi.ecm.metadata.MetadataValidationException;
 import org.everit.osgi.ecm.metadata.PropertyAttributeMetadata;
+import org.everit.osgi.ecm.metadata.ReferenceMetadata;
 import org.everit.osgi.ecm.metadata.ServiceMetadata;
 import org.everit.osgi.ecm.metadata.ServiceReferenceMetadata;
 import org.everit.osgi.ecm.util.method.MethodDescriptor;
@@ -61,29 +63,20 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
     private class ReferenceEventHandlerImpl implements ReferenceEventHandler {
 
         @Override
-        public void changedNonDynamic() {
-            Lock writeLock = readWriteLock.writeLock();
-            writeLock.lock();
-            try {
-                if (getState() == ComponentState.ACTIVE) {
-                    restart();
-                }
-            } finally {
-                writeLock.unlock();
-            }
-
-        }
-
-        @Override
-        public synchronized void satisfied() {
+        public synchronized void satisfied(final ReferenceHelper<?, ?, ? extends ReferenceMetadata> referenceHelper) {
             Lock writeLock = readWriteLock.writeLock();
             writeLock.lock();
             try {
                 satisfiedCapabilities++;
 
+                // TODO do it together with state change atomically.
+                revisionBuilder.updateSuitingsForAttribute(referenceHelper.getReferenceMetadata(),
+                        referenceHelper.getSuitings());
+
                 ComponentState state = getState();
                 if (satisfiedCapabilities == referenceHelpers.size()
                         && (state == ComponentState.UNSATISFIED || state == ComponentState.UPDATING_CONFIGURATION)) {
+
                     starting();
                 }
             } finally {
@@ -92,11 +85,15 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
         }
 
         @Override
-        public synchronized void unsatisfied() {
+        public synchronized void unsatisfied(final ReferenceHelper<?, ?, ? extends ReferenceMetadata> referenceHelper) {
             Lock writeLock = readWriteLock.writeLock();
             writeLock.lock();
             try {
                 satisfiedCapabilities--;
+
+                // TODO do it together with state change atomically.
+                revisionBuilder.updateSuitingsForAttribute(referenceHelper.getReferenceMetadata(),
+                        referenceHelper.getSuitings());
 
                 ComponentState state = getState();
                 if (state == ComponentState.ACTIVE || state == ComponentState.UPDATING_CONFIGURATION) {
@@ -105,6 +102,29 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
             } finally {
                 writeLock.unlock();
             }
+        }
+
+        @Override
+        public void updateNonDynamic(final ReferenceHelper<?, ?, ? extends ReferenceMetadata> referenceHelper) {
+            Lock writeLock = readWriteLock.writeLock();
+            writeLock.lock();
+            try {
+                if (getState() == ComponentState.ACTIVE) {
+                    restart();
+                    // TODO do it together with state change atomically.
+                    revisionBuilder.updateSuitingsForAttribute(referenceHelper.getReferenceMetadata(),
+                            referenceHelper.getSuitings());
+                }
+            } finally {
+                writeLock.unlock();
+            }
+        }
+
+        @Override
+        public void updateWithoutSatisfactionChange(
+                final ReferenceHelper<?, ?, ? extends ReferenceMetadata> referenceHelper) {
+            revisionBuilder.updateSuitingsForAttribute(referenceHelper.getReferenceMetadata(),
+                    referenceHelper.getSuitings());
         }
 
     }
@@ -670,8 +690,12 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
                         }
                     }
                 }
-            } else if (getState() == ComponentState.UPDATING_CONFIGURATION && isSatisfied()) {
-                starting();
+            } else if (getState() == ComponentState.UPDATING_CONFIGURATION) {
+                if (isSatisfied()) {
+                    starting();
+                } else {
+                    revisionBuilder.unsatisfied();
+                }
             }
         } finally {
             writeLock.unlock();
