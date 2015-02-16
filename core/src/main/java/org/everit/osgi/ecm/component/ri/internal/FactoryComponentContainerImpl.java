@@ -117,13 +117,15 @@ public class FactoryComponentContainerImpl<C> extends AbstractComponentContainer
 
     @Override
     public void updated(final String pid, final Dictionary<String, ?> properties) throws ConfigurationException {
+        @SuppressWarnings("unchecked")
+        Dictionary<String, Object> props = (Dictionary<String, Object>) properties;
+
         ComponentContextImpl<?> componentContextImpl = components.get(pid);
         if (componentContextImpl != null) {
             componentContextImpl.updateConfiguration(properties);
         } else {
             ComponentContextImpl<?> newComponent = new ComponentContextImpl<C>(getComponentMetadata(),
-                    getBundleContext());
-            newComponent.updateConfiguration(properties);
+                    getBundleContext(), props);
             components.put(pid, newComponent);
             newComponent.open();
         }

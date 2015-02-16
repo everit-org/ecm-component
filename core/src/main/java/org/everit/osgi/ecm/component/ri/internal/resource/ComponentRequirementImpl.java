@@ -34,6 +34,8 @@ public class ComponentRequirementImpl<C extends Capability> implements Component
 
     private final ComponentRevision resource;
 
+    private final boolean satisfied;
+
     private final C[] wiredCapabilities;
 
     public ComponentRequirementImpl(final String requirementId, final String namespace,
@@ -45,6 +47,7 @@ public class ComponentRequirementImpl<C extends Capability> implements Component
         this.directives = directives;
         this.attributes = attributes;
         this.wiredCapabilities = wiredCapabilities;
+        this.satisfied = wiredCapabilities.length == 1;
     }
 
     @Override
@@ -75,5 +78,10 @@ public class ComponentRequirementImpl<C extends Capability> implements Component
     @Override
     public C[] getWiredCapabilities() {
         return wiredCapabilities;
+    }
+
+    @Override
+    public boolean isSatisfied() {
+        return satisfied;
     }
 }

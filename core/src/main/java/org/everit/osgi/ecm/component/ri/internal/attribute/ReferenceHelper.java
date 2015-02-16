@@ -107,10 +107,6 @@ public abstract class ReferenceHelper<CAPABILITY, COMPONENT, METADATA extends Re
         this.referenceMetadata = referenceMetadata;
         this.componentContext = componentContext;
         this.eventHandler = eventHandler;
-        RequirementDefinition<CAPABILITY>[] requirements = resolveRequirements();
-        // TODO handle null as in that case syntax error in filter
-
-        this.collector = createCollector(new ReferenceCapabilityConsumer(this), requirements);
 
         MethodDescriptor setterMethodDescriptor = referenceMetadata.getSetter();
         if (setterMethodDescriptor == null) {
@@ -152,11 +148,29 @@ public abstract class ReferenceHelper<CAPABILITY, COMPONENT, METADATA extends Re
                 }
             }
         }
+
+        RequirementDefinition<CAPABILITY>[] requirements = resolveRequirements();
+
+        if (requirements == null) {
+            @SuppressWarnings("unchecked")
+            RequirementDefinition<CAPABILITY>[] lRequirements = new RequirementDefinition[0];
+            requirements = lRequirements;
+        }
+
+        this.collector = createCollector(new ReferenceCapabilityConsumer(this), requirements);
     }
 
     public void bind() {
         try {
             if (setterMethodHandle != null) {
+                if (!array && suitings.length > 1) {
+                    getComponentContext().fail(new ConfigurationException(
+                            getReferenceMetadata().getAttributeId()
+                                    + ": Multiple references assigned to the reference while the setter"
+                                    + " method is not an array"),
+                            false);
+                }
+
                 COMPONENT instance = componentContext.getInstance();
                 if (previousInstance == null || !previousInstance.equals(instance)) {
                     previousInstance = instance;

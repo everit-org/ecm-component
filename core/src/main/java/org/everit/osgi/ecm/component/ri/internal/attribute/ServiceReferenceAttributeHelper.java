@@ -34,7 +34,6 @@ import org.everit.osgi.ecm.component.ri.internal.ReferenceEventHandler;
 import org.everit.osgi.ecm.metadata.ServiceReferenceMetadata;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.ServiceReference;
-import org.osgi.service.cm.ConfigurationException;
 
 public class ServiceReferenceAttributeHelper<S, COMPONENT> extends
         ReferenceHelper<ServiceReference<S>, COMPONENT, ServiceReferenceMetadata> {
@@ -67,9 +66,6 @@ public class ServiceReferenceAttributeHelper<S, COMPONENT> extends
     @Override
     protected synchronized void bindInternal() {
         MethodHandle setterMethod = getSetterMethodHandle();
-        if (setterMethod == null) {
-            return;
-        }
 
         Map<String, SuitingWithService<S>> newSuitingMapping = new TreeMap<>();
         Suiting<ServiceReference<S>>[] tmpSuitings = getSuitings();
@@ -118,22 +114,16 @@ public class ServiceReferenceAttributeHelper<S, COMPONENT> extends
                 getComponentContext().fail(e, false);
             }
         } else {
-            if (parameter.length > 1) {
-                getComponentContext()
-                        .fail(new ConfigurationException(getReferenceMetadata().getAttributeId(),
-                                "Multiple references assigned to the reference while the setter method is not an array"),
-                                false);
-            } else {
-                try {
-                    if (parameter.length == 0) {
-                        setterMethod.invoke(getComponentContext().getInstance(), null);
-                    } else {
-                        setterMethod.invoke(getComponentContext().getInstance(), parameter[0]);
-                    }
-                } catch (Throwable e) {
-                    getComponentContext().fail(e, false);
+            try {
+                if (parameter.length == 0) {
+                    setterMethod.invoke(getComponentContext().getInstance(), null);
+                } else {
+                    setterMethod.invoke(getComponentContext().getInstance(), parameter[0]);
                 }
+            } catch (Throwable e) {
+                getComponentContext().fail(e, false);
             }
+
         }
 
         Collection<SuitingWithService<S>> previousSuitings = previousSuitingsByRequirementId.values();

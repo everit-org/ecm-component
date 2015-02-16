@@ -71,6 +71,45 @@ public class ECMTest {
     }
 
     @Test
+    @TestDuringDevelopment
+    public void testBundleCapabilityTestComponent() {
+        Configuration configuration = null;
+        try {
+
+            configuration = configAdmin.getConfiguration(BundleCapabilityTestComponent.class.getName(), null);
+
+            Hashtable<String, Object> properties = new Hashtable<String, Object>();
+
+            properties.put("bcArrayReference.target", new String[] {});
+            properties.put("bcHolderReference.target", new String[] {});
+            properties.put("bcReference.target", new String[] {});
+
+            configuration.update(properties);
+
+            waitForService(BundleCapabilityTestComponent.class);
+
+            properties.put("bcArrayReference.target", new String[] { "(testAttribute=1)" });
+            configuration.update(properties);
+            Thread.sleep(1000);
+            waitForService(BundleCapabilityTestComponent.class);
+
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        } finally {
+            try {
+                if (configuration != null) {
+                    configuration.delete();
+                }
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+    }
+
+    @Test
     public void testIgnoredComponent() {
         IgnoredComponent ignoredComponent = waitForService(IgnoredComponent.class);
 

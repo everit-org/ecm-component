@@ -165,7 +165,7 @@ public class ComponentRevisionImpl implements ComponentRevision {
         while (iterator.hasNext()) {
             Map.Entry<ReferenceMetadata, Suiting<?>[]> entry = iterator.next();
             ReferenceMetadata referenceMetadata = entry.getKey();
-            String referenceId = referenceMetadata.getAttributeId();
+            String referenceId = referenceMetadata.getReferenceId();
             String namespace = "osgi.service";
             if (referenceMetadata instanceof BundleCapabilityReferenceMetadata) {
                 namespace = ((BundleCapabilityReferenceMetadata) referenceMetadata).getNamespace();
@@ -203,10 +203,16 @@ public class ComponentRevisionImpl implements ComponentRevision {
                     directives.put("filter", requirement.getFilter().toString());
                 }
 
+                Capability[] wiredCapabilities;
+                if (capability == null) {
+                    wiredCapabilities = new Capability[0];
+                } else {
+                    wiredCapabilities = new Capability[] { capability };
+                }
                 requirementsOfNS.add(new ComponentRequirementImpl<Capability>(fullRequirementId, namespace, this,
                         Collections.unmodifiableMap(directives),
                         Collections.unmodifiableMap(new HashMap<String, Object>(requirement.getAttributes())),
-                        new Capability[] { capability }));
+                        wiredCapabilities));
             }
         }
 

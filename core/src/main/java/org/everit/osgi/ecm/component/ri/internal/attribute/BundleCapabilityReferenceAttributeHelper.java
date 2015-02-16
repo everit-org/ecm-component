@@ -16,10 +16,14 @@
  */
 package org.everit.osgi.ecm.component.ri.internal.attribute;
 
+import java.lang.invoke.MethodHandle;
+
 import org.everit.osgi.capabilitycollector.AbstractCapabilityCollector;
 import org.everit.osgi.capabilitycollector.BundleCapabilityCollector;
 import org.everit.osgi.capabilitycollector.RequirementDefinition;
 import org.everit.osgi.capabilitycollector.Suiting;
+import org.everit.osgi.ecm.component.BundleCapabilityHolder;
+import org.everit.osgi.ecm.component.ConfigurationException;
 import org.everit.osgi.ecm.component.ri.internal.ComponentContextImpl;
 import org.everit.osgi.ecm.component.ri.internal.ReferenceEventHandler;
 import org.everit.osgi.ecm.metadata.BundleCapabilityReferenceMetadata;
@@ -36,10 +40,27 @@ public class BundleCapabilityReferenceAttributeHelper<COMPONENT> extends
 
     @Override
     protected void bindInternal() {
-        Suiting<BundleCapability>[] lSuitings = getSuitings();
-        for (Suiting<BundleCapability> suiting : lSuitings) {
-            BundleCapability capability = suiting.getCapability();
+        MethodHandle setterMethod = getSetterMethodHandle();
+        if (setterMethod == null) {
+            return;
+        }
 
+        Object[] parameterArray = resolveParameterArray();
+
+        try {
+            if (isArray()) {
+                setterMethod.invoke(getComponentContext().getInstance(), (Object) parameterArray);
+            } else {
+                if (parameterArray.length == 0) {
+                    setterMethod.invoke(getComponentContext().getInstance(), null);
+                } else {
+                    setterMethod.invoke(getComponentContext().getInstance(), parameterArray[0]);
+                }
+            }
+        } catch (Throwable e) {
+            getComponentContext().fail(
+                    new ConfigurationException("Error during updating reference: "
+                            + getReferenceMetadata().getReferenceId(), e), false);
         }
     }
 
@@ -47,10 +68,36 @@ public class BundleCapabilityReferenceAttributeHelper<COMPONENT> extends
     protected AbstractCapabilityCollector<BundleCapability> createCollector(final ReferenceCapabilityConsumer consumer,
             final RequirementDefinition<BundleCapability>[] requirements) {
 
-        // TODO handle custom bundle states if we want
         return new BundleCapabilityCollector(getComponentContext().getBundleContext(),
                 getReferenceMetadata().getNamespace(), requirements, consumer,
                 getReferenceMetadata().getStateMask());
+    }
+
+    private Object[] resolveParameterArray() {
+        Suiting<BundleCapability>[] lSuitings = getSuitings();
+
+        boolean lHolder = isHolder();
+
+        Object[] parameterArray;
+        if (lHolder) {
+            parameterArray = new BundleCapabilityHolder[lSuitings.length];
+        } else {
+            parameterArray = new BundleCapability[lSuitings.length];
+        }
+
+        for (int i = 0; i < lSuitings.length; i++) {
+            Suiting<BundleCapability> suiting = lSuitings[i];
+            if (lHolder) {
+                RequirementDefinition<BundleCapability> requirement = suiting.getRequirement();
+                BundleCapabilityHolder holder = new BundleCapabilityHolder(requirement.getRequirementId(),
+                        suiting.getCapability(), requirement.getAttributes());
+                parameterArray[i] = holder;
+            } else {
+                parameterArray[i] = suiting.getCapability();
+            }
+        }
+
+        return parameterArray;
     }
 
 }

@@ -55,15 +55,12 @@ public class PropertyAttributeHelper<C, V_ARRAY> {
 
     private final MethodHandle methodHandle;
 
-    private final boolean primitive;
-
     public PropertyAttributeHelper(final ComponentContextImpl<C> componentContext,
             final PropertyAttributeMetadata<V_ARRAY> attributeMetadata) {
 
         this.componentContext = componentContext;
         this.attributeMetadata = attributeMetadata;
         this.methodHandle = resolveMethodHandle();
-        this.primitive = resolvePrimitive();
 
     }
 
@@ -136,20 +133,6 @@ public class PropertyAttributeHelper<C, V_ARRAY> {
         }
 
         return valueObject;
-    }
-
-    private boolean resolvePrimitive() {
-        if (methodHandle == null) {
-            return false;
-        } else {
-            Class<?>[] parameterArray = methodHandle.type().parameterArray();
-            Class<?> parameterType = parameterArray[1];
-            if (parameterType.isPrimitive()
-                    || (parameterType.isArray() && parameterType.getComponentType().isPrimitive())) {
-                return true;
-            }
-        }
-        return false;
     }
 
     private Method resolveSetter() {

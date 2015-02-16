@@ -392,10 +392,12 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
             if (referenceHelpers.size() == 0) {
                 starting();
             } else {
-                for (Iterator<ReferenceHelper<?, C, ?>> iterator = referenceHelpers.iterator(); iterator.hasNext()
-                        && !isFailed();) {
-                    ReferenceHelper<?, C, ?> referenceAttributeHelper = iterator.next();
+                for (ReferenceHelper<?, C, ?> referenceAttributeHelper : referenceHelpers) {
                     referenceAttributeHelper.open();
+                }
+                // TODO multi-threading issue might come here
+                if (!isSatisfied()) {
+                    revisionBuilder.unsatisfied();
                 }
             }
         } finally {

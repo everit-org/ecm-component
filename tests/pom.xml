@@ -53,6 +53,7 @@
             <Bundle-SymbolicName>${project.artifactId}</Bundle-SymbolicName>
             <Bundle-Activator>org.everit.osgi.ecm.component.tests.ECMTestActivator</Bundle-Activator>
             <EOSGi-TestNum>${eosgi.testnum}</EOSGi-TestNum>
+            <Provide-Capability>testNS;testAttribute=1</Provide-Capability>
           </instructions>
         </configuration>
       </plugin>

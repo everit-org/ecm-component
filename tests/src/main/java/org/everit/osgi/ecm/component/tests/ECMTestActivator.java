@@ -25,41 +25,47 @@ import org.osgi.framework.BundleContext;
 
 public class ECMTestActivator implements BundleActivator {
 
+    private ComponentContainerInstance<Object> bundleCapabilityComponent;
     private ComponentContainerInstance<ECMTest> ecmTestComponent;
     private ComponentContainerInstance<FactoryComponent> factoryComponent;
     private ComponentContainerInstance<IgnoredComponent> ignoredComponent;
     private ComponentContainerInstance<Object> testComponent;
 
     @Override
-    public void start(BundleContext context) throws Exception {
+    public void start(final BundleContext context) throws Exception {
         ComponentContainerFactory factory = new ComponentContainerFactory(context);
 
-        ComponentMetadata factoryComponentMetadata = MetadataBuilder.buildComponentMetadata(FactoryComponent.class);
+        // ComponentMetadata factoryComponentMetadata = MetadataBuilder.buildComponentMetadata(FactoryComponent.class);
+        //
+        // factoryComponent = factory.createComponentContainer(factoryComponentMetadata);
+        // factoryComponent.open();
+        //
+        // ComponentMetadata ignoredComponentMetadata = MetadataBuilder.buildComponentMetadata(IgnoredComponent.class);
+        //
+        // ignoredComponent = factory.createComponentContainer(ignoredComponentMetadata);
+        // ignoredComponent.open();
+        //
+        // ComponentMetadata testComponentMetadata = MetadataBuilder.buildComponentMetadata(TestComponent.class);
+        // testComponent = factory.createComponentContainer(testComponentMetadata);
+        // testComponent.open();
 
-        factoryComponent = factory.createComponentContainer(factoryComponentMetadata);
-        factoryComponent.open();
+        ComponentMetadata bundleCapabilityTest = MetadataBuilder
+                .buildComponentMetadata(BundleCapabilityTestComponent.class);
+        bundleCapabilityComponent = factory.createComponentContainer(bundleCapabilityTest);
+        bundleCapabilityComponent.open();
 
-        ComponentMetadata ignoredComponentMetadata = MetadataBuilder.buildComponentMetadata(IgnoredComponent.class);
-
-        ignoredComponent = factory.createComponentContainer(ignoredComponentMetadata);
-        ignoredComponent.open();
-
-        ComponentMetadata testComponentMetadata = MetadataBuilder.buildComponentMetadata(TestComponent.class);
-        testComponent = factory.createComponentContainer(testComponentMetadata);
-        testComponent.open();
-
-        ComponentMetadata ecmTest = MetadataBuilder.buildComponentMetadata(ECMTest.class);
-        ecmTestComponent = factory.createComponentContainer(ecmTest);
-        ecmTestComponent.open();
-
+        // ComponentMetadata ecmTest = MetadataBuilder.buildComponentMetadata(ECMTest.class);
+        // ecmTestComponent = factory.createComponentContainer(ecmTest);
+        // ecmTestComponent.open();
     }
 
     @Override
-    public void stop(BundleContext context) throws Exception {
-        ecmTestComponent.close();
-        testComponent.close();
-        factoryComponent.close();
-        ignoredComponent.close();
+    public void stop(final BundleContext context) throws Exception {
+        // ecmTestComponent.close();
+        // testComponent.close();
+        // factoryComponent.close();
+        // ignoredComponent.close();
+        bundleCapabilityComponent.close();
     }
 
 }
