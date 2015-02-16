@@ -67,14 +67,14 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
             Lock writeLock = readWriteLock.writeLock();
             writeLock.lock();
             try {
-                satisfiedCapabilities++;
+                satisfiedReferences++;
 
                 // TODO do it together with state change atomically.
                 revisionBuilder.updateSuitingsForAttribute(referenceHelper.getReferenceMetadata(),
                         referenceHelper.getSuitings());
 
                 ComponentState state = getState();
-                if (satisfiedCapabilities == referenceHelpers.size()
+                if (satisfiedReferences == referenceHelpers.size()
                         && (state == ComponentState.UNSATISFIED || state == ComponentState.UPDATING_CONFIGURATION)) {
 
                     starting();
@@ -89,7 +89,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
             Lock writeLock = readWriteLock.writeLock();
             writeLock.lock();
             try {
-                satisfiedCapabilities--;
+                satisfiedReferences--;
 
                 // TODO do it together with state change atomically.
                 revisionBuilder.updateSuitingsForAttribute(referenceHelper.getReferenceMetadata(),
@@ -164,7 +164,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
 
     private final ComponentRevisionImpl.Builder revisionBuilder;
 
-    private int satisfiedCapabilities = 0;
+    private int satisfiedReferences = 0;
 
     private String[] serviceInterfaces;
 
@@ -371,7 +371,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
     public boolean isSatisfied() {
         Lock readLock = readWriteLock.readLock();
         readLock.lock();
-        boolean result = satisfiedCapabilities == referenceHelpers.size();
+        boolean result = satisfiedReferences == referenceHelpers.size();
         readLock.unlock();
         return result;
     }
