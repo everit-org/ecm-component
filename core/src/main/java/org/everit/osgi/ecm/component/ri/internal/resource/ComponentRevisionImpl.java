@@ -22,6 +22,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -33,9 +34,12 @@ import org.everit.osgi.capabilitycollector.Suiting;
 import org.everit.osgi.ecm.component.resource.ComponentRequirement;
 import org.everit.osgi.ecm.component.resource.ComponentRevision;
 import org.everit.osgi.ecm.component.resource.ComponentState;
+import org.everit.osgi.ecm.component.resource.ServiceCapability;
 import org.everit.osgi.ecm.metadata.BundleCapabilityReferenceMetadata;
 import org.everit.osgi.ecm.metadata.ReferenceConfigurationType;
 import org.everit.osgi.ecm.metadata.ReferenceMetadata;
+import org.everit.osgi.ecm.metadata.ServiceReferenceMetadata;
+import org.osgi.framework.Constants;
 import org.osgi.framework.ServiceReference;
 import org.osgi.framework.wiring.BundleCapability;
 import org.osgi.resource.Capability;
@@ -156,6 +160,10 @@ public class ComponentRevisionImpl implements ComponentRevision {
     }
 
     private Map<String, List<Requirement>> evaluateRequirements(final Builder builder) {
+        if (this.state != ComponentState.ACTIVE && this.state != ComponentState.UNSATISFIED) {
+            return Collections.emptyMap();
+        }
+
         Set<Entry<ReferenceMetadata, Suiting<?>[]>> suitingEntries = builder.suitingsByAttributeIds.entrySet();
         Iterator<Entry<ReferenceMetadata, Suiting<?>[]>> iterator = suitingEntries.iterator();
 
@@ -183,7 +191,7 @@ public class ComponentRevisionImpl implements ComponentRevision {
                 if (referenceMetadata.isMultiple()
                         || referenceMetadata.getReferenceConfigurationType() == ReferenceConfigurationType.CLAUSE) {
 
-                    fullRequirementId += "\\" + suiting.getRequirement().getRequirementId();
+                    fullRequirementId += "[" + suiting.getRequirement().getRequirementId() + "]";
                 }
                 Object capabilityObject = suiting.getCapability();
                 Capability capability = null;
@@ -196,10 +204,14 @@ public class ComponentRevisionImpl implements ComponentRevision {
                     }
                 }
 
-                Map<String, String> directives = new HashMap<String, String>();
+                Map<String, String> directives = new LinkedHashMap<String, String>();
                 RequirementDefinition<?> requirement = suiting.getRequirement();
-                if (requirement.getFilter() != null) {
+                if (referenceMetadata instanceof ServiceReferenceMetadata) {
+                    Class<?> serviceInterface = ((ServiceReferenceMetadata) referenceMetadata).getServiceInterface();
+                    directives.put(Constants.OBJECTCLASS, serviceInterface.getName());
+                }
 
+                if (requirement.getFilter() != null) {
                     directives.put("filter", requirement.getFilter().toString());
                 }
 
@@ -209,10 +221,22 @@ public class ComponentRevisionImpl implements ComponentRevision {
                 } else {
                     wiredCapabilities = new Capability[] { capability };
                 }
+                Class<? extends Capability> capabilityType;
+                if (referenceMetadata instanceof ServiceReferenceMetadata) {
+                    capabilityType = ServiceCapability.class;
+                } else {
+                    capabilityType = BundleCapability.class;
+                }
+
+                @SuppressWarnings("unchecked")
+                Class<Capability> simpleCapabilityType = (Class<Capability>) capabilityType;
+
+                HashMap<String, Object> attributes = new LinkedHashMap<String, Object>(requirement.getAttributes());
+
                 requirementsOfNS.add(new ComponentRequirementImpl<Capability>(fullRequirementId, namespace, this,
                         Collections.unmodifiableMap(directives),
-                        Collections.unmodifiableMap(new HashMap<String, Object>(requirement.getAttributes())),
-                        wiredCapabilities));
+                        Collections.unmodifiableMap(attributes),
+                        wiredCapabilities, simpleCapabilityType));
             }
         }
 

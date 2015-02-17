@@ -236,6 +236,10 @@ public abstract class ReferenceHelper<CAPABILITY, COMPONENT, METADATA extends Re
         return holder;
     }
 
+    public boolean isOpened() {
+        return collector.isOpened();
+    }
+
     public boolean isSatisfied() {
         return satisfied;
     }

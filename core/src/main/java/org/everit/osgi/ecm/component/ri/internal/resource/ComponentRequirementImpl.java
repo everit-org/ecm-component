@@ -26,6 +26,8 @@ public class ComponentRequirementImpl<C extends Capability> implements Component
 
     private final Map<String, Object> attributes;
 
+    private final Class<C> capabilityType;
+
     private final Map<String, String> directives;
 
     private final String namespace;
@@ -40,19 +42,25 @@ public class ComponentRequirementImpl<C extends Capability> implements Component
 
     public ComponentRequirementImpl(final String requirementId, final String namespace,
             final ComponentRevision resource, final Map<String, String> directives,
-            final Map<String, Object> attributes, final C[] wiredCapabilities) {
+            final Map<String, Object> attributes, final C[] wiredCapabilities, final Class<C> capabilityType) {
         this.requirementId = requirementId;
         this.namespace = namespace;
         this.resource = resource;
         this.directives = directives;
         this.attributes = attributes;
         this.wiredCapabilities = wiredCapabilities;
+        this.capabilityType = capabilityType;
         this.satisfied = wiredCapabilities.length == 1;
     }
 
     @Override
     public Map<String, Object> getAttributes() {
         return attributes;
+    }
+
+    @Override
+    public Class<C> getAcceptedCapabilityType() {
+        return capabilityType;
     }
 
     @Override

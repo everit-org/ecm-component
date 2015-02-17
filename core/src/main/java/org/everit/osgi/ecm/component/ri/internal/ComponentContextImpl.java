@@ -111,10 +111,10 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
             try {
                 if (getState() == ComponentState.ACTIVE) {
                     restart();
-                    // TODO do it together with state change atomically.
-                    revisionBuilder.updateSuitingsForAttribute(referenceHelper.getReferenceMetadata(),
-                            referenceHelper.getSuitings());
                 }
+                // TODO do it together with state change atomically.
+                revisionBuilder.updateSuitingsForAttribute(referenceHelper.getReferenceMetadata(),
+                        referenceHelper.getSuitings());
             } finally {
                 writeLock.unlock();
             }
@@ -224,12 +224,18 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
             if (getState() == ComponentState.ACTIVE) {
                 stopping(ComponentState.STOPPED);
             } else {
-                for (ReferenceHelper<?, C, ?> referenceHelper : referenceHelpers) {
-                    referenceHelper.close();
-                }
+                closeReferenceHelpers();
             }
         } finally {
             writeLock.unlock();
+        }
+    }
+
+    private void closeReferenceHelpers() {
+        for (ReferenceHelper<?, C, ?> referenceHelper : referenceHelpers) {
+            if (referenceHelper.isOpened()) {
+                referenceHelper.close();
+            }
         }
     }
 
@@ -277,6 +283,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
         revisionBuilder.fail(e, permanent);
 
         unregisterServices();
+        closeReferenceHelpers();
         instance = null;
 
         return;
@@ -672,6 +679,12 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
 
                 if (!equals(oldValue, newValue)) {
                     referenceHelper.updateConfiguration();
+                    if (isFailed()) {
+                        return;
+                    }
+                }
+                if (!referenceHelper.isOpened()) {
+                    referenceHelper.open();
                     if (isFailed()) {
                         return;
                     }

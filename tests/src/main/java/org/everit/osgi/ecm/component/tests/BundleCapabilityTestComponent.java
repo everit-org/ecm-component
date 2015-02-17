@@ -21,6 +21,7 @@ import java.util.Arrays;
 import org.everit.osgi.ecm.annotation.BundleCapabilityRef;
 import org.everit.osgi.ecm.annotation.Component;
 import org.everit.osgi.ecm.annotation.ConfigurationPolicy;
+import org.everit.osgi.ecm.annotation.ReferenceConfigurationType;
 import org.everit.osgi.ecm.annotation.Service;
 import org.everit.osgi.ecm.component.BundleCapabilityHolder;
 import org.osgi.framework.Bundle;
@@ -33,6 +34,9 @@ public class BundleCapabilityTestComponent {
     @BundleCapabilityRef(namespace = "testNS", stateMask = Bundle.ACTIVE | Bundle.STARTING,
             setter = "setBcArrayReference")
     private BundleCapability[] bcArrayReference;
+
+    @BundleCapabilityRef(namespace = "testNS", configurationType = ReferenceConfigurationType.CLAUSE)
+    private BundleCapability bcClauseReference;
 
     @BundleCapabilityRef(namespace = "testNS")
     private BundleCapabilityHolder bcHolderReference;
@@ -55,6 +59,10 @@ public class BundleCapabilityTestComponent {
     public void setBcArrayReference(final BundleCapability[] bcArrayReference) {
         System.out.println("///////////  " + Arrays.toString(bcArrayReference));
         this.bcArrayReference = bcArrayReference;
+    }
+
+    public void setBcClauseReference(final BundleCapability bcClauseReference) {
+        this.bcClauseReference = bcClauseReference;
     }
 
     public void setBcHolderReference(final BundleCapabilityHolder bcHolderReference) {

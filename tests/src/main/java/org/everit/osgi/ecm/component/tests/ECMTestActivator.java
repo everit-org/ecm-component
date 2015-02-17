@@ -35,19 +35,19 @@ public class ECMTestActivator implements BundleActivator {
     public void start(final BundleContext context) throws Exception {
         ComponentContainerFactory factory = new ComponentContainerFactory(context);
 
-        // ComponentMetadata factoryComponentMetadata = MetadataBuilder.buildComponentMetadata(FactoryComponent.class);
-        //
-        // factoryComponent = factory.createComponentContainer(factoryComponentMetadata);
-        // factoryComponent.open();
-        //
-        // ComponentMetadata ignoredComponentMetadata = MetadataBuilder.buildComponentMetadata(IgnoredComponent.class);
-        //
-        // ignoredComponent = factory.createComponentContainer(ignoredComponentMetadata);
-        // ignoredComponent.open();
-        //
-        // ComponentMetadata testComponentMetadata = MetadataBuilder.buildComponentMetadata(TestComponent.class);
-        // testComponent = factory.createComponentContainer(testComponentMetadata);
-        // testComponent.open();
+        ComponentMetadata factoryComponentMetadata = MetadataBuilder.buildComponentMetadata(FactoryComponent.class);
+
+        factoryComponent = factory.createComponentContainer(factoryComponentMetadata);
+        factoryComponent.open();
+
+        ComponentMetadata ignoredComponentMetadata = MetadataBuilder.buildComponentMetadata(IgnoredComponent.class);
+
+        ignoredComponent = factory.createComponentContainer(ignoredComponentMetadata);
+        ignoredComponent.open();
+
+        ComponentMetadata testComponentMetadata = MetadataBuilder.buildComponentMetadata(TestComponent.class);
+        testComponent = factory.createComponentContainer(testComponentMetadata);
+        testComponent.open();
 
         ComponentMetadata bundleCapabilityTest = MetadataBuilder
                 .buildComponentMetadata(BundleCapabilityTestComponent.class);
@@ -62,9 +62,9 @@ public class ECMTestActivator implements BundleActivator {
     @Override
     public void stop(final BundleContext context) throws Exception {
         // ecmTestComponent.close();
-        // testComponent.close();
-        // factoryComponent.close();
-        // ignoredComponent.close();
+        testComponent.close();
+        factoryComponent.close();
+        ignoredComponent.close();
         bundleCapabilityComponent.close();
     }
 
