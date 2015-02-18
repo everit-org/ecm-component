@@ -36,6 +36,7 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.everit.osgi.ecm.component.ComponentContext;
+import org.everit.osgi.ecm.component.resource.ComponentContainer;
 import org.everit.osgi.ecm.component.resource.ComponentRevision;
 import org.everit.osgi.ecm.component.resource.ComponentState;
 import org.everit.osgi.ecm.component.ri.internal.attribute.BundleCapabilityReferenceAttributeHelper;
@@ -141,7 +142,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
 
     private final BundleContext bundleContext;
 
-    private final ComponentMetadata componentMetadata;
+    private final ComponentContainer<C> componentContainer;
 
     private Class<C> componentType;
 
@@ -159,9 +160,6 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
 
     private final List<ReferenceHelper<?, C, ?>> referenceHelpers = new ArrayList<>();
 
-    // TODO create add and remove methods with write lock
-    final List<ServiceRegistration<?>> registeredServices = new ArrayList<ServiceRegistration<?>>();
-
     private final ComponentRevisionImpl.Builder revisionBuilder;
 
     private int satisfiedReferences = 0;
@@ -170,21 +168,22 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
 
     private ServiceRegistration<?> serviceRegistration = null;
 
-    public ComponentContextImpl(final ComponentMetadata componentMetadata, final BundleContext bundleContext) {
-        this(componentMetadata, bundleContext, null);
+    public ComponentContextImpl(final ComponentContainer<C> componentContainer, final BundleContext bundleContext) {
+        this(componentContainer, bundleContext, null);
     }
 
-    public ComponentContextImpl(final ComponentMetadata componentMetadata, final BundleContext bundleContext,
+    public ComponentContextImpl(final ComponentContainer<C> componentContainer, final BundleContext bundleContext,
             final Dictionary<String, Object> properties) {
 
-        this.componentMetadata = componentMetadata;
         this.bundleContext = bundleContext;
+        this.componentContainer = componentContainer;
         this.revisionBuilder = new ComponentRevisionImpl.Builder(resolveProperties(properties));
 
         if (isFailed()) {
             return;
         }
 
+        ComponentMetadata componentMetadata = componentContainer.getComponentMetadata();
         Bundle bundle = bundleContext.getBundle();
         BundleWiring bundleWiring = bundle.adapt(BundleWiring.class);
         ClassLoader classLoader = bundleWiring.getClassLoader();
@@ -283,7 +282,6 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
         revisionBuilder.fail(e, permanent);
 
         unregisterServices();
-        closeReferenceHelpers();
         instance = null;
 
         return;
@@ -329,8 +327,8 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
     }
 
     @Override
-    public ComponentMetadata getComponentMetadata() {
-        return componentMetadata;
+    public ComponentContainer<C> getComponentContainer() {
+        return componentContainer;
     }
 
     @Override
@@ -439,12 +437,16 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
     private <S> ServiceRegistration<S> registerServiceInternal(final ServiceRegistration<S> original) {
         ComponentServiceRegistration<S, C> componentServiceRegistration = new ComponentServiceRegistration<S, C>(
                 this, original);
-        registeredServices.add(componentServiceRegistration);
+        revisionBuilder.getServiceRegistrations().add(componentServiceRegistration);
         return componentServiceRegistration;
     }
 
+    void removeServiceRegistration(final ServiceRegistration<?> serviceRegistration) {
+        revisionBuilder.getServiceRegistrations().remove(serviceRegistration);
+    }
+
     private Method resolveDeactivateMethod() {
-        MethodDescriptor methodDescriptor = componentMetadata.getDeactivate();
+        MethodDescriptor methodDescriptor = componentContainer.getComponentMetadata().getDeactivate();
         if (methodDescriptor == null) {
             return null;
         }
@@ -475,7 +477,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
             }
         }
 
-        AttributeMetadata<?>[] attributes = componentMetadata.getAttributes();
+        AttributeMetadata<?>[] attributes = componentContainer.getComponentMetadata().getAttributes();
         for (AttributeMetadata<?> attributeMetadata : attributes) {
             String attributeId = attributeMetadata.getAttributeId();
             if (!result.containsKey(attributeId)) {
@@ -495,7 +497,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
     }
 
     private String[] resolveServiceInterfaces() {
-        ServiceMetadata serviceMetadata = componentMetadata.getService();
+        ServiceMetadata serviceMetadata = componentContainer.getComponentMetadata().getService();
         if (serviceMetadata == null) {
             return null;
         }
@@ -528,7 +530,8 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
             if (state != ComponentState.ACTIVE) {
                 throw new IllegalStateException(
                         "Only ACTIVE components can be restarted, while the state of the component "
-                                + componentMetadata.getComponentId() + " is " + state.toString());
+                                + componentContainer.getComponentMetadata().getComponentId() + " is "
+                                + state.toString());
             }
             stopping(ComponentState.STOPPING);
             starting();
@@ -538,7 +541,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
     }
 
     private boolean shouldRestartForNewConfiguraiton(final Map<String, Object> newProperties) {
-        AttributeMetadata<?>[] componentAttributes = componentMetadata.getAttributes();
+        AttributeMetadata<?>[] componentAttributes = componentContainer.getComponentMetadata().getAttributes();
         Map<String, Object> properties = getProperties();
         for (AttributeMetadata<?> attributeMetadata : componentAttributes) {
             if (!attributeMetadata.isDynamic()) {
@@ -572,10 +575,9 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
 
             for (ReferenceHelper<?, C, ?> referenceHelper : referenceHelpers) {
                 referenceHelper.bind();
-            }
-
-            if (isFailed()) {
-                return;
+                if (isFailed()) {
+                    return;
+                }
             }
 
             Map<String, Object> properties = getProperties();
@@ -643,7 +645,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
         if (serviceRegistration != null) {
             serviceRegistration.unregister();
         }
-        for (Iterator<ServiceRegistration<?>> iterator = registeredServices.iterator(); iterator
+        for (Iterator<ServiceRegistration<?>> iterator = revisionBuilder.getServiceRegistrations().iterator(); iterator
                 .hasNext();) {
             ServiceRegistration<?> serviceRegistration = iterator.next();
             // TODO WARN the user that the code is not stable as the services should have been unregistered at this
@@ -685,10 +687,10 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
                 }
                 if (!referenceHelper.isOpened()) {
                     referenceHelper.open();
-                    if (isFailed()) {
-                        return;
-                    }
                 }
+            }
+            if (isFailed()) {
+                return;
             }
 
             if (getState() == ComponentState.ACTIVE) {

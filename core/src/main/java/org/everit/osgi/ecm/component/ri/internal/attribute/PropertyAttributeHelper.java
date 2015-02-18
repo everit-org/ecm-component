@@ -29,6 +29,7 @@ import javax.naming.ConfigurationException;
 import org.everit.osgi.ecm.component.resource.ComponentState;
 import org.everit.osgi.ecm.component.ri.internal.ComponentContextImpl;
 import org.everit.osgi.ecm.component.ri.internal.IllegalMetadataException;
+import org.everit.osgi.ecm.metadata.ComponentMetadata;
 import org.everit.osgi.ecm.metadata.PropertyAttributeMetadata;
 import org.everit.osgi.ecm.util.method.MethodDescriptor;
 import org.osgi.framework.Constants;
@@ -84,11 +85,12 @@ public class PropertyAttributeHelper<C, V_ARRAY> {
     private void failDuringValueResolution(final String message) {
         Map<String, Object> properties = componentContext.getProperties();
         String servicePid = (String) properties.get(Constants.SERVICE_PID);
+        ComponentMetadata componentMetadata = componentContext.getComponentContainer().getComponentMetadata();
         if (servicePid == null) {
-            servicePid = componentContext.getComponentMetadata().getComponentId();
+            servicePid = componentMetadata.getComponentId();
         }
         Throwable e = new ConfigurationException("Error during updating configuration of component '" + servicePid
-                + "' declared in class '" + componentContext.getComponentMetadata().getType() + "': "
+                + "' declared in class '" + componentMetadata.getType() + "': "
                 + message);
         componentContext.fail(e, false);
     }
@@ -248,7 +250,8 @@ public class PropertyAttributeHelper<C, V_ARRAY> {
     private void throwIllegalSetter(final Method method, final String additionalMessage) {
         IllegalMetadataException e = new IllegalMetadataException("Invalid setter '" + method.toGenericString()
                 + "' defined for attribute '" + attributeMetadata.getAttributeId() + "' of component '"
-                + componentContext.getComponentMetadata().getComponentId() + "'. " + additionalMessage);
+                + componentContext.getComponentContainer().getComponentMetadata().getComponentId() + "'. "
+                + additionalMessage);
 
         componentContext.fail(e, true);
     }

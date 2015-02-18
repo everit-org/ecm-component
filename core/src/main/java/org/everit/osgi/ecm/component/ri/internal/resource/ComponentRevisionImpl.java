@@ -23,6 +23,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -41,6 +42,7 @@ import org.everit.osgi.ecm.metadata.ReferenceMetadata;
 import org.everit.osgi.ecm.metadata.ServiceReferenceMetadata;
 import org.osgi.framework.Constants;
 import org.osgi.framework.ServiceReference;
+import org.osgi.framework.ServiceRegistration;
 import org.osgi.framework.wiring.BundleCapability;
 import org.osgi.resource.Capability;
 import org.osgi.resource.Requirement;
@@ -54,6 +56,9 @@ public class ComponentRevisionImpl implements ComponentRevision {
         private Thread processingThread = null;
 
         private Map<String, Object> properties;
+
+        private final LinkedHashSet<ServiceRegistration<?>> serviceRegistrations =
+                new LinkedHashSet<ServiceRegistration<?>>();
 
         private ComponentState state = ComponentState.STOPPED;
 
@@ -86,6 +91,10 @@ public class ComponentRevisionImpl implements ComponentRevision {
 
         public Map<String, Object> getProperties() {
             return properties;
+        }
+
+        public LinkedHashSet<ServiceRegistration<?>> getServiceRegistrations() {
+            return serviceRegistrations;
         }
 
         public ComponentState getState() {
@@ -140,6 +149,8 @@ public class ComponentRevisionImpl implements ComponentRevision {
 
     private static final ComponentRequirementComparator REQUIREMENT_COMPARATOR = new ComponentRequirementComparator();
 
+    private final Map<String, List<Capability>> capabilitiesByNamespace;
+
     private final Throwable cause;
 
     private final Thread processingThread;
@@ -157,10 +168,33 @@ public class ComponentRevisionImpl implements ComponentRevision {
         this.properties = builder.properties;
 
         this.requirementsByNamespace = evaluateRequirements(builder);
+        this.capabilitiesByNamespace = evaluateCapabilities(builder);
+    }
+
+    private Map<String, List<Capability>> evaluateCapabilities(final Builder builder) {
+        if ((this.state != ComponentState.ACTIVE && this.state != ComponentState.UNSATISFIED
+                && this.state != ComponentState.FAILED) || builder.serviceRegistrations.size() == 0) {
+            return Collections.emptyMap();
+        }
+
+        Map<String, List<Capability>> result = new LinkedHashMap<String, List<Capability>>();
+
+        List<Capability> serviceCapabilityList = new ArrayList<Capability>(builder.serviceRegistrations.size());
+
+        Iterator<ServiceRegistration<?>> iterator = builder.serviceRegistrations.iterator();
+        while (iterator.hasNext()) {
+            ServiceRegistration<?> serviceRegistration = iterator.next();
+            serviceCapabilityList.add(new ServiceCapabilityImpl(serviceRegistration.getReference()));
+        }
+
+        result.put("osgi.service", Collections.unmodifiableList(serviceCapabilityList));
+
+        return Collections.unmodifiableMap(result);
     }
 
     private Map<String, List<Requirement>> evaluateRequirements(final Builder builder) {
-        if (this.state != ComponentState.ACTIVE && this.state != ComponentState.UNSATISFIED) {
+        if (this.state != ComponentState.ACTIVE && this.state != ComponentState.UNSATISFIED
+                && this.state != ComponentState.FAILED) {
             return Collections.emptyMap();
         }
 
@@ -234,9 +268,8 @@ public class ComponentRevisionImpl implements ComponentRevision {
                 HashMap<String, Object> attributes = new LinkedHashMap<String, Object>(requirement.getAttributes());
 
                 requirementsOfNS.add(new ComponentRequirementImpl<Capability>(fullRequirementId, namespace, this,
-                        Collections.unmodifiableMap(directives),
-                        Collections.unmodifiableMap(attributes),
-                        wiredCapabilities, simpleCapabilityType));
+                        Collections.unmodifiableMap(directives), Collections.unmodifiableMap(attributes),
+                        simpleCapabilityType));
             }
         }
 
@@ -251,8 +284,7 @@ public class ComponentRevisionImpl implements ComponentRevision {
 
     @Override
     public List<Capability> getCapabilities(final String namespace) {
-        // TODO Auto-generated method stub
-        return null;
+        return getWiresByNamespace(namespace, capabilitiesByNamespace);
     }
 
     @Override
@@ -272,26 +304,30 @@ public class ComponentRevisionImpl implements ComponentRevision {
 
     @Override
     public List<Requirement> getRequirements(final String namespace) {
-        List<Requirement> result;
-        if (namespace != null) {
-            result = requirementsByNamespace.get(namespace);
-            if (result == null) {
-                result = Collections.emptyList();
-            }
-        } else {
-            result = new ArrayList<Requirement>();
-            Collection<List<Requirement>> values = requirementsByNamespace.values();
-            for (List<Requirement> requirements : values) {
-                result.addAll(requirements);
-            }
-            result = Collections.unmodifiableList(result);
-        }
-        return result;
+        return getWiresByNamespace(namespace, requirementsByNamespace);
     }
 
     @Override
     public ComponentState getState() {
         return state;
+    }
+
+    private <W> List<W> getWiresByNamespace(final String namespace, final Map<String, List<W>> wiringsByNamespace) {
+        List<W> result;
+        if (namespace != null) {
+            result = wiringsByNamespace.get(namespace);
+            if (result == null) {
+                result = Collections.emptyList();
+            }
+        } else {
+            result = new ArrayList<W>();
+            Collection<List<W>> values = wiringsByNamespace.values();
+            for (List<W> requirements : values) {
+                result.addAll(requirements);
+            }
+            result = Collections.unmodifiableList(result);
+        }
+        return result;
     }
 
 }

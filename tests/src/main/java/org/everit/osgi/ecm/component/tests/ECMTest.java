@@ -213,7 +213,7 @@ public class ECMTest {
 
         try {
             Assert.assertEquals(ComponentState.FAILED_PERMANENT,
-                    componentContainer.getComponentRevisions()[0].getState());
+                    componentContainer.getResources()[0].getState());
         } finally {
             componentContainer.close();
         }

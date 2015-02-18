@@ -47,7 +47,7 @@ public class ComponentContainerImpl<C> extends AbstractComponentContainer<C> imp
     public void close() {
         ComponentContextImpl<C> componentImpl = componentAtomicReference.get();
         if (componentImpl != null
-                && componentImpl.getComponentMetadata().getConfigurationPolicy() == ConfigurationPolicy.IGNORE) {
+                && getComponentMetadata().getConfigurationPolicy() == ConfigurationPolicy.IGNORE) {
             componentImpl.close();
             componentAtomicReference.set(null);
         }
@@ -58,7 +58,7 @@ public class ComponentContainerImpl<C> extends AbstractComponentContainer<C> imp
     }
 
     @Override
-    public ComponentRevision[] getComponentRevisions() {
+    public ComponentRevision[] getResources() {
         ComponentContextImpl<C> componentImpl = componentAtomicReference.get();
         if (componentImpl == null) {
             return new ComponentRevision[0];
@@ -91,7 +91,7 @@ public class ComponentContainerImpl<C> extends AbstractComponentContainer<C> imp
 
         ComponentContextImpl<C> componentImpl = componentAtomicReference.get();
         if (ConfigurationPolicy.IGNORE.equals(componentMetadata.getConfigurationPolicy()) && componentImpl == null) {
-            componentImpl = new ComponentContextImpl<C>(componentMetadata, getBundleContext());
+            componentImpl = new ComponentContextImpl<C>(this, getBundleContext());
             componentAtomicReference.set(componentImpl);
             componentImpl.open();
             return;
@@ -110,7 +110,7 @@ public class ComponentContainerImpl<C> extends AbstractComponentContainer<C> imp
         ConfigurationPolicy configurationPolicy = componentMetadata.getConfigurationPolicy();
 
         if (componentImpl == null && (properties != null || ConfigurationPolicy.OPTIONAL.equals(configurationPolicy))) {
-            componentImpl = new ComponentContextImpl<C>(componentMetadata, getBundleContext(), props);
+            componentImpl = new ComponentContextImpl<C>(this, getBundleContext(), props);
             componentAtomicReference.set(componentImpl);
             componentImpl.open();
         } else if (componentImpl != null && properties == null

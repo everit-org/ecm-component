@@ -74,7 +74,12 @@ public class FactoryComponentContainerImpl<C> extends AbstractComponentContainer
     }
 
     @Override
-    public ComponentRevision[] getComponentRevisions() {
+    public String getName() {
+        return getComponentMetadata().getComponentId();
+    }
+
+    @Override
+    public ComponentRevision[] getResources() {
         Collection<ComponentContextImpl<?>> values = components.values();
 
         ComponentRevision[] result = new ComponentRevision[values.size()];
@@ -86,11 +91,6 @@ public class FactoryComponentContainerImpl<C> extends AbstractComponentContainer
         }
 
         return result;
-    }
-
-    @Override
-    public String getName() {
-        return getComponentMetadata().getComponentId();
     }
 
     @Override
@@ -124,8 +124,7 @@ public class FactoryComponentContainerImpl<C> extends AbstractComponentContainer
         if (componentContextImpl != null) {
             componentContextImpl.updateConfiguration(properties);
         } else {
-            ComponentContextImpl<?> newComponent = new ComponentContextImpl<C>(getComponentMetadata(),
-                    getBundleContext(), props);
+            ComponentContextImpl<?> newComponent = new ComponentContextImpl<C>(this, getBundleContext(), props);
             components.put(pid, newComponent);
             newComponent.open();
         }

@@ -29,7 +29,7 @@ class ComponentServiceRegistration<S, C> implements ServiceRegistration<S> {
     private final ComponentContextImpl<C> component;
     private final ServiceRegistration<S> wrapped;
 
-    public ComponentServiceRegistration(ComponentContextImpl<C> component, ServiceRegistration<S> wrapped) {
+    public ComponentServiceRegistration(final ComponentContextImpl<C> component, final ServiceRegistration<S> wrapped) {
         this.component = component;
         this.wrapped = wrapped;
     }
@@ -40,13 +40,13 @@ class ComponentServiceRegistration<S, C> implements ServiceRegistration<S> {
     }
 
     @Override
-    public void setProperties(Dictionary<String, ?> properties) {
+    public void setProperties(final Dictionary<String, ?> properties) {
         wrapped.setProperties(properties);
     }
 
     @Override
     public void unregister() {
-        this.component.registeredServices.remove(this);
+        this.component.removeServiceRegistration(this);
         wrapped.unregister();
     }
 

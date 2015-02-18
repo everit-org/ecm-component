@@ -45,6 +45,11 @@ public class ServiceCapabilityImpl implements ServiceCapability {
     }
 
     @Override
+    public boolean equals(final Object obj) {
+        return serviceReference.equals(obj);
+    }
+
+    @Override
     public Map<String, Object> getAttributes() {
         return attributes;
     }
@@ -56,7 +61,7 @@ public class ServiceCapabilityImpl implements ServiceCapability {
 
     @Override
     public String getNamespace() {
-        return "osgi.service";
+        return ServiceCapability.SERVICE_CAPABILITY_NAMESPACE;
     }
 
     @Override
@@ -67,6 +72,11 @@ public class ServiceCapabilityImpl implements ServiceCapability {
     @Override
     public ServiceReference<?> getServiceReference() {
         return serviceReference;
+    }
+
+    @Override
+    public int hashCode() {
+        return serviceReference.hashCode();
     }
 
 }

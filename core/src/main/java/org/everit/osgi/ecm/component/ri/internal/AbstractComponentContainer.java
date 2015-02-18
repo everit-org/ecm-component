@@ -17,12 +17,18 @@
 package org.everit.osgi.ecm.component.ri.internal;
 
 import java.util.Dictionary;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import org.everit.osgi.ecm.component.ECMComponentConstants;
 import org.everit.osgi.ecm.component.ri.ComponentContainerInstance;
 import org.everit.osgi.ecm.component.ri.internal.metatype.MetatypeProviderImpl;
 import org.everit.osgi.ecm.metadata.ComponentMetadata;
 import org.osgi.framework.BundleContext;
+import org.osgi.resource.Capability;
+import org.osgi.resource.Requirement;
+import org.osgi.resource.Wire;
 import org.osgi.service.metatype.MetaTypeProvider;
 import org.osgi.service.metatype.ObjectClassDefinition;
 
@@ -33,6 +39,10 @@ public abstract class AbstractComponentContainer<C> implements MetaTypeProvider,
     private final ComponentMetadata componentMetadata;
 
     private final MetatypeProviderImpl<C> metatypeProvider;
+
+    private final Map<Capability, List<Wire>> wiresByCapability = new HashMap<Capability, List<Wire>>();
+
+    private final Map<Requirement, List<Wire>> wiresByRequirement = new HashMap<Requirement, List<Wire>>();
 
     public AbstractComponentContainer(final ComponentMetadata componentMetadata, final BundleContext bundleContext) {
         this.componentMetadata = componentMetadata;
@@ -66,4 +76,21 @@ public abstract class AbstractComponentContainer<C> implements MetaTypeProvider,
         return metatypeProvider.getObjectClassDefinition(id, locale);
     }
 
+    @Override
+    public List<Wire> getWires() {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public List<Wire> getWiresByCapability(final Capability capability) {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public List<Wire> getWiresByRequirement(final Requirement requirement) {
+        // TODO Auto-generated method stub
+        return null;
+    }
 }

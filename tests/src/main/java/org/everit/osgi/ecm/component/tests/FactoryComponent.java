@@ -24,6 +24,7 @@ import org.everit.osgi.ecm.annotation.attribute.IntegerAttribute;
 import org.everit.osgi.ecm.annotation.attribute.IntegerAttributeOption;
 import org.everit.osgi.ecm.annotation.attribute.PasswordAttribute;
 import org.everit.osgi.ecm.annotation.attribute.ShortAttribute;
+import org.osgi.service.metatype.MetaTypeService;
 
 @Component(metatype = true, componentId = "TestFactoryClass", configurationPolicy = ConfigurationPolicy.FACTORY,
         localizationBase = "/OSGI-INF/metatype/test")
@@ -41,6 +42,6 @@ public class FactoryComponent {
     private int selectableInteger;
 
     @ServiceRef
-    private Runnable someReference;
+    private MetaTypeService someReference;
 
 }

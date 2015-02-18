@@ -122,6 +122,5 @@
       <artifactId>org.everit.osgi.bundles.org.apache.felix.utils</artifactId>
       <version>1.6.0</version>
     </dependency>
-
   </dependencies>
 </project>

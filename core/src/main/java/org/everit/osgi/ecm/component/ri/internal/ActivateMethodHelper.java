@@ -43,7 +43,7 @@ public class ActivateMethodHelper<C> {
 
     public ActivateMethodHelper(final ComponentContextImpl<C> componentContext, final Class<?> clazz) {
         this.componentContext = componentContext;
-        ComponentMetadata componentMetadata = componentContext.getComponentMetadata();
+        ComponentMetadata componentMetadata = componentContext.getComponentContainer().getComponentMetadata();
         MethodDescriptor methodDescriptor = componentMetadata.getActivate();
         if (methodDescriptor == null) {
             return;
