@@ -27,7 +27,6 @@ import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Hashtable;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -37,7 +36,6 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.everit.osgi.ecm.component.ComponentContext;
 import org.everit.osgi.ecm.component.resource.ComponentContainer;
-import org.everit.osgi.ecm.component.resource.ComponentRevision;
 import org.everit.osgi.ecm.component.resource.ComponentState;
 import org.everit.osgi.ecm.component.ri.internal.attribute.BundleCapabilityReferenceAttributeHelper;
 import org.everit.osgi.ecm.component.ri.internal.attribute.PropertyAttributeHelper;
@@ -142,7 +140,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
 
     private final BundleContext bundleContext;
 
-    private final ComponentContainer<C> componentContainer;
+    private final AbstractComponentContainer<C> componentContainer;
 
     private Class<C> componentType;
 
@@ -160,7 +158,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
 
     private final List<ReferenceHelper<?, C, ?>> referenceHelpers = new ArrayList<>();
 
-    private final ComponentRevisionImpl.Builder revisionBuilder;
+    private final ComponentRevisionImpl.Builder<C> revisionBuilder;
 
     private int satisfiedReferences = 0;
 
@@ -168,16 +166,17 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
 
     private ServiceRegistration<?> serviceRegistration = null;
 
-    public ComponentContextImpl(final ComponentContainer<C> componentContainer, final BundleContext bundleContext) {
+    public ComponentContextImpl(final AbstractComponentContainer<C> componentContainer,
+            final BundleContext bundleContext) {
         this(componentContainer, bundleContext, null);
     }
 
-    public ComponentContextImpl(final ComponentContainer<C> componentContainer, final BundleContext bundleContext,
-            final Dictionary<String, Object> properties) {
+    public ComponentContextImpl(final AbstractComponentContainer<C> componentContainer,
+            final BundleContext bundleContext, final Dictionary<String, Object> properties) {
 
         this.bundleContext = bundleContext;
         this.componentContainer = componentContainer;
-        this.revisionBuilder = new ComponentRevisionImpl.Builder(resolveProperties(properties));
+        this.revisionBuilder = new ComponentRevisionImpl.Builder<C>(componentContainer, resolveProperties(properties));
 
         if (isFailed()) {
             return;
@@ -332,7 +331,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
     }
 
     @Override
-    public ComponentRevision getComponentRevision() {
+    public ComponentRevisionImpl<C> getComponentRevision() {
         return revisionBuilder.build();
     }
 
@@ -437,12 +436,12 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
     private <S> ServiceRegistration<S> registerServiceInternal(final ServiceRegistration<S> original) {
         ComponentServiceRegistration<S, C> componentServiceRegistration = new ComponentServiceRegistration<S, C>(
                 this, original);
-        revisionBuilder.getServiceRegistrations().add(componentServiceRegistration);
+        revisionBuilder.addServiceRegistration(componentServiceRegistration);
         return componentServiceRegistration;
     }
 
     void removeServiceRegistration(final ServiceRegistration<?> serviceRegistration) {
-        revisionBuilder.getServiceRegistrations().remove(serviceRegistration);
+        revisionBuilder.removeServiceRegistration(serviceRegistration);
     }
 
     private Method resolveDeactivateMethod() {
@@ -645,13 +644,11 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
         if (serviceRegistration != null) {
             serviceRegistration.unregister();
         }
-        for (Iterator<ServiceRegistration<?>> iterator = revisionBuilder.getServiceRegistrations().iterator(); iterator
-                .hasNext();) {
-            ServiceRegistration<?> serviceRegistration = iterator.next();
+        for (ServiceRegistration<?> serviceRegistration : revisionBuilder.getCloneOfServiceRegistrations()) {
             // TODO WARN the user that the code is not stable as the services should have been unregistered at this
             // point.
             serviceRegistration.unregister();
-            iterator.remove();
+            revisionBuilder.removeServiceRegistration(serviceRegistration);
         }
     }
 

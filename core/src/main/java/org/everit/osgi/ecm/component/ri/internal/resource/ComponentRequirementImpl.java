@@ -34,10 +34,10 @@ public class ComponentRequirementImpl<C extends Capability> implements Component
 
     private final String requirementId;
 
-    private final ComponentRevision resource;
+    private final ComponentRevisionImpl resource;
 
     public ComponentRequirementImpl(final String requirementId, final String namespace,
-            final ComponentRevision resource, final Map<String, String> directives,
+            final ComponentRevisionImpl resource, final Map<String, String> directives,
             final Map<String, Object> attributes, final Class<C> capabilityType) {
         this.requirementId = requirementId;
         this.namespace = namespace;
@@ -75,5 +75,10 @@ public class ComponentRequirementImpl<C extends Capability> implements Component
     @Override
     public ComponentRevision getResource() {
         return resource;
+    }
+
+    @Override
+    public boolean isSatisfied() {
+        return resource.getWiresByRequirement(this).size() > 0;
     }
 }

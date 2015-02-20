@@ -23,28 +23,33 @@ import org.osgi.resource.Resource;
 
 public class ComponentWireImpl implements ComponentWire {
 
+    private final Capability capability;
+
+    private final Requirement requirement;
+
+    public ComponentWireImpl(final Requirement requirement, final Capability capability) {
+        this.requirement = requirement;
+        this.capability = capability;
+    }
+
     @Override
     public Capability getCapability() {
-        // TODO Auto-generated method stub
-        return null;
+        return capability;
     }
 
     @Override
     public Resource getProvider() {
-        // TODO Auto-generated method stub
-        return null;
+        return capability.getResource();
     }
 
     @Override
     public Requirement getRequirement() {
-        // TODO Auto-generated method stub
-        return null;
+        return requirement;
     }
 
     @Override
     public Resource getRequirer() {
-        // TODO Auto-generated method stub
-        return null;
+        return requirement.getResource();
     }
 
 }

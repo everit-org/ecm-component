@@ -27,7 +27,7 @@ import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.everit.osgi.ecm.component.resource.ComponentContainer;
-import org.everit.osgi.ecm.component.resource.ComponentRevision;
+import org.everit.osgi.ecm.component.ri.internal.resource.ComponentRevisionImpl;
 import org.everit.osgi.ecm.metadata.ComponentMetadata;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.Constants;
@@ -38,7 +38,7 @@ import org.osgi.service.metatype.MetaTypeProvider;
 
 public class FactoryComponentContainerImpl<C> extends AbstractComponentContainer<C> implements ManagedServiceFactory {
 
-    private final Map<String, ComponentContextImpl<?>> components = new ConcurrentHashMap<String, ComponentContextImpl<?>>();
+    private final Map<String, ComponentContextImpl<C>> components = new ConcurrentHashMap<String, ComponentContextImpl<C>>();
 
     private ServiceRegistration<?> serviceRegistration;
 
@@ -48,9 +48,9 @@ public class FactoryComponentContainerImpl<C> extends AbstractComponentContainer
 
     @Override
     public void close() {
-        Iterator<Entry<String, ComponentContextImpl<?>>> iterator = components.entrySet().iterator();
+        Iterator<Entry<String, ComponentContextImpl<C>>> iterator = components.entrySet().iterator();
         while (iterator.hasNext()) {
-            Map.Entry<java.lang.String, ComponentContextImpl<?>> entry = iterator
+            Map.Entry<java.lang.String, ComponentContextImpl<C>> entry = iterator
                     .next();
 
             ComponentContextImpl<?> componentContextImpl = entry.getValue();
@@ -79,13 +79,14 @@ public class FactoryComponentContainerImpl<C> extends AbstractComponentContainer
     }
 
     @Override
-    public ComponentRevision[] getResources() {
-        Collection<ComponentContextImpl<?>> values = components.values();
+    public ComponentRevisionImpl<C>[] getResources() {
+        Collection<ComponentContextImpl<C>> values = components.values();
 
-        ComponentRevision[] result = new ComponentRevision[values.size()];
+        @SuppressWarnings("unchecked")
+        ComponentRevisionImpl<C>[] result = new ComponentRevisionImpl[values.size()];
 
         int i = 0;
-        for (ComponentContextImpl<?> componentContextImpl : values) {
+        for (ComponentContextImpl<C> componentContextImpl : values) {
             result[i] = componentContextImpl.getComponentRevision();
             i++;
         }
@@ -124,7 +125,7 @@ public class FactoryComponentContainerImpl<C> extends AbstractComponentContainer
         if (componentContextImpl != null) {
             componentContextImpl.updateConfiguration(properties);
         } else {
-            ComponentContextImpl<?> newComponent = new ComponentContextImpl<C>(this, getBundleContext(), props);
+            ComponentContextImpl<C> newComponent = new ComponentContextImpl<C>(this, getBundleContext(), props);
             components.put(pid, newComponent);
             newComponent.open();
         }

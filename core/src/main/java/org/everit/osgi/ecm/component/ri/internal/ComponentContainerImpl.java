@@ -23,7 +23,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.everit.osgi.ecm.component.resource.ComponentContainer;
-import org.everit.osgi.ecm.component.resource.ComponentRevision;
+import org.everit.osgi.ecm.component.ri.internal.resource.ComponentRevisionImpl;
 import org.everit.osgi.ecm.metadata.ComponentMetadata;
 import org.everit.osgi.ecm.metadata.ConfigurationPolicy;
 import org.osgi.framework.BundleContext;
@@ -58,12 +58,16 @@ public class ComponentContainerImpl<C> extends AbstractComponentContainer<C> imp
     }
 
     @Override
-    public ComponentRevision[] getResources() {
+    public ComponentRevisionImpl<C>[] getResources() {
         ComponentContextImpl<C> componentImpl = componentAtomicReference.get();
         if (componentImpl == null) {
-            return new ComponentRevision[0];
+            @SuppressWarnings("unchecked")
+            ComponentRevisionImpl<C>[] result = new ComponentRevisionImpl[0];
+            return result;
         }
-        return new ComponentRevision[] { componentImpl.getComponentRevision() };
+        @SuppressWarnings("unchecked")
+        ComponentRevisionImpl<C>[] result = new ComponentRevisionImpl[] { componentImpl.getComponentRevision() };
+        return result;
     }
 
     @Override

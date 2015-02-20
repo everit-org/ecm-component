@@ -20,7 +20,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.everit.osgi.ecm.component.resource.ServiceCapability;
+import org.everit.osgi.linkage.ServiceCapability;
 import org.osgi.framework.ServiceReference;
 import org.osgi.framework.wiring.BundleRevision;
 import org.osgi.resource.Resource;
@@ -46,7 +46,31 @@ public class ServiceCapabilityImpl implements ServiceCapability {
 
     @Override
     public boolean equals(final Object obj) {
-        return serviceReference.equals(obj);
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        ServiceCapabilityImpl other = (ServiceCapabilityImpl) obj;
+        if (resource == null) {
+            if (other.resource != null) {
+                return false;
+            }
+        } else if (!resource.equals(other.resource)) {
+            return false;
+        }
+        if (serviceReference == null) {
+            if (other.serviceReference != null) {
+                return false;
+            }
+        } else if (!serviceReference.equals(other.serviceReference)) {
+            return false;
+        }
+        return true;
     }
 
     @Override
@@ -76,7 +100,11 @@ public class ServiceCapabilityImpl implements ServiceCapability {
 
     @Override
     public int hashCode() {
-        return serviceReference.hashCode();
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + ((resource == null) ? 0 : resource.hashCode());
+        result = prime * result + ((serviceReference == null) ? 0 : serviceReference.hashCode());
+        return result;
     }
 
 }

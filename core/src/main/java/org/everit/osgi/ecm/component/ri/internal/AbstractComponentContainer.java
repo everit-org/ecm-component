@@ -16,14 +16,14 @@
  */
 package org.everit.osgi.ecm.component.ri.internal;
 
+import java.util.ArrayList;
 import java.util.Dictionary;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import org.everit.osgi.ecm.component.ECMComponentConstants;
 import org.everit.osgi.ecm.component.ri.ComponentContainerInstance;
 import org.everit.osgi.ecm.component.ri.internal.metatype.MetatypeProviderImpl;
+import org.everit.osgi.ecm.component.ri.internal.resource.ComponentRevisionImpl;
 import org.everit.osgi.ecm.metadata.ComponentMetadata;
 import org.osgi.framework.BundleContext;
 import org.osgi.resource.Capability;
@@ -39,10 +39,6 @@ public abstract class AbstractComponentContainer<C> implements MetaTypeProvider,
     private final ComponentMetadata componentMetadata;
 
     private final MetatypeProviderImpl<C> metatypeProvider;
-
-    private final Map<Capability, List<Wire>> wiresByCapability = new HashMap<Capability, List<Wire>>();
-
-    private final Map<Requirement, List<Wire>> wiresByRequirement = new HashMap<Requirement, List<Wire>>();
 
     public AbstractComponentContainer(final ComponentMetadata componentMetadata, final BundleContext bundleContext) {
         this.componentMetadata = componentMetadata;
@@ -77,20 +73,59 @@ public abstract class AbstractComponentContainer<C> implements MetaTypeProvider,
     }
 
     @Override
-    public List<Wire> getWires() {
-        // TODO Auto-generated method stub
-        return null;
+    public abstract ComponentRevisionImpl<C>[] getResources();
+
+    @Override
+    public synchronized Wire[] getWires() {
+        ComponentRevisionImpl<C>[] componentRevisions = getResources();
+        if (componentRevisions.length == 0) {
+            return new Wire[0];
+        }
+        if (componentRevisions.length == 1) {
+            List<Wire> wires = componentRevisions[0].getWires();
+            return wires.toArray(new Wire[wires.size()]);
+        }
+
+        List<Wire> result = new ArrayList<Wire>();
+        for (ComponentRevisionImpl<C> componentRevisionImpl : componentRevisions) {
+            result.addAll(componentRevisionImpl.getWires());
+        }
+        return result.toArray(new Wire[result.size()]);
     }
 
     @Override
-    public List<Wire> getWiresByCapability(final Capability capability) {
-        // TODO Auto-generated method stub
-        return null;
+    public Wire[] getWiresByCapability(final Capability capability) {
+        ComponentRevisionImpl<C>[] componentRevisions = getResources();
+        if (componentRevisions.length == 0) {
+            return new Wire[0];
+        }
+        if (componentRevisions.length == 1) {
+            List<Wire> wires = componentRevisions[0].getWiresByCapability(capability);
+            return wires.toArray(new Wire[wires.size()]);
+        }
+
+        List<Wire> result = new ArrayList<Wire>();
+        for (ComponentRevisionImpl<C> componentRevisionImpl : componentRevisions) {
+            result.addAll(componentRevisionImpl.getWiresByCapability(capability));
+        }
+        return result.toArray(new Wire[result.size()]);
     }
 
     @Override
-    public List<Wire> getWiresByRequirement(final Requirement requirement) {
-        // TODO Auto-generated method stub
-        return null;
+    public Wire[] getWiresByRequirement(final Requirement requirement) {
+        ComponentRevisionImpl<C>[] componentRevisions = getResources();
+        if (componentRevisions.length == 0) {
+            return new Wire[0];
+        }
+        if (componentRevisions.length == 1) {
+            List<Wire> wires = componentRevisions[0].getWiresByRequirement(requirement);
+            return wires.toArray(new Wire[wires.size()]);
+        }
+
+        List<Wire> result = new ArrayList<Wire>();
+        for (ComponentRevisionImpl<C> componentRevisionImpl : componentRevisions) {
+            result.addAll(componentRevisionImpl.getWiresByRequirement(requirement));
+        }
+        return result.toArray(new Wire[result.size()]);
     }
 }
