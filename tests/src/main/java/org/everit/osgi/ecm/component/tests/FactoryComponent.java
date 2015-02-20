@@ -16,6 +16,11 @@
  */
 package org.everit.osgi.ecm.component.tests;
 
+import java.util.Dictionary;
+import java.util.Hashtable;
+import java.util.Map;
+
+import org.everit.osgi.ecm.annotation.Activate;
 import org.everit.osgi.ecm.annotation.Component;
 import org.everit.osgi.ecm.annotation.ConfigurationPolicy;
 import org.everit.osgi.ecm.annotation.Service;
@@ -24,6 +29,8 @@ import org.everit.osgi.ecm.annotation.attribute.IntegerAttribute;
 import org.everit.osgi.ecm.annotation.attribute.IntegerAttributeOption;
 import org.everit.osgi.ecm.annotation.attribute.PasswordAttribute;
 import org.everit.osgi.ecm.annotation.attribute.ShortAttribute;
+import org.everit.osgi.ecm.component.ComponentContext;
+import org.everit.osgi.ecm.component.resource.ComponentRevision;
 import org.osgi.service.metatype.MetaTypeService;
 
 @Component(metatype = true, componentId = "TestFactoryClass", configurationPolicy = ConfigurationPolicy.FACTORY,
@@ -44,4 +51,14 @@ public class FactoryComponent {
     @ServiceRef
     private MetaTypeService someReference;
 
+    @Activate
+    public void activate(final ComponentContext<FactoryComponent> context) {
+        Dictionary<String, Object> properties = new Hashtable<String, Object>();
+        ComponentRevision<FactoryComponent> componentRevision = context.getComponentRevision();
+        Map<String, Object> componentProperties = componentRevision.getProperties();
+        Object servicePid = componentProperties.get("service.pid");
+        properties.put("service.pid", servicePid);
+        ;
+        context.registerService(String.class, "testService", properties);
+    }
 }
