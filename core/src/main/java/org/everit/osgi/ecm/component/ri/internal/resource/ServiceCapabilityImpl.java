@@ -23,7 +23,6 @@ import java.util.Map;
 import org.everit.osgi.linkage.ServiceCapability;
 import org.osgi.framework.ServiceReference;
 import org.osgi.framework.wiring.BundleRevision;
-import org.osgi.resource.Resource;
 
 public class ServiceCapabilityImpl implements ServiceCapability {
 
@@ -89,7 +88,7 @@ public class ServiceCapabilityImpl implements ServiceCapability {
     }
 
     @Override
-    public Resource getResource() {
+    public BundleRevision getResource() {
         return resource;
     }
 
