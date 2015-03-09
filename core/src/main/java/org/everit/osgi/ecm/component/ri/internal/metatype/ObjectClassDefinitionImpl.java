@@ -31,110 +31,117 @@ import org.osgi.service.metatype.ObjectClassDefinition;
 
 public class ObjectClassDefinitionImpl<C> implements ObjectClassDefinition {
 
-    private final AttributeDefinition[] attributeDefinitions;
+  private final AttributeDefinition[] attributeDefinitions;
 
-    private final ClassLoader classLoader;
+  private final ClassLoader classLoader;
 
-    private final ComponentMetadata componentMetadata;
+  private final ComponentMetadata componentMetadata;
 
-    private final Localizer localizer;
+  private final Localizer localizer;
 
-    public ObjectClassDefinitionImpl(ComponentMetadata componentMetadata, Localizer localizer,
-            ClassLoader classLoader) {
-        this.componentMetadata = componentMetadata;
-        this.localizer = localizer;
-        this.classLoader = classLoader;
+  public ObjectClassDefinitionImpl(final ComponentMetadata componentMetadata,
+      final Localizer localizer,
+      final ClassLoader classLoader) {
+    this.componentMetadata = componentMetadata;
+    this.localizer = localizer;
+    this.classLoader = classLoader;
 
-        attributeDefinitions = createAttributeDefinitions(componentMetadata);
+    attributeDefinitions = createAttributeDefinitions(componentMetadata);
 
+  }
+
+  private AttributeDefinition[] createAttributeDefinitions(final ComponentMetadata componentMetadata) {
+    AttributeMetadata<?>[] attributes = componentMetadata.getAttributes();
+    if (attributes == null || attributes.length == 0) {
+      return null;
     }
 
-    private AttributeDefinition[] createAttributeDefinitions(ComponentMetadata componentMetadata) {
-        AttributeMetadata<?>[] attributes = componentMetadata.getAttributes();
-        if (attributes == null || attributes.length == 0) {
-            return null;
-        }
+    List<AttributeDefinition> result = new LinkedList<AttributeDefinition>();
 
-        List<AttributeDefinition> result = new LinkedList<AttributeDefinition>();
+    for (AttributeMetadata<?> attribute : attributes) {
+      @SuppressWarnings({ "unchecked", "rawtypes" })
+      AttributeDefinitionImpl<Object> attributeDefinition = new AttributeDefinitionImpl(attribute,
+          localizer);
 
-        for (AttributeMetadata<?> attribute : attributes) {
-            @SuppressWarnings({ "unchecked", "rawtypes" })
-            AttributeDefinitionImpl<Object> attributeDefinition = new AttributeDefinitionImpl(attribute, localizer);
-
-            result.add(attributeDefinition);
-        }
-
-        if (result.size() == 0) {
-            return null;
-        }
-
-        return result.toArray(new AttributeDefinition[result.size()]);
+      result.add(attributeDefinition);
     }
 
-    @Override
-    public AttributeDefinition[] getAttributeDefinitions(int filter) {
-        if (filter == ObjectClassDefinition.REQUIRED) {
-            return generateAttributeDefinitions(true);
-        } else if (filter == ObjectClassDefinition.OPTIONAL) {
-            return generateAttributeDefinitions(false);
-        } else {
-            return attributeDefinitions;
-        }
+    if (result.size() == 0) {
+      return null;
     }
 
-    private AttributeDefinition[] generateAttributeDefinitions(boolean required) {
-        List<AttributeDefinition> result = new ArrayList<AttributeDefinition>();
-        for (AttributeDefinition ad : attributeDefinitions) {
-            AttributeMetadataHolder<?> amh = (AttributeMetadataHolder<?>) ad;
-            AttributeMetadata<?> attributeMetadata = amh.getMetadata();
-            if ((required && !attributeMetadata.isOptional()) || (!required && attributeMetadata.isOptional())) {
-                result.add(ad);
-            }
-        }
-        if (result.size() == 0) {
-            return null;
-        }
-        return result.toArray(new AttributeDefinition[result.size()]);
+    return result.toArray(new AttributeDefinition[result.size()]);
+  }
+
+  private AttributeDefinition[] generateAttributeDefinitions(final boolean required) {
+    List<AttributeDefinition> result = new ArrayList<AttributeDefinition>();
+    for (AttributeDefinition ad : attributeDefinitions) {
+      AttributeMetadataHolder<?> amh = (AttributeMetadataHolder<?>) ad;
+      AttributeMetadata<?> attributeMetadata = amh.getMetadata();
+      if ((required && !attributeMetadata.isOptional())
+          || (!required && attributeMetadata.isOptional())) {
+        result.add(ad);
+      }
+    }
+    if (result.size() == 0) {
+      return null;
+    }
+    return result.toArray(new AttributeDefinition[result.size()]);
+  }
+
+  @Override
+  public AttributeDefinition[] getAttributeDefinitions(final int filter) {
+    if (attributeDefinitions == null) {
+      return null;
     }
 
-    @Override
-    public String getDescription() {
-        return localizer.localize(componentMetadata.getDescription());
+    if (filter == ObjectClassDefinition.REQUIRED) {
+      return generateAttributeDefinitions(true);
+    } else if (filter == ObjectClassDefinition.OPTIONAL) {
+      return generateAttributeDefinitions(false);
+    } else {
+      return attributeDefinitions;
+    }
+  }
+
+  @Override
+  public String getDescription() {
+    return localizer.localize(componentMetadata.getDescription());
+  }
+
+  @Override
+  public InputStream getIcon(final int size) throws IOException {
+    Icon[] icons = componentMetadata.getIcons();
+    if (icons == null || icons.length == 0) {
+      return null;
     }
 
-    @Override
-    public InputStream getIcon(int size) throws IOException {
-        Icon[] icons = componentMetadata.getIcons();
-        if (icons == null || icons.length == 0) {
-            return null;
-        }
-
-        int difference = Integer.MAX_VALUE;
-        Icon selectedIcon = null;
-        for (Icon icon : icons) {
-            int currentDifference = Math.abs(size - icon.getSize());
-            if (currentDifference < difference) {
-                selectedIcon = icon;
-            }
-        }
-
-        String iconPath = localizer.localize(selectedIcon.getPath());
-        if (iconPath != null) {
-            classLoader.getResourceAsStream(iconPath);
-            return null;
-        } else {
-            return null;
-        }
+    int difference = Integer.MAX_VALUE;
+    Icon selectedIcon = null;
+    for (Icon icon : icons) {
+      int currentDifference = Math.abs(size - icon.getSize());
+      if (currentDifference < difference) {
+        selectedIcon = icon;
+      }
     }
 
-    @Override
-    public String getID() {
-        return componentMetadata.getConfigurationPid();
+    String iconPath = localizer.localize(selectedIcon.getPath());
+    if (iconPath != null) {
+      classLoader.getResourceAsStream(iconPath);
+      return null;
+    } else {
+      return null;
     }
+  }
 
-    @Override
-    public String getName() {
-        return localizer.localize(componentMetadata.getLabel());
-    }
+  @Override
+  public String getID() {
+    return componentMetadata.getConfigurationPid();
+  }
+
+  @Override
+  public String getName() {
+    return localizer.localize(componentMetadata.getLabel());
+  }
 
 }
