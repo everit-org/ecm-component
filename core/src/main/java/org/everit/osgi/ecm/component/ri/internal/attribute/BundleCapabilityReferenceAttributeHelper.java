@@ -30,74 +30,77 @@ import org.everit.osgi.ecm.metadata.BundleCapabilityReferenceMetadata;
 import org.osgi.framework.wiring.BundleCapability;
 
 public class BundleCapabilityReferenceAttributeHelper<COMPONENT> extends
-        ReferenceHelper<BundleCapability, COMPONENT, BundleCapabilityReferenceMetadata> {
+    ReferenceHelper<BundleCapability, COMPONENT, BundleCapabilityReferenceMetadata> {
 
-    public BundleCapabilityReferenceAttributeHelper(final BundleCapabilityReferenceMetadata referenceMetadata,
-            final ComponentContextImpl<COMPONENT> componentContext, final ReferenceEventHandler eventHandler)
-            throws IllegalAccessException {
-        super(referenceMetadata, componentContext, eventHandler);
+  public BundleCapabilityReferenceAttributeHelper(
+      final BundleCapabilityReferenceMetadata referenceMetadata,
+      final ComponentContextImpl<COMPONENT> componentContext,
+      final ReferenceEventHandler eventHandler)
+      throws IllegalAccessException {
+    super(referenceMetadata, componentContext, eventHandler);
+  }
+
+  @Override
+  protected void bindInternal() {
+    MethodHandle setterMethod = getSetterMethodHandle();
+    if (setterMethod == null) {
+      return;
     }
 
-    @Override
-    protected void bindInternal() {
-        MethodHandle setterMethod = getSetterMethodHandle();
-        if (setterMethod == null) {
-            return;
-        }
+    Object[] parameterArray = resolveParameterArray();
 
-        Object[] parameterArray = resolveParameterArray();
-
-        try {
-            if (isArray()) {
-                setterMethod.invoke(getComponentContext().getInstance(), (Object) parameterArray);
-            } else {
-                if (parameterArray.length == 0) {
-                    setterMethod.invoke(getComponentContext().getInstance(), null);
-                } else {
-                    setterMethod.invoke(getComponentContext().getInstance(), parameterArray[0]);
-                }
-            }
-        } catch (Throwable e) {
-            getComponentContext().fail(
-                    new ConfigurationException("Error during updating reference: "
-                            + getReferenceMetadata().getReferenceId(), e), false);
-        }
-    }
-
-    @Override
-    protected AbstractCapabilityCollector<BundleCapability> createCollector(final ReferenceCapabilityConsumer consumer,
-            final RequirementDefinition<BundleCapability>[] requirements) {
-
-        return new BundleCapabilityCollector(getComponentContext().getBundleContext(),
-                getReferenceMetadata().getNamespace(), requirements, consumer,
-                getReferenceMetadata().getStateMask());
-    }
-
-    private Object[] resolveParameterArray() {
-        Suiting<BundleCapability>[] lSuitings = getSuitings();
-
-        boolean lHolder = isHolder();
-
-        Object[] parameterArray;
-        if (lHolder) {
-            parameterArray = new BundleCapabilityHolder[lSuitings.length];
+    try {
+      if (isArray()) {
+        setterMethod.invoke(getComponentContext().getInstance(), (Object) parameterArray);
+      } else {
+        if (parameterArray.length == 0) {
+          setterMethod.invoke(getComponentContext().getInstance(), null);
         } else {
-            parameterArray = new BundleCapability[lSuitings.length];
+          setterMethod.invoke(getComponentContext().getInstance(), parameterArray[0]);
         }
-
-        for (int i = 0; i < lSuitings.length; i++) {
-            Suiting<BundleCapability> suiting = lSuitings[i];
-            if (lHolder) {
-                RequirementDefinition<BundleCapability> requirement = suiting.getRequirement();
-                BundleCapabilityHolder holder = new BundleCapabilityHolder(requirement.getRequirementId(),
-                        suiting.getCapability(), requirement.getAttributes());
-                parameterArray[i] = holder;
-            } else {
-                parameterArray[i] = suiting.getCapability();
-            }
-        }
-
-        return parameterArray;
+      }
+    } catch (Throwable e) {
+      getComponentContext().fail(
+          new ConfigurationException("Error during updating reference: "
+              + getReferenceMetadata().getReferenceId(), e), false);
     }
+  }
+
+  @Override
+  protected AbstractCapabilityCollector<BundleCapability> createCollector(
+      final ReferenceCapabilityConsumer consumer,
+      final RequirementDefinition<BundleCapability>[] requirements) {
+
+    return new BundleCapabilityCollector(getComponentContext().getBundleContext(),
+        getReferenceMetadata().getNamespace(), requirements, consumer,
+        getReferenceMetadata().getStateMask());
+  }
+
+  private Object[] resolveParameterArray() {
+    Suiting<BundleCapability>[] lSuitings = getSuitings();
+
+    boolean lHolder = isHolder();
+
+    Object[] parameterArray;
+    if (lHolder) {
+      parameterArray = new BundleCapabilityHolder[lSuitings.length];
+    } else {
+      parameterArray = new BundleCapability[lSuitings.length];
+    }
+
+    for (int i = 0; i < lSuitings.length; i++) {
+      Suiting<BundleCapability> suiting = lSuitings[i];
+      if (lHolder) {
+        RequirementDefinition<BundleCapability> requirement = suiting.getRequirement();
+        BundleCapabilityHolder holder = new BundleCapabilityHolder(requirement.getRequirementId(),
+            suiting.getCapability(), requirement.getAttributes());
+        parameterArray[i] = holder;
+      } else {
+        parameterArray[i] = suiting.getCapability();
+      }
+    }
+
+    return parameterArray;
+  }
 
 }

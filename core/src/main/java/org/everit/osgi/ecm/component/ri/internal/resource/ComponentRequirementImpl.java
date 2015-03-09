@@ -24,61 +24,61 @@ import org.osgi.resource.Capability;
 
 public class ComponentRequirementImpl<C extends Capability> implements ComponentRequirement<C> {
 
-    private final Map<String, Object> attributes;
+  private final Map<String, Object> attributes;
 
-    private final Class<C> capabilityType;
+  private final Class<C> capabilityType;
 
-    private final Map<String, String> directives;
+  private final Map<String, String> directives;
 
-    private final String namespace;
+  private final String namespace;
 
-    private final String requirementId;
+  private final String requirementId;
 
-    private final ComponentRevisionImpl resource;
+  private final ComponentRevisionImpl resource;
 
-    public ComponentRequirementImpl(final String requirementId, final String namespace,
-            final ComponentRevisionImpl resource, final Map<String, String> directives,
-            final Map<String, Object> attributes, final Class<C> capabilityType) {
-        this.requirementId = requirementId;
-        this.namespace = namespace;
-        this.resource = resource;
-        this.directives = directives;
-        this.attributes = attributes;
-        this.capabilityType = capabilityType;
-    }
+  public ComponentRequirementImpl(final String requirementId, final String namespace,
+      final ComponentRevisionImpl resource, final Map<String, String> directives,
+      final Map<String, Object> attributes, final Class<C> capabilityType) {
+    this.requirementId = requirementId;
+    this.namespace = namespace;
+    this.resource = resource;
+    this.directives = directives;
+    this.attributes = attributes;
+    this.capabilityType = capabilityType;
+  }
 
-    @Override
-    public Class<C> getAcceptedCapabilityType() {
-        return capabilityType;
-    }
+  @Override
+  public Class<C> getAcceptedCapabilityType() {
+    return capabilityType;
+  }
 
-    @Override
-    public Map<String, Object> getAttributes() {
-        return attributes;
-    }
+  @Override
+  public Map<String, Object> getAttributes() {
+    return attributes;
+  }
 
-    @Override
-    public Map<String, String> getDirectives() {
-        return directives;
-    }
+  @Override
+  public Map<String, String> getDirectives() {
+    return directives;
+  }
 
-    @Override
-    public String getNamespace() {
-        return namespace;
-    }
+  @Override
+  public String getNamespace() {
+    return namespace;
+  }
 
-    @Override
-    public String getRequirementId() {
-        return requirementId;
-    }
+  @Override
+  public String getRequirementId() {
+    return requirementId;
+  }
 
-    @Override
-    public ComponentRevision getResource() {
-        return resource;
-    }
+  @Override
+  public ComponentRevision getResource() {
+    return resource;
+  }
 
-    @Override
-    public boolean isSatisfied() {
-        return resource.getWiresByRequirement(this).size() > 0;
-    }
+  @Override
+  public boolean isSatisfied() {
+    return resource.getWiresByRequirement(this).size() > 0;
+  }
 }

@@ -36,144 +36,148 @@ import org.osgi.framework.BundleContext;
 import org.osgi.framework.ServiceReference;
 
 public class ServiceReferenceAttributeHelper<S, COMPONENT> extends
-        ReferenceHelper<ServiceReference<S>, COMPONENT, ServiceReferenceMetadata> {
+    ReferenceHelper<ServiceReference<S>, COMPONENT, ServiceReferenceMetadata> {
 
-    private static class SuitingWithService<S> {
-        public S service;
-        public Suiting<ServiceReference<S>> suiting;
+  private static class SuitingWithService<S> {
+    public S service;
+    public Suiting<ServiceReference<S>> suiting;
+  }
+
+  private Map<String, SuitingWithService<S>> previousSuitingsByRequirementId = new TreeMap<>();
+
+  private final Map<ServiceReference<S>, Integer> usedServiceReferences = new HashMap<>();
+
+  public ServiceReferenceAttributeHelper(final ServiceReferenceMetadata referenceMetadata,
+      final ComponentContextImpl<COMPONENT> componentContext,
+      final ReferenceEventHandler eventHandler)
+      throws IllegalAccessException {
+    super(referenceMetadata, componentContext, eventHandler);
+  }
+
+  private void addToUsedServiceReferences(final ServiceReference<S> serviceReference) {
+    Integer count = usedServiceReferences.get(serviceReference);
+    if (count == null) {
+      count = 0;
+    } else {
+      count = count + 1;
     }
+    usedServiceReferences.put(serviceReference, count);
+  }
 
-    private Map<String, SuitingWithService<S>> previousSuitingsByRequirementId = new TreeMap<>();
+  @Override
+  protected synchronized void bindInternal() {
+    MethodHandle setterMethod = getSetterMethodHandle();
 
-    private final Map<ServiceReference<S>, Integer> usedServiceReferences = new HashMap<>();
+    Map<String, SuitingWithService<S>> newSuitingMapping = new TreeMap<>();
+    Suiting<ServiceReference<S>>[] tmpSuitings = getSuitings();
+    boolean lHolder = isHolder();
+    Object[] parameter = new Object[tmpSuitings.length];
+    for (int i = 0; i < tmpSuitings.length; i++) {
+      Suiting<ServiceReference<S>> suiting = tmpSuitings[i];
+      ServiceReference<S> serviceReference = suiting.getCapability();
+      RequirementDefinition<ServiceReference<S>> requirement = suiting.getRequirement();
 
-    public ServiceReferenceAttributeHelper(final ServiceReferenceMetadata referenceMetadata,
-            final ComponentContextImpl<COMPONENT> componentContext, final ReferenceEventHandler eventHandler)
-            throws IllegalAccessException {
-        super(referenceMetadata, componentContext, eventHandler);
-    }
+      String requirementId = suiting
+          .getRequirement().getRequirementId();
+      SuitingWithService<S> previousSuitingWithService = previousSuitingsByRequirementId
+          .get(requirementId);
 
-    private void addToUsedServiceReferences(final ServiceReference<S> serviceReference) {
-        Integer count = usedServiceReferences.get(serviceReference);
-        if (count == null) {
-            count = 0;
-        } else {
-            count = count + 1;
-        }
-        usedServiceReferences.put(serviceReference, count);
-    }
-
-    @Override
-    protected synchronized void bindInternal() {
-        MethodHandle setterMethod = getSetterMethodHandle();
-
-        Map<String, SuitingWithService<S>> newSuitingMapping = new TreeMap<>();
-        Suiting<ServiceReference<S>>[] tmpSuitings = getSuitings();
-        boolean lHolder = isHolder();
-        Object[] parameter = new Object[tmpSuitings.length];
-        for (int i = 0; i < tmpSuitings.length; i++) {
-            Suiting<ServiceReference<S>> suiting = tmpSuitings[i];
-            ServiceReference<S> serviceReference = suiting.getCapability();
-            RequirementDefinition<ServiceReference<S>> requirement = suiting.getRequirement();
-
-            String requirementId = suiting
-                    .getRequirement().getRequirementId();
-            SuitingWithService<S> previousSuitingWithService = previousSuitingsByRequirementId.get(requirementId);
-
-            S service;
-            if (previousSuitingWithService == null
-                    || previousSuitingWithService.suiting.getCapability().compareTo(suiting.getCapability()) != 0) {
-                BundleContext bundleContext = getComponentContext().getBundleContext();
-                service = bundleContext.getService(serviceReference);
-                addToUsedServiceReferences(serviceReference);
-                if (service != null) {
-                    SuitingWithService<S> suitingWithService = new SuitingWithService<S>();
-                    suitingWithService.service = service;
-                    suitingWithService.suiting = suiting;
-                    newSuitingMapping.put(requirementId, suitingWithService);
-                }
-            } else {
-                previousSuitingsByRequirementId.remove(requirementId);
-                service = previousSuitingWithService.service;
-            }
-
-            if (lHolder) {
-                ServiceHolder<S> serviceHolder = new ServiceHolder<S>(getReferenceMetadata().getReferenceId(),
-                        serviceReference, service, requirement.getAttributes());
-
-                parameter[i] = serviceHolder;
-            } else {
-                parameter[i] = service;
-            }
-
-        }
-        if (isArray()) {
-            try {
-                setterMethod.invoke(parameter);
-            } catch (Throwable e) {
-                getComponentContext().fail(e, false);
-            }
-        } else {
-            try {
-                if (parameter.length == 0) {
-                    setterMethod.invoke(getComponentContext().getInstance(), null);
-                } else {
-                    setterMethod.invoke(getComponentContext().getInstance(), parameter[0]);
-                }
-            } catch (Throwable e) {
-                getComponentContext().fail(e, false);
-            }
-
-        }
-
-        Collection<SuitingWithService<S>> previousSuitings = previousSuitingsByRequirementId.values();
-        for (SuitingWithService<S> suitingWithService : previousSuitings) {
-            ServiceReference<S> serviceReference = suitingWithService.suiting.getCapability();
-            removeFromUsedServiceReferences(serviceReference);
-        }
-
-        previousSuitingsByRequirementId = newSuitingMapping;
-    }
-
-    @Override
-    public synchronized void close() {
-        super.close();
-
-        Set<Entry<ServiceReference<S>, Integer>> usedServiceReferenceEntries = usedServiceReferences.entrySet();
+      S service;
+      if ((previousSuitingWithService == null)
+          || (previousSuitingWithService.suiting.getCapability().compareTo(suiting.getCapability()) != 0)) {
         BundleContext bundleContext = getComponentContext().getBundleContext();
-        for (Entry<ServiceReference<S>, Integer> entry : usedServiceReferenceEntries) {
-            ServiceReference<S> serviceReference = entry.getKey();
-            Integer count = entry.getValue();
-            int n = count.intValue();
-            for (int i = 0; i < n; i++) {
-                bundleContext.ungetService(serviceReference);
-            }
+        service = bundleContext.getService(serviceReference);
+        addToUsedServiceReferences(serviceReference);
+        if (service != null) {
+          SuitingWithService<S> suitingWithService = new SuitingWithService<S>();
+          suitingWithService.service = service;
+          suitingWithService.suiting = suiting;
+          newSuitingMapping.put(requirementId, suitingWithService);
         }
-        usedServiceReferences.clear();
-        previousSuitingsByRequirementId.clear();
+      } else {
+        previousSuitingsByRequirementId.remove(requirementId);
+        service = previousSuitingWithService.service;
+      }
+
+      if (lHolder) {
+        ServiceHolder<S> serviceHolder = new ServiceHolder<S>(getReferenceMetadata()
+            .getReferenceId(),
+            serviceReference, service, requirement.getAttributes());
+
+        parameter[i] = serviceHolder;
+      } else {
+        parameter[i] = service;
+      }
+
     }
-
-    @Override
-    protected AbstractCapabilityCollector<ServiceReference<S>> createCollector(
-            final ReferenceCapabilityConsumer consumer,
-            final RequirementDefinition<ServiceReference<S>>[] items) {
-
-        @SuppressWarnings("unchecked")
-        Class<S> serviceInterface = (Class<S>) getReferenceMetadata().getServiceInterface();
-        return new ServiceReferenceCollector<S>(getComponentContext().getBundleContext(),
-                serviceInterface, items, consumer, false);
-    }
-
-    private void removeFromUsedServiceReferences(final ServiceReference<S> serviceReference) {
-        Integer count = usedServiceReferences.get(serviceReference);
-        if (count == null) {
-            return;
-        }
-        count = count - 1;
-        if (count.intValue() == 0) {
-            usedServiceReferences.remove(serviceReference);
+    if (isArray()) {
+      try {
+        setterMethod.invoke(parameter);
+      } catch (Throwable e) {
+        getComponentContext().fail(e, false);
+      }
+    } else {
+      try {
+        if (parameter.length == 0) {
+          setterMethod.invoke(getComponentContext().getInstance(), null);
         } else {
-            usedServiceReferences.put(serviceReference, count);
+          setterMethod.invoke(getComponentContext().getInstance(), parameter[0]);
         }
+      } catch (Throwable e) {
+        getComponentContext().fail(e, false);
+      }
+
     }
+
+    Collection<SuitingWithService<S>> previousSuitings = previousSuitingsByRequirementId.values();
+    for (SuitingWithService<S> suitingWithService : previousSuitings) {
+      ServiceReference<S> serviceReference = suitingWithService.suiting.getCapability();
+      removeFromUsedServiceReferences(serviceReference);
+    }
+
+    previousSuitingsByRequirementId = newSuitingMapping;
+  }
+
+  @Override
+  public synchronized void close() {
+    super.close();
+
+    Set<Entry<ServiceReference<S>, Integer>> usedServiceReferenceEntries = usedServiceReferences
+        .entrySet();
+    BundleContext bundleContext = getComponentContext().getBundleContext();
+    for (Entry<ServiceReference<S>, Integer> entry : usedServiceReferenceEntries) {
+      ServiceReference<S> serviceReference = entry.getKey();
+      Integer count = entry.getValue();
+      int n = count.intValue();
+      for (int i = 0; i < n; i++) {
+        bundleContext.ungetService(serviceReference);
+      }
+    }
+    usedServiceReferences.clear();
+    previousSuitingsByRequirementId.clear();
+  }
+
+  @Override
+  protected AbstractCapabilityCollector<ServiceReference<S>> createCollector(
+      final ReferenceCapabilityConsumer consumer,
+      final RequirementDefinition<ServiceReference<S>>[] items) {
+
+    @SuppressWarnings("unchecked")
+    Class<S> serviceInterface = (Class<S>) getReferenceMetadata().getServiceInterface();
+    return new ServiceReferenceCollector<S>(getComponentContext().getBundleContext(),
+        serviceInterface, items, consumer, false);
+  }
+
+  private void removeFromUsedServiceReferences(final ServiceReference<S> serviceReference) {
+    Integer count = usedServiceReferences.get(serviceReference);
+    if (count == null) {
+      return;
+    }
+    count = count - 1;
+    if (count.intValue() == 0) {
+      usedServiceReferences.remove(serviceReference);
+    } else {
+      usedServiceReferences.put(serviceReference, count);
+    }
+  }
 }

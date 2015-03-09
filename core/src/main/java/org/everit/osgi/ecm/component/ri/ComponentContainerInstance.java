@@ -20,7 +20,7 @@ import org.everit.osgi.ecm.component.resource.ComponentContainer;
 
 public interface ComponentContainerInstance<C> extends ComponentContainer<C> {
 
-    void open();
+  void close();
 
-    void close();
+  void open();
 }

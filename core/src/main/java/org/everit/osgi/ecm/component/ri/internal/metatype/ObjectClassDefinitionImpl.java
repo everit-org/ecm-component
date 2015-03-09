@@ -52,7 +52,7 @@ public class ObjectClassDefinitionImpl<C> implements ObjectClassDefinition {
 
   private AttributeDefinition[] createAttributeDefinitions(final ComponentMetadata componentMetadata) {
     AttributeMetadata<?>[] attributes = componentMetadata.getAttributes();
-    if (attributes == null || attributes.length == 0) {
+    if ((attributes == null) || (attributes.length == 0)) {
       return null;
     }
 
@@ -112,7 +112,7 @@ public class ObjectClassDefinitionImpl<C> implements ObjectClassDefinition {
   @Override
   public InputStream getIcon(final int size) throws IOException {
     Icon[] icons = componentMetadata.getIcons();
-    if (icons == null || icons.length == 0) {
+    if ((icons == null) || (icons.length == 0)) {
       return null;
     }
 

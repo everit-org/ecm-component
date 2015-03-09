@@ -32,100 +32,102 @@ import org.osgi.resource.Wire;
 import org.osgi.service.metatype.MetaTypeProvider;
 import org.osgi.service.metatype.ObjectClassDefinition;
 
-public abstract class AbstractComponentContainer<C> implements MetaTypeProvider, ComponentContainerInstance<C> {
+public abstract class AbstractComponentContainer<C> implements MetaTypeProvider,
+    ComponentContainerInstance<C> {
 
-    private final BundleContext bundleContext;
+  private final BundleContext bundleContext;
 
-    private final ComponentMetadata componentMetadata;
+  private final ComponentMetadata componentMetadata;
 
-    private final MetatypeProviderImpl<C> metatypeProvider;
+  private final MetatypeProviderImpl<C> metatypeProvider;
 
-    public AbstractComponentContainer(final ComponentMetadata componentMetadata, final BundleContext bundleContext) {
-        this.componentMetadata = componentMetadata;
-        this.bundleContext = bundleContext;
-        this.metatypeProvider = new MetatypeProviderImpl<C>(componentMetadata, bundleContext);
+  public AbstractComponentContainer(final ComponentMetadata componentMetadata,
+      final BundleContext bundleContext) {
+    this.componentMetadata = componentMetadata;
+    this.bundleContext = bundleContext;
+    this.metatypeProvider = new MetatypeProviderImpl<C>(componentMetadata, bundleContext);
+  }
+
+  protected void addCommonServiceProperties(final Dictionary<String, Object> properties) {
+    properties.put(ECMComponentConstants.SERVICE_PROP_COMPONENT_CLASS, componentMetadata.getType());
+    properties.put(ECMComponentConstants.SERVICE_PROP_COMPONENT_NAME, this.metatypeProvider
+        .getObjectClassDefinition(null, null).getName());
+  }
+
+  @Override
+  public BundleContext getBundleContext() {
+    return bundleContext;
+  }
+
+  @Override
+  public ComponentMetadata getComponentMetadata() {
+    return componentMetadata;
+  }
+
+  @Override
+  public String[] getLocales() {
+    return metatypeProvider.getLocales();
+  }
+
+  @Override
+  public ObjectClassDefinition getObjectClassDefinition(final String id, final String locale) {
+    return metatypeProvider.getObjectClassDefinition(id, locale);
+  }
+
+  @Override
+  public abstract ComponentRevisionImpl<C>[] getResources();
+
+  @Override
+  public synchronized Wire[] getWires() {
+    ComponentRevisionImpl<C>[] componentRevisions = getResources();
+    if (componentRevisions.length == 0) {
+      return new Wire[0];
+    }
+    if (componentRevisions.length == 1) {
+      List<Wire> wires = componentRevisions[0].getWires();
+      return wires.toArray(new Wire[wires.size()]);
     }
 
-    protected void addCommonServiceProperties(final Dictionary<String, Object> properties) {
-        properties.put(ECMComponentConstants.SERVICE_PROP_COMPONENT_CLASS, componentMetadata.getType());
-        properties.put(ECMComponentConstants.SERVICE_PROP_COMPONENT_NAME, this.metatypeProvider
-                .getObjectClassDefinition(null, null).getName());
+    List<Wire> result = new ArrayList<Wire>();
+    for (ComponentRevisionImpl<C> componentRevisionImpl : componentRevisions) {
+      result.addAll(componentRevisionImpl.getWires());
+    }
+    return result.toArray(new Wire[result.size()]);
+  }
+
+  @Override
+  public Wire[] getWiresByCapability(final Capability capability) {
+    ComponentRevisionImpl<C>[] componentRevisions = getResources();
+    if (componentRevisions.length == 0) {
+      return new Wire[0];
+    }
+    if (componentRevisions.length == 1) {
+      List<Wire> wires = componentRevisions[0].getWiresByCapability(capability);
+      return wires.toArray(new Wire[wires.size()]);
     }
 
-    @Override
-    public BundleContext getBundleContext() {
-        return bundleContext;
+    List<Wire> result = new ArrayList<Wire>();
+    for (ComponentRevisionImpl<C> componentRevisionImpl : componentRevisions) {
+      result.addAll(componentRevisionImpl.getWiresByCapability(capability));
+    }
+    return result.toArray(new Wire[result.size()]);
+  }
+
+  @Override
+  public Wire[] getWiresByRequirement(final Requirement requirement) {
+    ComponentRevisionImpl<C>[] componentRevisions = getResources();
+    if (componentRevisions.length == 0) {
+      return new Wire[0];
+    }
+    if (componentRevisions.length == 1) {
+      List<Wire> wires = componentRevisions[0].getWiresByRequirement(requirement);
+      return wires.toArray(new Wire[wires.size()]);
     }
 
-    @Override
-    public ComponentMetadata getComponentMetadata() {
-        return componentMetadata;
+    List<Wire> result = new ArrayList<Wire>();
+    for (ComponentRevisionImpl<C> componentRevisionImpl : componentRevisions) {
+      result.addAll(componentRevisionImpl.getWiresByRequirement(requirement));
     }
-
-    @Override
-    public String[] getLocales() {
-        return metatypeProvider.getLocales();
-    }
-
-    @Override
-    public ObjectClassDefinition getObjectClassDefinition(final String id, final String locale) {
-        return metatypeProvider.getObjectClassDefinition(id, locale);
-    }
-
-    @Override
-    public abstract ComponentRevisionImpl<C>[] getResources();
-
-    @Override
-    public synchronized Wire[] getWires() {
-        ComponentRevisionImpl<C>[] componentRevisions = getResources();
-        if (componentRevisions.length == 0) {
-            return new Wire[0];
-        }
-        if (componentRevisions.length == 1) {
-            List<Wire> wires = componentRevisions[0].getWires();
-            return wires.toArray(new Wire[wires.size()]);
-        }
-
-        List<Wire> result = new ArrayList<Wire>();
-        for (ComponentRevisionImpl<C> componentRevisionImpl : componentRevisions) {
-            result.addAll(componentRevisionImpl.getWires());
-        }
-        return result.toArray(new Wire[result.size()]);
-    }
-
-    @Override
-    public Wire[] getWiresByCapability(final Capability capability) {
-        ComponentRevisionImpl<C>[] componentRevisions = getResources();
-        if (componentRevisions.length == 0) {
-            return new Wire[0];
-        }
-        if (componentRevisions.length == 1) {
-            List<Wire> wires = componentRevisions[0].getWiresByCapability(capability);
-            return wires.toArray(new Wire[wires.size()]);
-        }
-
-        List<Wire> result = new ArrayList<Wire>();
-        for (ComponentRevisionImpl<C> componentRevisionImpl : componentRevisions) {
-            result.addAll(componentRevisionImpl.getWiresByCapability(capability));
-        }
-        return result.toArray(new Wire[result.size()]);
-    }
-
-    @Override
-    public Wire[] getWiresByRequirement(final Requirement requirement) {
-        ComponentRevisionImpl<C>[] componentRevisions = getResources();
-        if (componentRevisions.length == 0) {
-            return new Wire[0];
-        }
-        if (componentRevisions.length == 1) {
-            List<Wire> wires = componentRevisions[0].getWiresByRequirement(requirement);
-            return wires.toArray(new Wire[wires.size()]);
-        }
-
-        List<Wire> result = new ArrayList<Wire>();
-        for (ComponentRevisionImpl<C> componentRevisionImpl : componentRevisions) {
-            result.addAll(componentRevisionImpl.getWiresByRequirement(requirement));
-        }
-        return result.toArray(new Wire[result.size()]);
-    }
+    return result.toArray(new Wire[result.size()]);
+  }
 }

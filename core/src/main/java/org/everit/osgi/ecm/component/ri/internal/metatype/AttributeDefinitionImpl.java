@@ -24,162 +24,164 @@ import org.everit.osgi.ecm.metadata.PasswordAttributeMetadata;
 import org.everit.osgi.ecm.metadata.SelectablePropertyAttributeMetadata;
 import org.osgi.service.metatype.AttributeDefinition;
 
-public class AttributeDefinitionImpl<V_ARRAY> implements AttributeDefinition, AttributeMetadataHolder<V_ARRAY> {
+public class AttributeDefinitionImpl<V_ARRAY> implements AttributeDefinition,
+    AttributeMetadataHolder<V_ARRAY> {
 
-    private final AttributeMetadata<V_ARRAY> attributeMetadata;
+  private final AttributeMetadata<V_ARRAY> attributeMetadata;
 
-    private final int attributeType;
+  private final int attributeType;
 
-    private final String[] defaultValue;
+  private final String[] defaultValue;
 
-    private final Localizer localizer;
+  private final Localizer localizer;
 
-    private final String[] optionLabels;
+  private final String[] optionLabels;
 
-    private final String[] optionValues;
+  private final String[] optionValues;
 
-    public AttributeDefinitionImpl(final AttributeMetadata<V_ARRAY> attributeMetadata, final Localizer localizer) {
-        this.attributeMetadata = attributeMetadata;
-        this.localizer = localizer;
+  public AttributeDefinitionImpl(final AttributeMetadata<V_ARRAY> attributeMetadata,
+      final Localizer localizer) {
+    this.attributeMetadata = attributeMetadata;
+    this.localizer = localizer;
 
-        Class<?> valueType = attributeMetadata.getValueType();
+    Class<?> valueType = attributeMetadata.getValueType();
 
-        if (valueType.equals(Boolean.class)) {
-            attributeType = AttributeDefinition.BOOLEAN;
-        } else if (valueType.equals(byte.class)) {
-            attributeType = AttributeDefinition.BYTE;
-        } else if (valueType.equals(char.class)) {
-            attributeType = AttributeDefinition.CHARACTER;
-        } else if (valueType.equals(double.class)) {
-            attributeType = AttributeDefinition.DOUBLE;
-        } else if (valueType.equals(float.class)) {
-            attributeType = AttributeDefinition.FLOAT;
-        } else if (valueType.equals(int.class)) {
-            attributeType = AttributeDefinition.INTEGER;
-        } else if (valueType.equals(long.class)) {
-            attributeType = AttributeDefinition.LONG;
-        } else if (valueType.equals(short.class)) {
-            attributeType = AttributeDefinition.SHORT;
-        } else if (attributeMetadata.getClass().equals(PasswordAttributeMetadata.class)) {
-            attributeType = AttributeDefinition.PASSWORD;
+    if (valueType.equals(Boolean.class)) {
+      attributeType = AttributeDefinition.BOOLEAN;
+    } else if (valueType.equals(byte.class)) {
+      attributeType = AttributeDefinition.BYTE;
+    } else if (valueType.equals(char.class)) {
+      attributeType = AttributeDefinition.CHARACTER;
+    } else if (valueType.equals(double.class)) {
+      attributeType = AttributeDefinition.DOUBLE;
+    } else if (valueType.equals(float.class)) {
+      attributeType = AttributeDefinition.FLOAT;
+    } else if (valueType.equals(int.class)) {
+      attributeType = AttributeDefinition.INTEGER;
+    } else if (valueType.equals(long.class)) {
+      attributeType = AttributeDefinition.LONG;
+    } else if (valueType.equals(short.class)) {
+      attributeType = AttributeDefinition.SHORT;
+    } else if (attributeMetadata.getClass().equals(PasswordAttributeMetadata.class)) {
+      attributeType = AttributeDefinition.PASSWORD;
+    } else {
+      attributeType = AttributeDefinition.STRING;
+    }
+
+    defaultValue = createDefaultValueArray();
+
+    if (attributeMetadata instanceof SelectablePropertyAttributeMetadata) {
+      SelectablePropertyAttributeMetadata<V_ARRAY> selectableMetadata =
+          (SelectablePropertyAttributeMetadata<V_ARRAY>) attributeMetadata;
+
+      String[] tmpOptionLabels = selectableMetadata.getOptionLabels();
+
+      V_ARRAY tmpOptionValues = selectableMetadata.getOptionValues();
+      if (tmpOptionValues == null) {
+        optionValues = null;
+        optionLabels = null;
+      } else {
+        int length = Array.getLength(tmpOptionValues);
+        if (tmpOptionLabels == null) {
+          optionLabels = null;
         } else {
-            attributeType = AttributeDefinition.STRING;
+          optionLabels = new String[length];
         }
 
-        defaultValue = createDefaultValueArray();
-
-        if (attributeMetadata instanceof SelectablePropertyAttributeMetadata) {
-            SelectablePropertyAttributeMetadata<V_ARRAY> selectableMetadata =
-                    (SelectablePropertyAttributeMetadata<V_ARRAY>) attributeMetadata;
-
-            String[] tmpOptionLabels = selectableMetadata.getOptionLabels();
-
-            V_ARRAY tmpOptionValues = selectableMetadata.getOptionValues();
-            if (tmpOptionValues == null) {
-                optionValues = null;
-                optionLabels = null;
+        optionValues = new String[length];
+        for (int i = 0; i < length; i++) {
+          Object optionValue = Array.get(tmpOptionValues, i);
+          if (optionValue != null) {
+            optionValues[i] = String.valueOf(optionValue);
+          }
+          if (optionLabels != null) {
+            if (tmpOptionLabels[i] != null) {
+              optionLabels[i] = localizer.localize(tmpOptionLabels[i]);
             } else {
-                int length = Array.getLength(tmpOptionValues);
-                if (tmpOptionLabels == null) {
-                    optionLabels = null;
-                } else {
-                    optionLabels = new String[length];
-                }
-
-                optionValues = new String[length];
-                for (int i = 0; i < length; i++) {
-                    Object optionValue = Array.get(tmpOptionValues, i);
-                    if (optionValue != null) {
-                        optionValues[i] = String.valueOf(optionValue);
-                    }
-                    if (optionLabels != null) {
-                        if (tmpOptionLabels[i] != null) {
-                            optionLabels[i] = localizer.localize(tmpOptionLabels[i]);
-                        } else {
-                            optionLabels[i] = optionValues[i];
-                        }
-                    }
-                }
+              optionLabels[i] = optionValues[i];
             }
-        } else {
-            optionLabels = null;
-            optionValues = null;
+          }
         }
+      }
+    } else {
+      optionLabels = null;
+      optionValues = null;
+    }
+  }
+
+  private String[] createDefaultValueArray() {
+    V_ARRAY tmpDefaultValue = attributeMetadata.getDefaultValue();
+    if (tmpDefaultValue == null) {
+      return null;
+    }
+    int length = Array.getLength(tmpDefaultValue);
+    if (length == 0) {
+      return null;
     }
 
-    private String[] createDefaultValueArray() {
-        V_ARRAY tmpDefaultValue = attributeMetadata.getDefaultValue();
-        if (tmpDefaultValue == null) {
-            return null;
-        }
-        int length = Array.getLength(tmpDefaultValue);
-        if (length == 0) {
-            return null;
-        }
-
-        String[] result = new String[length];
-        for (int i = 0; i < result.length; i++) {
-            Object element = Array.get(tmpDefaultValue, i);
-            if (element != null) {
-                result[i] = String.valueOf(element);
-            }
-        }
-        return result;
+    String[] result = new String[length];
+    for (int i = 0; i < result.length; i++) {
+      Object element = Array.get(tmpDefaultValue, i);
+      if (element != null) {
+        result[i] = String.valueOf(element);
+      }
     }
+    return result;
+  }
 
-    @Override
-    public int getCardinality() {
-        if (attributeMetadata.isMultiple()) {
-            return Integer.MAX_VALUE;
-        } else {
-            return 0;
-        }
+  @Override
+  public int getCardinality() {
+    if (attributeMetadata.isMultiple()) {
+      return Integer.MAX_VALUE;
+    } else {
+      return 0;
     }
+  }
 
-    @Override
-    public String[] getDefaultValue() {
-        return defaultValue;
-    }
+  @Override
+  public String[] getDefaultValue() {
+    return defaultValue;
+  }
 
-    @Override
-    public String getDescription() {
-        return localizer.localize(attributeMetadata.getDescription());
-    }
+  @Override
+  public String getDescription() {
+    return localizer.localize(attributeMetadata.getDescription());
+  }
 
-    @Override
-    public String getID() {
-        return attributeMetadata.getAttributeId();
-    }
+  @Override
+  public String getID() {
+    return attributeMetadata.getAttributeId();
+  }
 
-    @Override
-    public AttributeMetadata<V_ARRAY> getMetadata() {
-        return attributeMetadata;
-    }
+  @Override
+  public AttributeMetadata<V_ARRAY> getMetadata() {
+    return attributeMetadata;
+  }
 
-    @Override
-    public String getName() {
-        return localizer.localize(attributeMetadata.getLabel());
-    }
+  @Override
+  public String getName() {
+    return localizer.localize(attributeMetadata.getLabel());
+  }
 
-    @Override
-    public String[] getOptionLabels() {
-        return optionLabels;
-    }
+  @Override
+  public String[] getOptionLabels() {
+    return optionLabels;
+  }
 
-    @Override
-    public String[] getOptionValues() {
-        return optionValues;
-    }
+  @Override
+  public String[] getOptionValues() {
+    return optionValues;
+  }
 
-    @Override
-    public int getType() {
-        return attributeType;
-    }
+  @Override
+  public int getType() {
+    return attributeType;
+  }
 
-    @Override
-    public String validate(final String value) {
-        // TODO Auto-generated method stub
-        return null;
-    }
+  @Override
+  public String validate(final String value) {
+    // TODO Auto-generated method stub
+    return null;
+  }
 
 }

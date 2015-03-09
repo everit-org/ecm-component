@@ -31,149 +31,155 @@ import org.osgi.framework.BundleContext;
 
 public class ActivateMethodHelper<C> {
 
-    private final ComponentContextImpl<C> componentContext;
+  private final ComponentContextImpl<C> componentContext;
 
-    private int indexOfBundleContextParameter = -1;
+  private int indexOfBundleContextParameter = -1;
 
-    private int indexOfComponentContextParameter = -1;
+  private int indexOfComponentContextParameter = -1;
 
-    private int indexOfPropertiesParameter = -1;
+  private int indexOfPropertiesParameter = -1;
 
-    private Method method = null;
+  private Method method = null;
 
-    public ActivateMethodHelper(final ComponentContextImpl<C> componentContext, final Class<?> clazz) {
-        this.componentContext = componentContext;
-        ComponentMetadata componentMetadata = componentContext.getComponentContainer().getComponentMetadata();
-        MethodDescriptor methodDescriptor = componentMetadata.getActivate();
-        if (methodDescriptor == null) {
-            return;
-        }
-
-        String methodName = methodDescriptor.getMethodName();
-        Method locatedMethod = null;
-        if (methodDescriptor.getParameterTypeNames() != null) {
-            locatedMethod = methodDescriptor.locate(clazz, false);
-            validateMethod(locatedMethod);
-        } else {
-            locatedMethod = new MethodDescriptor(methodName, new String[] { ComponentContext.class.getName() })
-                    .locate(clazz, false);
-
-            if (locatedMethod == null) {
-                locatedMethod = new MethodDescriptor(methodName, new String[] { BundleContext.class.getName() })
-                        .locate(clazz, false);
-            }
-
-            if (locatedMethod == null) {
-                locatedMethod = new MethodDescriptor(methodName, new String[] { Map.class.getName() })
-                        .locate(clazz, false);
-            }
-
-            if (locatedMethod == null) {
-                locatedMethod = locateMethodWithMinTwoParams(clazz);
-            }
-
-            if (locatedMethod == null) {
-                locatedMethod = new MethodDescriptor(methodName, new String[0]).locate(clazz, false);
-            }
-        }
-        if (locatedMethod == null) {
-            Exception e = new MetadataValidationException("Could not find activate method for component '"
-                    + componentMetadata.getComponentId() + " based on descriptor: " + methodDescriptor.toString());
-
-            componentContext.fail(e, true);
-
-            return;
-        }
-
-        method = locatedMethod;
-        initializeParameterIndexes();
-
+  public ActivateMethodHelper(final ComponentContextImpl<C> componentContext, final Class<?> clazz) {
+    this.componentContext = componentContext;
+    ComponentMetadata componentMetadata = componentContext.getComponentContainer()
+        .getComponentMetadata();
+    MethodDescriptor methodDescriptor = componentMetadata.getActivate();
+    if (methodDescriptor == null) {
+      return;
     }
 
-    public void call(final Object instance)
-            throws IllegalAccessException, InvocationTargetException {
-        if (method == null) {
-            return;
-        }
+    String methodName = methodDescriptor.getMethodName();
+    Method locatedMethod = null;
+    if (methodDescriptor.getParameterTypeNames() != null) {
+      locatedMethod = methodDescriptor.locate(clazz, false);
+      validateMethod(locatedMethod);
+    } else {
+      locatedMethod = new MethodDescriptor(methodName,
+          new String[] { ComponentContext.class.getName() })
+          .locate(clazz, false);
 
-        int paramNum = method.getParameterTypes().length;
-        Object[] parameters = new Object[paramNum];
+      if (locatedMethod == null) {
+        locatedMethod = new MethodDescriptor(methodName,
+            new String[] { BundleContext.class.getName() })
+            .locate(clazz, false);
+      }
 
-        if (paramNum > 0) {
-            if (indexOfBundleContextParameter >= 0) {
-                parameters[indexOfBundleContextParameter] = componentContext.getBundleContext();
-            }
-            if (indexOfComponentContextParameter >= 0) {
-                parameters[indexOfComponentContextParameter] = componentContext;
-            }
-            if (indexOfPropertiesParameter >= 0) {
-                parameters[indexOfPropertiesParameter] = componentContext.getProperties();
-            }
-        }
+      if (locatedMethod == null) {
+        locatedMethod = new MethodDescriptor(methodName, new String[] { Map.class.getName() })
+            .locate(clazz, false);
+      }
 
-        method.invoke(instance, parameters);
+      if (locatedMethod == null) {
+        locatedMethod = locateMethodWithMinTwoParams(clazz);
+      }
+
+      if (locatedMethod == null) {
+        locatedMethod = new MethodDescriptor(methodName, new String[0]).locate(clazz, false);
+      }
+    }
+    if (locatedMethod == null) {
+      Exception e = new MetadataValidationException(
+          "Could not find activate method for component '"
+              + componentMetadata.getComponentId() + " based on descriptor: "
+              + methodDescriptor.toString());
+
+      componentContext.fail(e, true);
+
+      return;
     }
 
-    private void initializeParameterIndexes() {
+    method = locatedMethod;
+    initializeParameterIndexes();
+
+  }
+
+  public void call(final Object instance)
+      throws IllegalAccessException, InvocationTargetException {
+    if (method == null) {
+      return;
+    }
+
+    int paramNum = method.getParameterTypes().length;
+    Object[] parameters = new Object[paramNum];
+
+    if (paramNum > 0) {
+      if (indexOfBundleContextParameter >= 0) {
+        parameters[indexOfBundleContextParameter] = componentContext.getBundleContext();
+      }
+      if (indexOfComponentContextParameter >= 0) {
+        parameters[indexOfComponentContextParameter] = componentContext;
+      }
+      if (indexOfPropertiesParameter >= 0) {
+        parameters[indexOfPropertiesParameter] = componentContext.getProperties();
+      }
+    }
+
+    method.invoke(instance, parameters);
+  }
+
+  private void initializeParameterIndexes() {
+    Class<?>[] parameterTypes = method.getParameterTypes();
+    for (int i = 0; i < parameterTypes.length; i++) {
+      Class<?> parameterType = parameterTypes[i];
+      if (parameterType.equals(ComponentContext.class)) {
+        indexOfComponentContextParameter = i;
+      } else if (parameterType.equals(BundleContext.class)) {
+        indexOfBundleContextParameter = i;
+      } else if (Map.class.isAssignableFrom(parameterType)) {
+        indexOfPropertiesParameter = i;
+      } else {
+        componentContext.fail(new MetadataValidationException(
+            "Unrecognized type in Activate method: "
+                + parameterType), true);
+      }
+    }
+  }
+
+  private Method locateMethodWithMinTwoParams(final Class<?> clazz) {
+    Class<?> currentClass = clazz;
+
+    Method foundMethod = null;
+    while ((currentClass != null) && (foundMethod == null)) {
+      Method[] declaredMethods = currentClass.getDeclaredMethods();
+
+      for (int i = 0; (i < declaredMethods.length) && (foundMethod == null); i++) {
+        Method declaredMethod = declaredMethods[i];
         Class<?>[] parameterTypes = method.getParameterTypes();
-        for (int i = 0; i < parameterTypes.length; i++) {
-            Class<?> parameterType = parameterTypes[i];
-            if (parameterType.equals(ComponentContext.class)) {
-                indexOfComponentContextParameter = i;
-            } else if (parameterType.equals(BundleContext.class)) {
-                indexOfBundleContextParameter = i;
-            } else if (Map.class.isAssignableFrom(parameterType)) {
-                indexOfPropertiesParameter = i;
-            } else {
-                componentContext.fail(new MetadataValidationException("Unrecognized type in Activate method: "
-                        + parameterType), true);
-            }
+        int parameterNum = parameterTypes.length;
+        if (MethodUtil.isMethodAccessibleFromClass(clazz, declaredMethod, false)
+            && (parameterNum >= 2) && (parameterNum <= 3)) {
+
+          if (validateMethod(declaredMethod)) {
+            foundMethod = declaredMethod;
+          }
         }
+      }
+
+      currentClass = currentClass.getSuperclass();
+    }
+    return foundMethod;
+  }
+
+  private boolean validateMethod(final Method method) {
+    Class<?>[] parameterTypes = method.getParameterTypes();
+    if (parameterTypes.length > 3) {
+      return false;
     }
 
-    private Method locateMethodWithMinTwoParams(final Class<?> clazz) {
-        Class<?> currentClass = clazz;
+    Set<Class<?>> collectedParameterTypes = new HashSet<Class<?>>();
+    for (Class<?> parameterType : parameterTypes) {
+      if (!parameterType.equals(ComponentContext.class) && !parameterType.equals(Map.class)
+          && !parameterType.equals(BundleContext.class)) {
 
-        Method foundMethod = null;
-        while (currentClass != null && foundMethod == null) {
-            Method[] declaredMethods = currentClass.getDeclaredMethods();
-
-            for (int i = 0; i < declaredMethods.length && foundMethod == null; i++) {
-                Method declaredMethod = declaredMethods[i];
-                Class<?>[] parameterTypes = method.getParameterTypes();
-                int parameterNum = parameterTypes.length;
-                if (MethodUtil.isMethodAccessibleFromClass(clazz, declaredMethod, false)
-                        && parameterNum >= 2 && parameterNum <= 3) {
-
-                    if (validateMethod(declaredMethod)) {
-                        foundMethod = declaredMethod;
-                    }
-                }
-            }
-
-            currentClass = currentClass.getSuperclass();
-        }
-        return foundMethod;
+        return false;
+      }
+      boolean added = collectedParameterTypes.add(parameterType);
+      if (!added) {
+        return false;
+      }
     }
-
-    private boolean validateMethod(final Method method) {
-        Class<?>[] parameterTypes = method.getParameterTypes();
-        if (parameterTypes.length > 3) {
-            return false;
-        }
-
-        Set<Class<?>> collectedParameterTypes = new HashSet<Class<?>>();
-        for (Class<?> parameterType : parameterTypes) {
-            if (!parameterType.equals(ComponentContext.class) && !parameterType.equals(Map.class)
-                    && !parameterType.equals(BundleContext.class)) {
-
-                return false;
-            }
-            boolean added = collectedParameterTypes.add(parameterType);
-            if (!added) {
-                return false;
-            }
-        }
-        return true;
-    }
+    return true;
+  }
 }

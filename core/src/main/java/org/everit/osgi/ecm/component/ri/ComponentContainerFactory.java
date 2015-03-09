@@ -24,17 +24,18 @@ import org.osgi.framework.BundleContext;
 
 public class ComponentContainerFactory {
 
-    private final BundleContext bundleContext;
+  private final BundleContext bundleContext;
 
-    public ComponentContainerFactory(BundleContext bundleContext) {
-        this.bundleContext = bundleContext;
-    }
+  public ComponentContainerFactory(final BundleContext bundleContext) {
+    this.bundleContext = bundleContext;
+  }
 
-    public <C> ComponentContainerInstance<C> createComponentContainer(ComponentMetadata componentMetadata) {
-        if (ConfigurationPolicy.FACTORY.equals(componentMetadata.getConfigurationPolicy())) {
-            return new FactoryComponentContainerImpl<C>(componentMetadata, bundleContext);
-        } else {
-            return new ComponentContainerImpl<C>(componentMetadata, bundleContext);
-        }
+  public <C> ComponentContainerInstance<C> createComponentContainer(
+      final ComponentMetadata componentMetadata) {
+    if (ConfigurationPolicy.FACTORY.equals(componentMetadata.getConfigurationPolicy())) {
+      return new FactoryComponentContainerImpl<C>(componentMetadata, bundleContext);
+    } else {
+      return new ComponentContainerImpl<C>(componentMetadata, bundleContext);
     }
+  }
 }

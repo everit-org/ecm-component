@@ -23,31 +23,32 @@ import org.osgi.framework.ServiceRegistration;
 
 class ComponentServiceRegistration<S, C> implements ServiceRegistration<S> {
 
-    /**
+  /**
      *
      */
-    private final ComponentContextImpl<C> component;
-    private final ServiceRegistration<S> wrapped;
+  private final ComponentContextImpl<C> component;
+  private final ServiceRegistration<S> wrapped;
 
-    public ComponentServiceRegistration(final ComponentContextImpl<C> component, final ServiceRegistration<S> wrapped) {
-        this.component = component;
-        this.wrapped = wrapped;
-    }
+  public ComponentServiceRegistration(final ComponentContextImpl<C> component,
+      final ServiceRegistration<S> wrapped) {
+    this.component = component;
+    this.wrapped = wrapped;
+  }
 
-    @Override
-    public ServiceReference<S> getReference() {
-        return wrapped.getReference();
-    }
+  @Override
+  public ServiceReference<S> getReference() {
+    return wrapped.getReference();
+  }
 
-    @Override
-    public void setProperties(final Dictionary<String, ?> properties) {
-        wrapped.setProperties(properties);
-    }
+  @Override
+  public void setProperties(final Dictionary<String, ?> properties) {
+    wrapped.setProperties(properties);
+  }
 
-    @Override
-    public void unregister() {
-        this.component.removeServiceRegistration(this);
-        wrapped.unregister();
-    }
+  @Override
+  public void unregister() {
+    this.component.removeServiceRegistration(this);
+    wrapped.unregister();
+  }
 
 }

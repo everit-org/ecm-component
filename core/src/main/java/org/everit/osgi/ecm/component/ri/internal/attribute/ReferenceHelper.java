@@ -45,295 +45,300 @@ import org.osgi.framework.InvalidSyntaxException;
 
 public abstract class ReferenceHelper<CAPABILITY, COMPONENT, METADATA extends ReferenceMetadata> {
 
-    protected class ReferenceCapabilityConsumer implements CapabilityConsumer<CAPABILITY> {
+  protected class ReferenceCapabilityConsumer implements CapabilityConsumer<CAPABILITY> {
 
-        private final ReferenceHelper<CAPABILITY, COMPONENT, METADATA> owner;
+    private final ReferenceHelper<CAPABILITY, COMPONENT, METADATA> owner;
 
-        public ReferenceCapabilityConsumer(final ReferenceHelper<CAPABILITY, COMPONENT, METADATA> owner) {
-            this.owner = owner;
-        }
-
-        @Override
-        public void accept(final Suiting<CAPABILITY>[] pSuitings, final Boolean pSatisfied) {
-            suitings = pSuitings;
-            satisfied = pSatisfied;
-            if (pSatisfied) {
-                if (!satisfiedNotificationSent) {
-                    satisfiedNotificationSent = true;
-                    eventHandler.satisfied(owner);
-                } else {
-                    if (referenceMetadata.isDynamic()) {
-                        eventHandler.updateWithoutSatisfactionChange(owner);
-                        bind();
-                    } else {
-                        eventHandler.updateNonDynamic(owner);
-                    }
-                }
-            } else {
-                if (satisfiedNotificationSent) {
-                    satisfiedNotificationSent = false;
-                    eventHandler.unsatisfied(owner);
-                } else {
-                    eventHandler.updateWithoutSatisfactionChange(owner);
-                }
-            }
-        }
+    public ReferenceCapabilityConsumer(final ReferenceHelper<CAPABILITY, COMPONENT, METADATA> owner) {
+      this.owner = owner;
     }
 
-    private final boolean array;
+    @Override
+    public void accept(final Suiting<CAPABILITY>[] pSuitings, final Boolean pSatisfied) {
+      suitings = pSuitings;
+      satisfied = pSatisfied;
+      if (pSatisfied) {
+        if (!satisfiedNotificationSent) {
+          satisfiedNotificationSent = true;
+          eventHandler.satisfied(owner);
+        } else {
+          if (referenceMetadata.isDynamic()) {
+            eventHandler.updateWithoutSatisfactionChange(owner);
+            bind();
+          } else {
+            eventHandler.updateNonDynamic(owner);
+          }
+        }
+      } else {
+        if (satisfiedNotificationSent) {
+          satisfiedNotificationSent = false;
+          eventHandler.unsatisfied(owner);
+        } else {
+          eventHandler.updateWithoutSatisfactionChange(owner);
+        }
+      }
+    }
+  }
 
-    private final AbstractCapabilityCollector<CAPABILITY> collector;
+  private final boolean array;
 
-    private final ComponentContextImpl<COMPONENT> componentContext;
+  private final AbstractCapabilityCollector<CAPABILITY> collector;
 
-    private final ReferenceEventHandler eventHandler;
+  private final ComponentContextImpl<COMPONENT> componentContext;
 
-    private final boolean holder;
+  private final ReferenceEventHandler eventHandler;
 
-    private Object previousInstance = null;
+  private final boolean holder;
 
-    private final METADATA referenceMetadata;
+  private Object previousInstance = null;
 
-    private volatile boolean satisfied = false;
+  private final METADATA referenceMetadata;
 
-    private volatile boolean satisfiedNotificationSent = false;
+  private volatile boolean satisfied = false;
 
-    private final MethodHandle setterMethodHandle;
+  private volatile boolean satisfiedNotificationSent = false;
 
-    private volatile Suiting<CAPABILITY>[] suitings;
+  private final MethodHandle setterMethodHandle;
 
-    public ReferenceHelper(final METADATA referenceMetadata, final ComponentContextImpl<COMPONENT> componentContext,
-            final ReferenceEventHandler eventHandler) throws IllegalAccessException {
-        this.referenceMetadata = referenceMetadata;
-        this.componentContext = componentContext;
-        this.eventHandler = eventHandler;
+  private volatile Suiting<CAPABILITY>[] suitings;
 
-        MethodDescriptor setterMethodDescriptor = referenceMetadata.getSetter();
-        if (setterMethodDescriptor == null) {
+  public ReferenceHelper(final METADATA referenceMetadata,
+      final ComponentContextImpl<COMPONENT> componentContext,
+      final ReferenceEventHandler eventHandler) throws IllegalAccessException {
+    this.referenceMetadata = referenceMetadata;
+    this.componentContext = componentContext;
+    this.eventHandler = eventHandler;
+
+    MethodDescriptor setterMethodDescriptor = referenceMetadata.getSetter();
+    if (setterMethodDescriptor == null) {
+      holder = false;
+      setterMethodHandle = null;
+      array = false;
+    } else {
+      Method setterMethod = setterMethodDescriptor.locate(componentContext.getComponentType(),
+          false);
+      if (setterMethod == null) {
+        throw new MetadataValidationException("Setter method '" + setterMethodDescriptor.toString()
+            + "' could not be found for class " + componentContext.getComponentType());
+      }
+
+      Lookup lookup = MethodHandles.lookup();
+
+      this.setterMethodHandle = lookup.unreflect(setterMethod);
+
+      Class<?>[] parameterTypes = setterMethod.getParameterTypes();
+      if ((parameterTypes.length != 1) || parameterTypes[0].isPrimitive()) {
+        throw new MetadataValidationException("Setter method for reference '"
+            + referenceMetadata.toString()
+            + "' that is defined in the class '" + componentContext.getComponentType()
+            + "' must have one non-primitive parameter.");
+      }
+
+      if (AbstractReferenceHolder.class.isAssignableFrom(parameterTypes[0])) {
+        holder = true;
+        array = false;
+      } else {
+        if (parameterTypes[0].isArray()) {
+          if (AbstractReferenceHolder.class.isAssignableFrom(parameterTypes[0].getComponentType())) {
+            holder = true;
+          } else {
             holder = false;
-            setterMethodHandle = null;
-            array = false;
+          }
+          array = true;
         } else {
-            Method setterMethod = setterMethodDescriptor.locate(componentContext.getComponentType(), false);
-            if (setterMethod == null) {
-                throw new MetadataValidationException("Setter method '" + setterMethodDescriptor.toString()
-                        + "' could not be found for class " + componentContext.getComponentType());
-            }
-
-            Lookup lookup = MethodHandles.lookup();
-
-            this.setterMethodHandle = lookup.unreflect(setterMethod);
-
-            Class<?>[] parameterTypes = setterMethod.getParameterTypes();
-            if (parameterTypes.length != 1 || parameterTypes[0].isPrimitive()) {
-                throw new MetadataValidationException("Setter method for reference '" + referenceMetadata.toString()
-                        + "' that is defined in the class '" + componentContext.getComponentType()
-                        + "' must have one non-primitive parameter.");
-            }
-
-            if (AbstractReferenceHolder.class.isAssignableFrom(parameterTypes[0])) {
-                holder = true;
-                array = false;
-            } else {
-                if (parameterTypes[0].isArray()) {
-                    if (AbstractReferenceHolder.class.isAssignableFrom(parameterTypes[0].getComponentType())) {
-                        holder = true;
-                    } else {
-                        holder = false;
-                    }
-                    array = true;
-                } else {
-                    array = false;
-                    holder = false;
-                }
-            }
+          array = false;
+          holder = false;
         }
-
-        RequirementDefinition<CAPABILITY>[] requirements = resolveRequirements();
-
-        if (requirements == null) {
-            @SuppressWarnings("unchecked")
-            RequirementDefinition<CAPABILITY>[] lRequirements = new RequirementDefinition[0];
-            requirements = lRequirements;
-        }
-
-        this.collector = createCollector(new ReferenceCapabilityConsumer(this), requirements);
+      }
     }
 
-    public void bind() {
+    RequirementDefinition<CAPABILITY>[] requirements = resolveRequirements();
+
+    if (requirements == null) {
+      @SuppressWarnings("unchecked")
+      RequirementDefinition<CAPABILITY>[] lRequirements = new RequirementDefinition[0];
+      requirements = lRequirements;
+    }
+
+    this.collector = createCollector(new ReferenceCapabilityConsumer(this), requirements);
+  }
+
+  public void bind() {
+    try {
+      if (setterMethodHandle != null) {
+        if (!array && (suitings.length > 1)) {
+          getComponentContext().fail(new ConfigurationException(
+              getReferenceMetadata().getAttributeId()
+                  + ": Multiple references assigned to the reference while the setter"
+                  + " method is not an array"),
+              false);
+        }
+
+        COMPONENT instance = componentContext.getInstance();
+        if ((previousInstance == null) || !previousInstance.equals(instance)) {
+          previousInstance = instance;
+          setterMethodHandle.bindTo(instance);
+        }
+        bindInternal();
+      }
+    } catch (RuntimeException e) {
+      componentContext.fail(e, false);
+    }
+  }
+
+  protected abstract void bindInternal();
+
+  public void close() {
+    satisfied = false;
+    collector.close();
+  }
+
+  protected abstract AbstractCapabilityCollector<CAPABILITY> createCollector(
+      ReferenceCapabilityConsumer consumer,
+      RequirementDefinition<CAPABILITY>[] items);
+
+  private RequirementDefinition<CAPABILITY>[] createRequirementDefinitionArray(final int n) {
+    @SuppressWarnings("unchecked")
+    RequirementDefinition<CAPABILITY>[] result = new RequirementDefinition[n];
+    return result;
+  }
+
+  private void failConfiguration(final String message, final Exception e) {
+    String attributeId = referenceMetadata.getAttributeId();
+    Map<String, Object> properties = componentContext.getProperties();
+    String servicePid = String.valueOf(properties.get(Constants.SERVICE_PID));
+    String finalMessage = "Error in configuration of attribute '" + attributeId
+        + "' in '" + servicePid + "': " + message;
+    if (e != null) {
+      componentContext.fail(new ConfigurationException(finalMessage, e), false);
+    } else {
+      componentContext.fail(new ConfigurationException(finalMessage), false);
+    }
+  }
+
+  public ComponentContextImpl<COMPONENT> getComponentContext() {
+    return componentContext;
+  }
+
+  public METADATA getReferenceMetadata() {
+    return referenceMetadata;
+  }
+
+  public MethodHandle getSetterMethodHandle() {
+    return setterMethodHandle;
+  }
+
+  public Suiting<CAPABILITY>[] getSuitings() {
+    return suitings.clone();
+  }
+
+  public boolean isArray() {
+    return array;
+  }
+
+  public boolean isHolder() {
+    return holder;
+  }
+
+  public boolean isOpened() {
+    return collector.isOpened();
+  }
+
+  public boolean isSatisfied() {
+    return satisfied;
+  }
+
+  public void open() {
+    collector.open();
+  }
+
+  private RequirementDefinition<CAPABILITY>[] resolveRequirements() {
+    String attributeId = referenceMetadata.getAttributeId();
+    Map<String, Object> properties = componentContext.getProperties();
+    Object requirementAttribute = properties.get(attributeId);
+    if (requirementAttribute == null) {
+      RequirementDefinition<CAPABILITY>[] result = createRequirementDefinitionArray(0);
+      return result;
+    }
+
+    String[] requirementStringArray;
+    if (requirementAttribute instanceof String) {
+      requirementStringArray = new String[1];
+      requirementStringArray[0] = (String) requirementAttribute;
+    } else if (requirementAttribute instanceof String[]) {
+      requirementStringArray = (String[]) requirementAttribute;
+    } else {
+      failConfiguration("Only String and String[] is accepted: "
+          + requirementAttribute.getClass().getCanonicalName(), null);
+      return null;
+    }
+
+    for (int i = 0; i < requirementStringArray.length; i++) {
+      String requirementString = requirementStringArray[i];
+      if ((requirementString != null) && "".equals(requirementString.trim())) {
+        requirementStringArray[i] = null;
+      }
+    }
+
+    ReferenceConfigurationType configurationType = referenceMetadata
+        .getReferenceConfigurationType();
+
+    RequirementDefinition<CAPABILITY>[] result = createRequirementDefinitionArray(requirementStringArray.length);
+
+    for (int i = 0; i < requirementStringArray.length; i++) {
+      String requirementString = requirementStringArray[i];
+
+      Map<String, Object> attributes = new LinkedHashMap<>();
+      String requirementId = "" + i;
+      String filterString = requirementString;
+
+      if (configurationType == ReferenceConfigurationType.CLAUSE) {
+        if (requirementString == null) {
+          failConfiguration("Value must be defined", null);
+          return null;
+        }
         try {
-            if (setterMethodHandle != null) {
-                if (!array && suitings.length > 1) {
-                    getComponentContext().fail(new ConfigurationException(
-                            getReferenceMetadata().getAttributeId()
-                                    + ": Multiple references assigned to the reference while the setter"
-                                    + " method is not an array"),
-                            false);
-                }
-
-                COMPONENT instance = componentContext.getInstance();
-                if (previousInstance == null || !previousInstance.equals(instance)) {
-                    previousInstance = instance;
-                    setterMethodHandle.bindTo(instance);
-                }
-                bindInternal();
+          Clause[] clauses = Parser.parseClauses(new String[] { requirementString });
+          if (clauses != null) {
+            Attribute[] parsedAttributes = clauses[0].getAttributes();
+            for (Attribute attribute : parsedAttributes) {
+              attributes.put(attribute.getName(), attribute.getValue());
             }
-        } catch (RuntimeException e) {
-            componentContext.fail(e, false);
+            requirementId = clauses[0].getName();
+            filterString = clauses[0].getDirective("filter");
+          }
+        } catch (IllegalArgumentException e) {
+          failConfiguration("Invalid clause: " + requirementString, e);
+          return null;
         }
-    }
+      }
 
-    protected abstract void bindInternal();
-
-    public void close() {
-        satisfied = false;
-        collector.close();
-    }
-
-    protected abstract AbstractCapabilityCollector<CAPABILITY> createCollector(ReferenceCapabilityConsumer consumer,
-            RequirementDefinition<CAPABILITY>[] items);
-
-    private RequirementDefinition<CAPABILITY>[] createRequirementDefinitionArray(final int n) {
-        @SuppressWarnings("unchecked")
-        RequirementDefinition<CAPABILITY>[] result = new RequirementDefinition[n];
-        return result;
-    }
-
-    private void failConfiguration(final String message, final Exception e) {
-        String attributeId = referenceMetadata.getAttributeId();
-        Map<String, Object> properties = componentContext.getProperties();
-        String servicePid = String.valueOf(properties.get(Constants.SERVICE_PID));
-        String finalMessage = "Error in configuration of attribute '" + attributeId
-                + "' in '" + servicePid + "': " + message;
-        if (e != null) {
-            componentContext.fail(new ConfigurationException(finalMessage, e), false);
-        } else {
-            componentContext.fail(new ConfigurationException(finalMessage), false);
-        }
-    }
-
-    public ComponentContextImpl<COMPONENT> getComponentContext() {
-        return componentContext;
-    }
-
-    public METADATA getReferenceMetadata() {
-        return referenceMetadata;
-    }
-
-    public MethodHandle getSetterMethodHandle() {
-        return setterMethodHandle;
-    }
-
-    public Suiting<CAPABILITY>[] getSuitings() {
-        return suitings.clone();
-    }
-
-    public boolean isArray() {
-        return array;
-    }
-
-    public boolean isHolder() {
-        return holder;
-    }
-
-    public boolean isOpened() {
-        return collector.isOpened();
-    }
-
-    public boolean isSatisfied() {
-        return satisfied;
-    }
-
-    public void open() {
-        collector.open();
-    }
-
-    private RequirementDefinition<CAPABILITY>[] resolveRequirements() {
-        String attributeId = referenceMetadata.getAttributeId();
-        Map<String, Object> properties = componentContext.getProperties();
-        Object requirementAttribute = properties.get(attributeId);
-        if (requirementAttribute == null) {
-            RequirementDefinition<CAPABILITY>[] result = createRequirementDefinitionArray(0);
-            return result;
-        }
-
-        String[] requirementStringArray;
-        if (requirementAttribute instanceof String) {
-            requirementStringArray = new String[1];
-            requirementStringArray[0] = (String) requirementAttribute;
-        } else if (requirementAttribute instanceof String[]) {
-            requirementStringArray = (String[]) requirementAttribute;
-        } else {
-            failConfiguration("Only String and String[] is accepted: "
-                    + requirementAttribute.getClass().getCanonicalName(), null);
-            return null;
-        }
-
-        for (int i = 0; i < requirementStringArray.length; i++) {
-            String requirementString = requirementStringArray[i];
-            if (requirementString != null && "".equals(requirementString.trim())) {
-                requirementStringArray[i] = null;
-            }
-        }
-
-        ReferenceConfigurationType configurationType = referenceMetadata.getReferenceConfigurationType();
-
-        RequirementDefinition<CAPABILITY>[] result = createRequirementDefinitionArray(requirementStringArray.length);
-
-        for (int i = 0; i < requirementStringArray.length; i++) {
-            String requirementString = requirementStringArray[i];
-
-            Map<String, Object> attributes = new LinkedHashMap<>();
-            String requirementId = "" + i;
-            String filterString = requirementString;
-
-            if (configurationType == ReferenceConfigurationType.CLAUSE) {
-                if (requirementString == null) {
-                    failConfiguration("Value must be defined", null);
-                    return null;
-                }
-                try {
-                    Clause[] clauses = Parser.parseClauses(new String[] { requirementString });
-                    if (clauses != null) {
-                        Attribute[] parsedAttributes = clauses[0].getAttributes();
-                        for (Attribute attribute : parsedAttributes) {
-                            attributes.put(attribute.getName(), attribute.getValue());
-                        }
-                        requirementId = clauses[0].getName();
-                        filterString = clauses[0].getDirective("filter");
-                    }
-                } catch (IllegalArgumentException e) {
-                    failConfiguration("Invalid clause: " + requirementString, e);
-                    return null;
-                }
-            }
-
-            Filter filter = null;
-            if (filterString != null) {
-                try {
-                    filter = FrameworkUtil.createFilter(filterString);
-                } catch (InvalidSyntaxException e) {
-                    failConfiguration("Invalid OSGi filter expression: " + requirementString, e);
-                    return null;
-                }
-            }
-            result[i] = new RequirementDefinition<CAPABILITY>(requirementId, filter, attributes);
-
-        }
-        return result;
-    }
-
-    public void updateConfiguration() {
-        RequirementDefinition<CAPABILITY>[] newRequirements = resolveRequirements();
-        if (newRequirements == null) {
-            // Means that resolving failed so we must return
-            return;
-        }
-
+      Filter filter = null;
+      if (filterString != null) {
         try {
-            collector.updateRequirements(newRequirements);
-        } catch (RuntimeException e) {
-            failConfiguration("Cannot update requirements on tracker: " + newRequirements, e);
+          filter = FrameworkUtil.createFilter(filterString);
+        } catch (InvalidSyntaxException e) {
+          failConfiguration("Invalid OSGi filter expression: " + requirementString, e);
+          return null;
         }
+      }
+      result[i] = new RequirementDefinition<CAPABILITY>(requirementId, filter, attributes);
+
     }
+    return result;
+  }
+
+  public void updateConfiguration() {
+    RequirementDefinition<CAPABILITY>[] newRequirements = resolveRequirements();
+    if (newRequirements == null) {
+      // Means that resolving failed so we must return
+      return;
+    }
+
+    try {
+      collector.updateRequirements(newRequirements);
+    } catch (RuntimeException e) {
+      failConfiguration("Cannot update requirements on tracker: " + newRequirements, e);
+    }
+  }
 }

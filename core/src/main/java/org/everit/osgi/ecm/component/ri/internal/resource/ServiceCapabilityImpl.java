@@ -26,84 +26,84 @@ import org.osgi.framework.wiring.BundleRevision;
 
 public class ServiceCapabilityImpl implements ServiceCapability {
 
-    private final Map<String, Object> attributes;
+  private final Map<String, Object> attributes;
 
-    private final BundleRevision resource;
+  private final BundleRevision resource;
 
-    private final ServiceReference<?> serviceReference;
+  private final ServiceReference<?> serviceReference;
 
-    public ServiceCapabilityImpl(final ServiceReference<?> serviceReference) {
-        this.serviceReference = serviceReference;
-        resource = serviceReference.getBundle().adapt(BundleRevision.class);
-        HashMap<String, Object> serviceProps = new HashMap<String, Object>();
-        String[] propertyKeys = serviceReference.getPropertyKeys();
-        for (String propertyKey : propertyKeys) {
-            serviceProps.put(propertyKey, serviceReference.getProperty(propertyKey));
-        }
-        attributes = Collections.unmodifiableMap(serviceProps);
+  public ServiceCapabilityImpl(final ServiceReference<?> serviceReference) {
+    this.serviceReference = serviceReference;
+    resource = serviceReference.getBundle().adapt(BundleRevision.class);
+    HashMap<String, Object> serviceProps = new HashMap<String, Object>();
+    String[] propertyKeys = serviceReference.getPropertyKeys();
+    for (String propertyKey : propertyKeys) {
+      serviceProps.put(propertyKey, serviceReference.getProperty(propertyKey));
     }
+    attributes = Collections.unmodifiableMap(serviceProps);
+  }
 
-    @Override
-    public boolean equals(final Object obj) {
-        if (this == obj) {
-            return true;
-        }
-        if (obj == null) {
-            return false;
-        }
-        if (getClass() != obj.getClass()) {
-            return false;
-        }
-        ServiceCapabilityImpl other = (ServiceCapabilityImpl) obj;
-        if (resource == null) {
-            if (other.resource != null) {
-                return false;
-            }
-        } else if (!resource.equals(other.resource)) {
-            return false;
-        }
-        if (serviceReference == null) {
-            if (other.serviceReference != null) {
-                return false;
-            }
-        } else if (!serviceReference.equals(other.serviceReference)) {
-            return false;
-        }
-        return true;
+  @Override
+  public boolean equals(final Object obj) {
+    if (this == obj) {
+      return true;
     }
+    if (obj == null) {
+      return false;
+    }
+    if (getClass() != obj.getClass()) {
+      return false;
+    }
+    ServiceCapabilityImpl other = (ServiceCapabilityImpl) obj;
+    if (resource == null) {
+      if (other.resource != null) {
+        return false;
+      }
+    } else if (!resource.equals(other.resource)) {
+      return false;
+    }
+    if (serviceReference == null) {
+      if (other.serviceReference != null) {
+        return false;
+      }
+    } else if (!serviceReference.equals(other.serviceReference)) {
+      return false;
+    }
+    return true;
+  }
 
-    @Override
-    public Map<String, Object> getAttributes() {
-        return attributes;
-    }
+  @Override
+  public Map<String, Object> getAttributes() {
+    return attributes;
+  }
 
-    @Override
-    public Map<String, String> getDirectives() {
-        return Collections.emptyMap();
-    }
+  @Override
+  public Map<String, String> getDirectives() {
+    return Collections.emptyMap();
+  }
 
-    @Override
-    public String getNamespace() {
-        return ServiceCapability.SERVICE_CAPABILITY_NAMESPACE;
-    }
+  @Override
+  public String getNamespace() {
+    return ServiceCapability.SERVICE_CAPABILITY_NAMESPACE;
+  }
 
-    @Override
-    public BundleRevision getResource() {
-        return resource;
-    }
+  @Override
+  public BundleRevision getResource() {
+    return resource;
+  }
 
-    @Override
-    public ServiceReference<?> getServiceReference() {
-        return serviceReference;
-    }
+  @Override
+  public ServiceReference<?> getServiceReference() {
+    return serviceReference;
+  }
 
-    @Override
-    public int hashCode() {
-        final int prime = 31;
-        int result = 1;
-        result = prime * result + ((resource == null) ? 0 : resource.hashCode());
-        result = prime * result + ((serviceReference == null) ? 0 : serviceReference.hashCode());
-        return result;
-    }
+  @Override
+  public int hashCode() {
+    final int prime = 31;
+    int result = 1;
+    result = (prime * result) + ((resource == null) ? 0 : resource.hashCode());
+    result = (prime * result) + ((serviceReference == null) ? 0 : serviceReference.hashCode());
+    return result;
+  }
 
 }

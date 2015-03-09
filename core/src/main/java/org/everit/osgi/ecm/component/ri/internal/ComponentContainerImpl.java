@@ -33,100 +33,107 @@ import org.osgi.service.cm.ConfigurationException;
 import org.osgi.service.cm.ManagedService;
 import org.osgi.service.metatype.MetaTypeProvider;
 
-public class ComponentContainerImpl<C> extends AbstractComponentContainer<C> implements ManagedService {
+public class ComponentContainerImpl<C> extends AbstractComponentContainer<C> implements
+    ManagedService {
 
-    private final AtomicReference<ComponentContextImpl<C>> componentAtomicReference = new AtomicReference<ComponentContextImpl<C>>();
+  private final AtomicReference<ComponentContextImpl<C>> componentAtomicReference = new AtomicReference<ComponentContextImpl<C>>();
 
-    private ServiceRegistration<?> serviceRegistration;
+  private ServiceRegistration<?> serviceRegistration;
 
-    public ComponentContainerImpl(final ComponentMetadata componentMetadata, final BundleContext bundleContext) {
-        super(componentMetadata, bundleContext);
+  public ComponentContainerImpl(final ComponentMetadata componentMetadata,
+      final BundleContext bundleContext) {
+    super(componentMetadata, bundleContext);
+  }
+
+  @Override
+  public void close() {
+    ComponentContextImpl<C> componentImpl = componentAtomicReference.get();
+    if ((componentImpl != null)
+        && (getComponentMetadata().getConfigurationPolicy() == ConfigurationPolicy.IGNORE)) {
+      componentImpl.close();
+      componentAtomicReference.set(null);
+    }
+    if (serviceRegistration != null) {
+      serviceRegistration.unregister();
+      serviceRegistration = null;
+    }
+  }
+
+  @Override
+  public ComponentRevisionImpl<C>[] getResources() {
+    ComponentContextImpl<C> componentImpl = componentAtomicReference.get();
+    if (componentImpl == null) {
+      @SuppressWarnings("unchecked")
+      ComponentRevisionImpl<C>[] result = new ComponentRevisionImpl[0];
+      return result;
+    }
+    @SuppressWarnings("unchecked")
+    ComponentRevisionImpl<C>[] result = new ComponentRevisionImpl[] { componentImpl
+        .getComponentRevision() };
+    return result;
+  }
+
+  @Override
+  public void open() {
+    BundleContext context = getBundleContext();
+    Dictionary<String, Object> properties = new Hashtable<String, Object>();
+    List<String> serviceInterfaces = new LinkedList<String>();
+    serviceInterfaces.add(ComponentContainer.class.getName());
+
+    ComponentMetadata componentMetadata = getComponentMetadata();
+
+    addCommonServiceProperties(properties);
+
+    if (!ConfigurationPolicy.IGNORE.equals(componentMetadata.getConfigurationPolicy())) {
+      if (componentMetadata.isMetatype()) {
+        properties.put(MetaTypeProvider.METATYPE_PID, componentMetadata.getConfigurationPid());
+        serviceInterfaces.add(MetaTypeProvider.class.getName());
+      }
+      properties.put(Constants.SERVICE_PID, componentMetadata.getConfigurationPid());
+      serviceInterfaces.add(ManagedService.class.getName());
     }
 
-    @Override
-    public void close() {
-        ComponentContextImpl<C> componentImpl = componentAtomicReference.get();
-        if (componentImpl != null
-                && getComponentMetadata().getConfigurationPolicy() == ConfigurationPolicy.IGNORE) {
-            componentImpl.close();
-            componentAtomicReference.set(null);
-        }
-        if (serviceRegistration != null) {
-            serviceRegistration.unregister();
-            serviceRegistration = null;
-        }
+    serviceRegistration = context.registerService(
+        serviceInterfaces.toArray(new String[serviceInterfaces.size()]),
+        this, properties);
+
+    ComponentContextImpl<C> componentImpl = componentAtomicReference.get();
+    if (ConfigurationPolicy.IGNORE.equals(componentMetadata.getConfigurationPolicy())
+        && (componentImpl == null)) {
+      componentImpl = new ComponentContextImpl<C>(this, getBundleContext());
+      componentAtomicReference.set(componentImpl);
+      componentImpl.open();
+      return;
     }
 
-    @Override
-    public ComponentRevisionImpl<C>[] getResources() {
-        ComponentContextImpl<C> componentImpl = componentAtomicReference.get();
-        if (componentImpl == null) {
-            @SuppressWarnings("unchecked")
-            ComponentRevisionImpl<C>[] result = new ComponentRevisionImpl[0];
-            return result;
-        }
-        @SuppressWarnings("unchecked")
-        ComponentRevisionImpl<C>[] result = new ComponentRevisionImpl[] { componentImpl.getComponentRevision() };
-        return result;
+  }
+
+  @Override
+  public synchronized void updated(final Dictionary<String, ?> properties)
+      throws ConfigurationException {
+    @SuppressWarnings("unchecked")
+    Dictionary<String, Object> props = (Dictionary<String, Object>) properties;
+
+    ComponentMetadata componentMetadata = getComponentMetadata();
+    ComponentContextImpl<C> componentImpl = componentAtomicReference.get();
+
+    ConfigurationPolicy configurationPolicy = componentMetadata.getConfigurationPolicy();
+
+    if ((componentImpl == null)
+        && ((properties != null) || ConfigurationPolicy.OPTIONAL.equals(configurationPolicy))) {
+      componentImpl = new ComponentContextImpl<C>(this, getBundleContext(), props);
+      componentAtomicReference.set(componentImpl);
+      componentImpl.open();
+    } else if ((componentImpl != null) && (properties == null)
+        && !ConfigurationPolicy.OPTIONAL.equals(configurationPolicy)) {
+
+      componentImpl.close();
+      componentAtomicReference.set(null);
+
+    } else if (componentImpl != null) {
+      @SuppressWarnings("unchecked")
+      Dictionary<String, Object> propertiesWithObjectGenerics = (Dictionary<String, Object>) properties;
+      componentImpl.updateConfiguration(propertiesWithObjectGenerics);
     }
-
-    @Override
-    public void open() {
-        BundleContext context = getBundleContext();
-        Dictionary<String, Object> properties = new Hashtable<String, Object>();
-        List<String> serviceInterfaces = new LinkedList<String>();
-        serviceInterfaces.add(ComponentContainer.class.getName());
-
-        ComponentMetadata componentMetadata = getComponentMetadata();
-
-        addCommonServiceProperties(properties);
-
-        if (!ConfigurationPolicy.IGNORE.equals(componentMetadata.getConfigurationPolicy())) {
-            if (componentMetadata.isMetatype()) {
-                properties.put(MetaTypeProvider.METATYPE_PID, componentMetadata.getConfigurationPid());
-                serviceInterfaces.add(MetaTypeProvider.class.getName());
-            }
-            properties.put(Constants.SERVICE_PID, componentMetadata.getConfigurationPid());
-            serviceInterfaces.add(ManagedService.class.getName());
-        }
-
-        serviceRegistration = context.registerService(serviceInterfaces.toArray(new String[serviceInterfaces.size()]),
-                this, properties);
-
-        ComponentContextImpl<C> componentImpl = componentAtomicReference.get();
-        if (ConfigurationPolicy.IGNORE.equals(componentMetadata.getConfigurationPolicy()) && componentImpl == null) {
-            componentImpl = new ComponentContextImpl<C>(this, getBundleContext());
-            componentAtomicReference.set(componentImpl);
-            componentImpl.open();
-            return;
-        }
-
-    }
-
-    @Override
-    public synchronized void updated(final Dictionary<String, ?> properties) throws ConfigurationException {
-        @SuppressWarnings("unchecked")
-        Dictionary<String, Object> props = (Dictionary<String, Object>) properties;
-
-        ComponentMetadata componentMetadata = getComponentMetadata();
-        ComponentContextImpl<C> componentImpl = componentAtomicReference.get();
-
-        ConfigurationPolicy configurationPolicy = componentMetadata.getConfigurationPolicy();
-
-        if (componentImpl == null && (properties != null || ConfigurationPolicy.OPTIONAL.equals(configurationPolicy))) {
-            componentImpl = new ComponentContextImpl<C>(this, getBundleContext(), props);
-            componentAtomicReference.set(componentImpl);
-            componentImpl.open();
-        } else if (componentImpl != null && properties == null
-                && !ConfigurationPolicy.OPTIONAL.equals(configurationPolicy)) {
-
-            componentImpl.close();
-            componentAtomicReference.set(null);
-
-        } else if (componentImpl != null) {
-            @SuppressWarnings("unchecked")
-            Dictionary<String, Object> propertiesWithObjectGenerics = (Dictionary<String, Object>) properties;
-            componentImpl.updateConfiguration(propertiesWithObjectGenerics);
-        }
-    }
+  }
 }

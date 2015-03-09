@@ -23,33 +23,33 @@ import org.osgi.resource.Resource;
 
 public class ComponentWireImpl implements ComponentWire {
 
-    private final Capability capability;
+  private final Capability capability;
 
-    private final Requirement requirement;
+  private final Requirement requirement;
 
-    public ComponentWireImpl(final Requirement requirement, final Capability capability) {
-        this.requirement = requirement;
-        this.capability = capability;
-    }
+  public ComponentWireImpl(final Requirement requirement, final Capability capability) {
+    this.requirement = requirement;
+    this.capability = capability;
+  }
 
-    @Override
-    public Capability getCapability() {
-        return capability;
-    }
+  @Override
+  public Capability getCapability() {
+    return capability;
+  }
 
-    @Override
-    public Resource getProvider() {
-        return capability.getResource();
-    }
+  @Override
+  public Resource getProvider() {
+    return capability.getResource();
+  }
 
-    @Override
-    public Requirement getRequirement() {
-        return requirement;
-    }
+  @Override
+  public Requirement getRequirement() {
+    return requirement;
+  }
 
-    @Override
-    public Resource getRequirer() {
-        return requirement.getResource();
-    }
+  @Override
+  public Resource getRequirer() {
+    return requirement.getResource();
+  }
 
 }
