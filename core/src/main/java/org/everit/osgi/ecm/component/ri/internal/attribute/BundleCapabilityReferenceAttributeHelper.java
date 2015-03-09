@@ -79,10 +79,8 @@ public class BundleCapabilityReferenceAttributeHelper<COMPONENT> extends
   private Object[] resolveParameterArray() {
     Suiting<BundleCapability>[] lSuitings = getSuitings();
 
-    boolean lHolder = isHolder();
-
     Object[] parameterArray;
-    if (lHolder) {
+    if (isHolder()) {
       parameterArray = new BundleCapabilityHolder[lSuitings.length];
     } else {
       parameterArray = new BundleCapability[lSuitings.length];
@@ -90,7 +88,7 @@ public class BundleCapabilityReferenceAttributeHelper<COMPONENT> extends
 
     for (int i = 0; i < lSuitings.length; i++) {
       Suiting<BundleCapability> suiting = lSuitings[i];
-      if (lHolder) {
+      if (isHolder()) {
         RequirementDefinition<BundleCapability> requirement = suiting.getRequirement();
         BundleCapabilityHolder holder = new BundleCapabilityHolder(requirement.getRequirementId(),
             suiting.getCapability(), requirement.getAttributes());

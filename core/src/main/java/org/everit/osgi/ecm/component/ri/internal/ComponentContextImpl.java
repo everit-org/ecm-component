@@ -463,16 +463,16 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
     }
     Method method = methodDescriptor.locate(componentType, false);
     if (method == null) {
-      Exception e = new IllegalMetadataException("Could not find method '"
+      Exception exception = new IllegalMetadataException("Could not find method '"
           + methodDescriptor.toString()
           + "' for type " + componentType);
-      fail(e, true);
+      fail(exception, true);
     }
     if (method.getParameterTypes().length > 0) {
-      Exception e = new IllegalMetadataException(
+      Exception exception = new IllegalMetadataException(
           "Deactivate method must not have any parameters. Method '"
               + method.toGenericString() + "' of type " + componentType + " does have.");
-      fail(e, true);
+      fail(exception, true);
     }
     return method;
   }
@@ -670,6 +670,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
     try {
       final ComponentState state = getState();
       if (state == ComponentState.FAILED_PERMANENT) {
+        // TODO
         System.out.println("Configuration update has no effect due to permanent failure");
         return;
       }

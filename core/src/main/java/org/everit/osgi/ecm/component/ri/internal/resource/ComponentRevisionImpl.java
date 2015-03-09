@@ -320,7 +320,8 @@ public class ComponentRevisionImpl<C> implements ComponentRevision<C> {
       for (Suiting<?> suiting : suitings) {
         String fullRequirementId = referenceId;
         if (referenceMetadata.isMultiple()
-            || (referenceMetadata.getReferenceConfigurationType() == ReferenceConfigurationType.CLAUSE)) {
+            || (referenceMetadata.getReferenceConfigurationType()
+              == ReferenceConfigurationType.CLAUSE)) {
 
           fullRequirementId += "[" + suiting.getRequirement().getRequirementId() + "]";
         }

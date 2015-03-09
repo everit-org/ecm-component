@@ -23,10 +23,8 @@ import org.osgi.framework.ServiceRegistration;
 
 class ComponentServiceRegistration<S, C> implements ServiceRegistration<S> {
 
-  /**
-     *
-     */
   private final ComponentContextImpl<C> component;
+
   private final ServiceRegistration<S> wrapped;
 
   public ComponentServiceRegistration(final ComponentContextImpl<C> component,

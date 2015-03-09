@@ -132,7 +132,9 @@ public class ComponentContainerImpl<C> extends AbstractComponentContainer<C> imp
 
     } else if (componentImpl != null) {
       @SuppressWarnings("unchecked")
-      Dictionary<String, Object> propertiesWithObjectGenerics = (Dictionary<String, Object>) properties;
+      Dictionary<String, Object> propertiesWithObjectGenerics =
+          (Dictionary<String, Object>) properties;
+
       componentImpl.updateConfiguration(propertiesWithObjectGenerics);
     }
   }
