@@ -283,7 +283,8 @@ public abstract class ReferenceHelper<CAPABILITY, COMPONENT, METADATA extends Re
     ReferenceConfigurationType configurationType = referenceMetadata
         .getReferenceConfigurationType();
 
-    RequirementDefinition<CAPABILITY>[] result = createRequirementDefinitionArray(requirementStringArray.length);
+    RequirementDefinition<CAPABILITY>[] result = createRequirementDefinitionArray(
+        requirementStringArray.length);
 
     for (int i = 0; i < requirementStringArray.length; i++) {
       String requirementString = requirementStringArray[i];

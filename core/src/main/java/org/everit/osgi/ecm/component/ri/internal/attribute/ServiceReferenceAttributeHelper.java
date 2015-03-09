@@ -40,6 +40,7 @@ public class ServiceReferenceAttributeHelper<S, COMPONENT> extends
 
   private static class SuitingWithService<S> {
     public S service;
+
     public Suiting<ServiceReference<S>> suiting;
   }
 
@@ -70,7 +71,7 @@ public class ServiceReferenceAttributeHelper<S, COMPONENT> extends
 
     Map<String, SuitingWithService<S>> newSuitingMapping = new TreeMap<>();
     Suiting<ServiceReference<S>>[] tmpSuitings = getSuitings();
-    boolean lHolder = isHolder();
+
     Object[] parameter = new Object[tmpSuitings.length];
     for (int i = 0; i < tmpSuitings.length; i++) {
       Suiting<ServiceReference<S>> suiting = tmpSuitings[i];
@@ -84,7 +85,9 @@ public class ServiceReferenceAttributeHelper<S, COMPONENT> extends
 
       S service;
       if ((previousSuitingWithService == null)
-          || (previousSuitingWithService.suiting.getCapability().compareTo(suiting.getCapability()) != 0)) {
+          || (previousSuitingWithService.suiting.getCapability()
+              .compareTo(suiting.getCapability()) != 0)) {
+
         BundleContext bundleContext = getComponentContext().getBundleContext();
         service = bundleContext.getService(serviceReference);
         addToUsedServiceReferences(serviceReference);
@@ -99,7 +102,7 @@ public class ServiceReferenceAttributeHelper<S, COMPONENT> extends
         service = previousSuitingWithService.service;
       }
 
-      if (lHolder) {
+      if (isHolder()) {
         ServiceHolder<S> serviceHolder = new ServiceHolder<S>(getReferenceMetadata()
             .getReferenceId(),
             serviceReference, service, requirement.getAttributes());
@@ -148,8 +151,7 @@ public class ServiceReferenceAttributeHelper<S, COMPONENT> extends
     for (Entry<ServiceReference<S>, Integer> entry : usedServiceReferenceEntries) {
       ServiceReference<S> serviceReference = entry.getKey();
       Integer count = entry.getValue();
-      int n = count.intValue();
-      for (int i = 0; i < n; i++) {
+      for (int i = 0, n = count.intValue(); i < n; i++) {
         bundleContext.ungetService(serviceReference);
       }
     }

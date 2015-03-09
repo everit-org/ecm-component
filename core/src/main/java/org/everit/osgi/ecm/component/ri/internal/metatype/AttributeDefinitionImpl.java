@@ -46,27 +46,7 @@ public class AttributeDefinitionImpl<V_ARRAY> implements AttributeDefinition,
 
     Class<?> valueType = attributeMetadata.getValueType();
 
-    if (valueType.equals(Boolean.class)) {
-      attributeType = AttributeDefinition.BOOLEAN;
-    } else if (valueType.equals(byte.class)) {
-      attributeType = AttributeDefinition.BYTE;
-    } else if (valueType.equals(char.class)) {
-      attributeType = AttributeDefinition.CHARACTER;
-    } else if (valueType.equals(double.class)) {
-      attributeType = AttributeDefinition.DOUBLE;
-    } else if (valueType.equals(float.class)) {
-      attributeType = AttributeDefinition.FLOAT;
-    } else if (valueType.equals(int.class)) {
-      attributeType = AttributeDefinition.INTEGER;
-    } else if (valueType.equals(long.class)) {
-      attributeType = AttributeDefinition.LONG;
-    } else if (valueType.equals(short.class)) {
-      attributeType = AttributeDefinition.SHORT;
-    } else if (attributeMetadata.getClass().equals(PasswordAttributeMetadata.class)) {
-      attributeType = AttributeDefinition.PASSWORD;
-    } else {
-      attributeType = AttributeDefinition.STRING;
-    }
+    attributeType = convertValueTypeToAttributeType(valueType);
 
     defaultValue = createDefaultValueArray();
 
@@ -106,6 +86,30 @@ public class AttributeDefinitionImpl<V_ARRAY> implements AttributeDefinition,
     } else {
       optionLabels = null;
       optionValues = null;
+    }
+  }
+
+  private int convertValueTypeToAttributeType(final Class<?> valueType) {
+    if (valueType.equals(Boolean.class)) {
+      return AttributeDefinition.BOOLEAN;
+    } else if (byte.class.equals(valueType)) {
+      return AttributeDefinition.BYTE;
+    } else if (char.class.equals(valueType)) {
+      return AttributeDefinition.CHARACTER;
+    } else if (double.class.equals(valueType)) {
+      return AttributeDefinition.DOUBLE;
+    } else if (float.class.equals(valueType)) {
+      return AttributeDefinition.FLOAT;
+    } else if (int.class.equals(valueType)) {
+      return AttributeDefinition.INTEGER;
+    } else if (long.class.equals(valueType)) {
+      return AttributeDefinition.LONG;
+    } else if (short.class.equals(valueType)) {
+      return AttributeDefinition.SHORT;
+    } else if (attributeMetadata.getClass().equals(PasswordAttributeMetadata.class)) {
+      return AttributeDefinition.PASSWORD;
+    } else {
+      return AttributeDefinition.STRING;
     }
   }
 

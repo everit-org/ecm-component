@@ -34,6 +34,8 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import javax.annotation.Generated;
+
 import org.everit.osgi.ecm.component.ComponentContext;
 import org.everit.osgi.ecm.component.resource.ComponentContainer;
 import org.everit.osgi.ecm.component.resource.ComponentState;
@@ -242,6 +244,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
     }
   }
 
+  @Generated("eclipse")
   private boolean equals(final Object oldValue, final Object newValue) {
     if (((oldValue == null) && (newValue != null)) || ((oldValue != null) && (newValue == null))) {
       return false;
@@ -603,14 +606,8 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
           }
         }
         activateMethodHelper.call(instance);
-      } catch (RuntimeException e) {
+      } catch (RuntimeException | ReflectiveOperationException e) {
         fail(e, false);
-        return;
-      } catch (IllegalAccessException e) {
-        fail(e, true);
-        return;
-      } catch (InvocationTargetException e) {
-        fail(e.getCause(), false);
         return;
       }
 
