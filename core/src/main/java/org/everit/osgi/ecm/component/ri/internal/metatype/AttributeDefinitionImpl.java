@@ -90,7 +90,7 @@ public class AttributeDefinitionImpl<V_ARRAY> implements AttributeDefinition,
   }
 
   private int convertValueTypeToAttributeType(final Class<?> valueType) {
-    if (valueType.equals(Boolean.class)) {
+    if (boolean.class.equals(valueType)) {
       return AttributeDefinition.BOOLEAN;
     } else if (byte.class.equals(valueType)) {
       return AttributeDefinition.BYTE;

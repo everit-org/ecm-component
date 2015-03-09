@@ -17,6 +17,7 @@
 package org.everit.osgi.ecm.component.ri.internal.attribute;
 
 import java.lang.invoke.MethodHandle;
+import java.lang.reflect.Array;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -72,7 +73,13 @@ public class ServiceReferenceAttributeHelper<S, COMPONENT> extends
     Map<String, SuitingWithService<S>> newSuitingMapping = new TreeMap<>();
     Suiting<ServiceReference<S>>[] tmpSuitings = getSuitings();
 
-    Object[] parameter = new Object[tmpSuitings.length];
+    Object[] parameter;
+    if (isHolder()) {
+      parameter = new ServiceHolder[tmpSuitings.length];
+    } else {
+      parameter = (Object[]) Array.newInstance(getReferenceMetadata().getServiceInterface(),
+          tmpSuitings.length);
+    }
     for (int i = 0; i < tmpSuitings.length; i++) {
       Suiting<ServiceReference<S>> suiting = tmpSuitings[i];
       ServiceReference<S> serviceReference = suiting.getCapability();
@@ -115,7 +122,7 @@ public class ServiceReferenceAttributeHelper<S, COMPONENT> extends
     }
     if (isArray()) {
       try {
-        setterMethod.invoke(parameter);
+        setterMethod.invoke(getComponentContext().getInstance(), (Object) parameter);
       } catch (Throwable e) {
         getComponentContext().fail(e, false);
       }
