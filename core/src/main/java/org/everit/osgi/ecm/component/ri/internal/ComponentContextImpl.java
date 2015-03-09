@@ -668,7 +668,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
     Lock writeLock = readWriteLock.writeLock();
     writeLock.lock();
     try {
-      final ComponentState state = getState();
+      ComponentState state = getState();
       if (state == ComponentState.FAILED_PERMANENT) {
         // TODO
         System.out.println("Configuration update has no effect due to permanent failure");
@@ -680,6 +680,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
       } else if ((state == ComponentState.ACTIVE)
           && shouldRestartForNewConfiguraiton(newProperties)) {
         stopping(ComponentState.UPDATING_CONFIGURATION);
+        state = ComponentState.STOPPED;
       }
 
       Map<String, Object> oldProperties = getProperties();
@@ -720,7 +721,11 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
         }
       } else if (getState() == ComponentState.UPDATING_CONFIGURATION) {
         if (isSatisfied()) {
-          starting();
+          if (state == ComponentState.ACTIVE) {
+            revisionBuilder.active();
+          } else {
+            starting();
+          }
         } else {
           revisionBuilder.unsatisfied();
         }
