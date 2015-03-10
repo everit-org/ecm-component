@@ -189,6 +189,7 @@ public class ComponentRevisionImpl<C> implements ComponentRevision<C> {
 
   private static class RequirementsAndWires {
     public Map<String, List<Requirement>> requirements = new HashMap<String, List<Requirement>>();
+
     public List<Wire> wires = new ArrayList<Wire>();
   }
 

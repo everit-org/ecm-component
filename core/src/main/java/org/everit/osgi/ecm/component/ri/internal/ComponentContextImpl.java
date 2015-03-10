@@ -77,7 +77,8 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
 
         ComponentState state = getState();
         if ((satisfiedReferences == referenceHelpers.size())
-            && ((state == ComponentState.UNSATISFIED) || (state == ComponentState.UPDATING_CONFIGURATION))) {
+            && ((state == ComponentState.UNSATISFIED)
+            || (state == ComponentState.UPDATING_CONFIGURATION))) {
 
           starting();
         }
@@ -739,7 +740,8 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
     ComponentState state = getState();
     if ((state != ComponentState.ACTIVE) && (state != ComponentState.STARTING)) {
       throw new IllegalStateException(
-          "Service can only be registered in component if the state of the component is ACTIVE or STARTING");
+          "Service can only be registered in component if the state of the "
+              + "component is ACTIVE or STARTING");
     }
   }
 }
