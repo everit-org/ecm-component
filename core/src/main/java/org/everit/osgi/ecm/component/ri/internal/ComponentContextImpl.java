@@ -676,7 +676,14 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
         return;
       }
       Map<String, Object> newProperties = resolveProperties(properties);
-      if (state == ComponentState.UNSATISFIED) {
+      if (state == ComponentState.FAILED) {
+        try {
+          instance = componentType.newInstance();
+        } catch (InstantiationException | IllegalAccessException | RuntimeException e) {
+          fail(e, true);
+          return;
+        }
+      } else if (state == ComponentState.UNSATISFIED) {
         revisionBuilder.stopped(ComponentState.UPDATING_CONFIGURATION);
       } else if ((state == ComponentState.ACTIVE)
           && shouldRestartForNewConfiguraiton(newProperties)) {
