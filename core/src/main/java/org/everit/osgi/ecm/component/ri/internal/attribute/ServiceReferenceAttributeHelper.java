@@ -110,9 +110,8 @@ public class ServiceReferenceAttributeHelper<S, COMPONENT> extends
       }
 
       if (isHolder()) {
-        ServiceHolder<S> serviceHolder = new ServiceHolder<S>(getReferenceMetadata()
-            .getReferenceId(),
-            serviceReference, service, requirement.getAttributes());
+        ServiceHolder<S> serviceHolder = new ServiceHolder<S>(suiting.getRequirement()
+            .getRequirementId(), serviceReference, service, requirement.getAttributes());
 
         parameter[i] = serviceHolder;
       } else {
