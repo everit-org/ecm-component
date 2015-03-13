@@ -157,7 +157,8 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
 
   private boolean opened = false;
 
-  private final List<PropertyAttributeHelper<C, Object>> propertyAttributeHelpers = new ArrayList<>();
+  private final List<PropertyAttributeHelper<C, Object>> propertyAttributeHelpers =
+      new ArrayList<>();
 
   private final ReadWriteLock readWriteLock = new ReentrantReadWriteLock();
 
@@ -172,6 +173,8 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
   private String[] serviceInterfaces;
 
   private ServiceRegistration<?> serviceRegistration = null;
+
+  private Method updateMethod;
 
   public ComponentContextImpl(final AbstractComponentContainer<C> componentContainer,
       final BundleContext bundleContext) {
@@ -215,8 +218,22 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
 
     serviceInterfaces = resolveServiceInterfaces();
 
-    deactivateMethod = resolveDeactivateMethod();
+    deactivateMethod = resolveAnnotatedMethod("Deactivate", componentContainer
+        .getComponentMetadata().getDeactivate());
 
+    updateMethod = resolveAnnotatedMethod("Update", componentContainer
+        .getComponentMetadata().getUpdate());
+
+  }
+
+  private void callUpdateMethod() {
+    if (updateMethod != null) {
+      try {
+        updateMethod.invoke(instance);
+      } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+        fail(e, false);
+      }
+    }
   }
 
   public void close() {
@@ -457,8 +474,8 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
     revisionBuilder.removeServiceRegistration(serviceRegistration);
   }
 
-  private Method resolveDeactivateMethod() {
-    MethodDescriptor methodDescriptor = componentContainer.getComponentMetadata().getDeactivate();
+  private Method resolveAnnotatedMethod(final String methodType,
+      final MethodDescriptor methodDescriptor) {
     if (methodDescriptor == null) {
       return null;
     }
@@ -636,7 +653,8 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
         if (deactivateMethod != null) {
           try {
             deactivateMethod.invoke(instance);
-          } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+          } catch (IllegalAccessException | IllegalArgumentException
+              | InvocationTargetException e) {
             // TODO Auto-generated catch block
             e.printStackTrace();
           }
@@ -727,6 +745,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
             }
           }
         }
+        callUpdateMethod();
       } else if (getState() == ComponentState.UPDATING_CONFIGURATION) {
         if (isSatisfied()) {
           if (state == ComponentState.ACTIVE) {
