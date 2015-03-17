@@ -689,8 +689,6 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
     try {
       ComponentState state = getState();
       if (state == ComponentState.FAILED_PERMANENT) {
-        // TODO
-        System.out.println("Configuration update has no effect due to permanent failure");
         return;
       }
       Map<String, Object> newProperties = resolveProperties(properties);
@@ -703,7 +701,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
         }
       } else if (state == ComponentState.UNSATISFIED) {
         revisionBuilder.stopped(ComponentState.UPDATING_CONFIGURATION);
-      } else if ((state == ComponentState.ACTIVE)
+      } else if (state == ComponentState.ACTIVE
           && shouldRestartForNewConfiguraiton(newProperties)) {
         stopping(ComponentState.UPDATING_CONFIGURATION);
         state = ComponentState.STOPPED;
@@ -731,7 +729,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
         return;
       }
 
-      if (getState() == ComponentState.ACTIVE) {
+      if (state == ComponentState.ACTIVE) {
         for (PropertyAttributeHelper<C, Object> helper : propertyAttributeHelpers) {
           String attributeId = helper.getAttributeMetadata().getAttributeId();
 
