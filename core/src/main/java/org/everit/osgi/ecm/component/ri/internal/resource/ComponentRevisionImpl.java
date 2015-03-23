@@ -236,6 +236,9 @@ public class ComponentRevisionImpl<C> implements ComponentRevision<C> {
       suitingsByAttributeIds.put(referenceMetadata, suitings);
     }
 
+    /**
+     * Called when the state is changed to {@link ComponentState#UPDATING_CONFIGURATION}.
+     */
     public synchronized void updatingConfiguration() {
       this.cache = null;
       this.processingThread = Thread.currentThread();

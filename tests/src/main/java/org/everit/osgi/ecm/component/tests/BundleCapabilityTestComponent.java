@@ -15,8 +15,6 @@
  */
 package org.everit.osgi.ecm.component.tests;
 
-import java.util.Arrays;
-
 import org.everit.osgi.ecm.annotation.BundleCapabilityRef;
 import org.everit.osgi.ecm.annotation.Component;
 import org.everit.osgi.ecm.annotation.ConfigurationPolicy;
@@ -59,7 +57,6 @@ public class BundleCapabilityTestComponent {
   }
 
   public void setBcArrayReference(final BundleCapability[] bcArrayReference) {
-    System.out.println("///////////  " + Arrays.toString(bcArrayReference));
     this.bcArrayReference = bcArrayReference;
   }
 

@@ -47,7 +47,6 @@ import org.osgi.service.cm.Configuration;
 import org.osgi.service.cm.ConfigurationAdmin;
 import org.osgi.service.cm.ConfigurationException;
 import org.osgi.service.cm.ManagedService;
-import org.osgi.service.metatype.MetaTypeService;
 import org.osgi.util.tracker.ServiceTracker;
 
 /**
@@ -64,13 +63,15 @@ public class ECMTest {
 
   private static final int SERVICE_AVAILABILITY_TIMEOUT = 1000;
 
+  private static final double TEST_VALUE_DOUBLE = 1.1D;
+
+  private static final float TEST_VALUE_FLOAT = 1.1F;
+
   private ComponentContext<ECMTest> componentContext;
 
   private ConfigurationAdmin configAdmin;
 
   private ComponentContainerFactory factory;
-
-  private MetaTypeService metatypeService;
 
   @Activate
   public void activate(final ComponentContext<ECMTest> componentContext) {
@@ -78,14 +79,44 @@ public class ECMTest {
     factory = new ComponentContainerFactory(componentContext.getBundleContext());
   }
 
-  @ServiceRef(defaultValue = "(service.id>=0)")
-  public void setConfigAdmin(final ConfigurationAdmin configAdmin) {
-    this.configAdmin = configAdmin;
+  private Hashtable<String, Object> createPresetPropertiesForTestComponent() {
+    Hashtable<String, Object> properties = new Hashtable<String, Object>();
+    properties.put("booleanAttribute", true);
+    properties.put("booleanArrayAttribute", new boolean[] { true });
+
+    // Testing if one size array is passed to a non-multiple attribute
+    properties.put("byteAttribute", new byte[] { 1 });
+    properties.put("byteArrayAttribute", new byte[] { 1 });
+
+    properties.put("charAttribute", 'a');
+    properties.put("charArrayAttribute", new char[] { 'a' });
+
+    properties.put("doubleAttribute", TEST_VALUE_DOUBLE);
+    properties.put("doubleArrayAttribute", new double[] { TEST_VALUE_DOUBLE });
+
+    properties.put("floatAttribute", TEST_VALUE_FLOAT);
+    properties.put("floatArrayAttribute", new float[] { TEST_VALUE_FLOAT });
+
+    properties.put("intAttribute", 1);
+    properties.put("intArrayAttribute", new int[] { 1 });
+
+    properties.put("longAttribute", 1L);
+    properties.put("longArrayAttribute", new long[] { 1L });
+
+    properties.put("shortAttribute", (short) 1);
+    properties.put("shortArrayAttribute", new short[] { 1 });
+
+    properties.put("passwordAttribute", "123456");
+    properties.put("passwordArrayAttribute", new String[] { "123456" });
+
+    properties.put("stringAttribute", "Hello World");
+    properties.put("stringArrayAttribute", new String[] { "Hello World" });
+    return properties;
   }
 
   @ServiceRef(defaultValue = "(service.id>=0)")
-  public void setMetatypeService(final MetaTypeService metatypeService) {
-    this.metatypeService = metatypeService;
+  public void setConfigAdmin(final ConfigurationAdmin configAdmin) {
+    this.configAdmin = configAdmin;
   }
 
   @Test
@@ -298,37 +329,7 @@ public class ECMTest {
       Configuration configuration = configAdmin
           .getConfiguration("org.everit.osgi.ecm.component.tests.TestComponent", null);
 
-      Hashtable<String, Object> properties = new Hashtable<String, Object>();
-      properties.put("booleanAttribute", true);
-      properties.put("booleanArrayAttribute", new boolean[] { true });
-
-      // Testing if one size array is passed to a non-multiple attribute
-      properties.put("byteAttribute", new byte[] { 1 });
-      properties.put("byteArrayAttribute", new byte[] { 1 });
-
-      properties.put("charAttribute", 'a');
-      properties.put("charArrayAttribute", new char[] { 'a' });
-
-      properties.put("doubleAttribute", 1.1D);
-      properties.put("doubleArrayAttribute", new double[] { 1.1D });
-
-      properties.put("floatAttribute", 1.1F);
-      properties.put("floatArrayAttribute", new float[] { 1.1F });
-
-      properties.put("intAttribute", 1);
-      properties.put("intArrayAttribute", new int[] { 1 });
-
-      properties.put("longAttribute", 1L);
-      properties.put("longArrayAttribute", new long[] { 1L });
-
-      properties.put("shortAttribute", (short) 1);
-      properties.put("shortArrayAttribute", new short[] { 1 });
-
-      properties.put("passwordAttribute", "123456");
-      properties.put("passwordArrayAttribute", new String[] { "123456" });
-
-      properties.put("stringAttribute", "Hello World");
-      properties.put("stringArrayAttribute", new String[] { "Hello World" });
+      Hashtable<String, Object> properties = createPresetPropertiesForTestComponent();
 
       configuration.update(properties);
 
@@ -346,12 +347,12 @@ public class ECMTest {
         Assert.assertEquals('a', testComponent.getCharAttribute());
         Assert.assertArrayEquals(new char[] { 'a' }, testComponent.getCharArrayAttribute());
 
-        Assert.assertTrue(1.1D == testComponent.getDoubleAttribute());
-        Assert.assertTrue(Arrays.equals(new double[] { 1.1D },
+        Assert.assertTrue(TEST_VALUE_DOUBLE == testComponent.getDoubleAttribute());
+        Assert.assertTrue(Arrays.equals(new double[] { TEST_VALUE_DOUBLE },
             testComponent.getDoubleArrayAttribute()));
 
-        Assert.assertTrue(1.1F == testComponent.getFloatAttribute());
-        Assert.assertTrue(Arrays.equals(new float[] { 1.1F },
+        Assert.assertTrue(TEST_VALUE_FLOAT == testComponent.getFloatAttribute());
+        Assert.assertTrue(Arrays.equals(new float[] { TEST_VALUE_FLOAT },
             testComponent.getFloatArrayAttribute()));
 
         Assert.assertTrue(1 == testComponent.getIntAttribute());
