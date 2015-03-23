@@ -490,6 +490,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
   @Override
   public <S> ServiceRegistration<S> registerService(final Class<S> clazz, final S service,
       final Dictionary<String, ?> properties) {
+
     validateComponentStateForServiceRegistration();
     ServiceRegistration<S> lServiceRegistration = bundleContext.registerService(clazz, service,
         properties);
@@ -503,6 +504,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
     ServiceRegistration<?> lServiceRegistration = bundleContext.registerService(clazz, service,
         properties);
     return registerServiceInternal(lServiceRegistration);
+
   }
 
   @Override
@@ -721,6 +723,8 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
         case UPDATING_CONFIGURATION:
           revisionBuilder.updatingConfiguration();
           break;
+        case STOPPING:
+          break;
         default:
           throw new RuntimeException("Target state " + targetState
               + " is not allowed after stopping");
@@ -732,13 +736,10 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
     if (serviceRegistration != null) {
       serviceRegistration.unregister();
     }
-    for (ServiceRegistration<?> serviceRegistration : revisionBuilder
+    for (ServiceRegistration<?> lServiceRegistration : revisionBuilder
         .getCloneOfServiceRegistrations()) {
-      // TODO WARN the user that the code is not stable as the services should have been
-      // unregistered at this
-      // point.
-      serviceRegistration.unregister();
-      revisionBuilder.removeServiceRegistration(serviceRegistration);
+      revisionBuilder.removeServiceRegistration(lServiceRegistration);
+      lServiceRegistration.unregister();
     }
   }
 

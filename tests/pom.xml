@@ -35,7 +35,7 @@
 
   <properties>
     <source.dist.folder>${basedir}/src/dist/</source.dist.folder>
-    <eosgi.testnum>5</eosgi.testnum>
+    <eosgi.testnum>6</eosgi.testnum>
     <maven.compiler.source>1.7</maven.compiler.source>
     <maven.compiler.target>1.7</maven.compiler.target>
   </properties>

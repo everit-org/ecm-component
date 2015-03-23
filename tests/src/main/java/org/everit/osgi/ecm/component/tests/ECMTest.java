@@ -18,6 +18,7 @@ package org.everit.osgi.ecm.component.tests;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Hashtable;
+import java.util.List;
 
 import org.everit.osgi.dev.testrunner.TestDuringDevelopment;
 import org.everit.osgi.dev.testrunner.TestRunnerConstants;
@@ -43,10 +44,14 @@ import org.osgi.framework.Filter;
 import org.osgi.framework.FrameworkUtil;
 import org.osgi.framework.InvalidSyntaxException;
 import org.osgi.framework.ServiceRegistration;
+import org.osgi.resource.Capability;
 import org.osgi.service.cm.Configuration;
 import org.osgi.service.cm.ConfigurationAdmin;
 import org.osgi.service.cm.ConfigurationException;
 import org.osgi.service.cm.ManagedService;
+import org.osgi.service.metatype.AttributeDefinition;
+import org.osgi.service.metatype.MetaTypeProvider;
+import org.osgi.service.metatype.ObjectClassDefinition;
 import org.osgi.util.tracker.ServiceTracker;
 
 /**
@@ -59,6 +64,7 @@ import org.osgi.util.tracker.ServiceTracker;
     @StringAttribute(attributeId = TestRunnerConstants.SERVICE_PROPERTY_TEST_ID,
         defaultValue = "ECMTest") })
 @Service
+@TestDuringDevelopment
 public class ECMTest {
 
   private static final int SERVICE_AVAILABILITY_TIMEOUT = 1000;
@@ -164,7 +170,6 @@ public class ECMTest {
   }
 
   @Test
-  @TestDuringDevelopment
   public void testFailingComponent() {
 
     ComponentMetadata componentMetadata = MetadataBuilder
@@ -185,6 +190,7 @@ public class ECMTest {
       testFailingWithReferenceProbe(container, managedService);
       testFailingWithSetterProbe(container, managedService);
       testFailingWithDynamicSetterProbe(container, managedService);
+      testFailingWithUpdateProbe(container, managedService);
     } finally {
       container.close();
     }
@@ -299,6 +305,27 @@ public class ECMTest {
 
   }
 
+  private void testFailingWithUpdateProbe(
+      final ComponentContainerInstance<FailingComponent> container,
+      final ManagedService managedService) {
+
+    Hashtable<String, Object> configuration = new Hashtable<>();
+    configuration.put(FailingComponent.FAIL_ON_UPDATE_ATTRIBUTE, false);
+    updateConfiguration(managedService, configuration);
+
+    configuration.put(FailingComponent.FAIL_ON_UPDATE_ATTRIBUTE, true);
+    updateConfiguration(managedService, configuration);
+
+    ComponentRevision<FailingComponent> componentRevision = container.getResources()[0];
+    Assert.assertEquals(ComponentState.FAILED, componentRevision.getState());
+
+    configuration.put(FailingComponent.FAIL_ON_UPDATE_ATTRIBUTE, false);
+    updateConfiguration(managedService, configuration);
+
+    componentRevision = container.getResources()[0];
+    Assert.assertEquals(ComponentState.ACTIVE, componentRevision.getState());
+  }
+
   @Test
   public void testIgnoredComponent() {
     ComponentMetadata ignoredComponentMetadata = MetadataBuilder
@@ -315,6 +342,51 @@ public class ECMTest {
       Assert.assertEquals(null, ignoredComponent.getPropertyWithoutDefaultValue());
     } finally {
       ignoredComponentContainer.close();
+    }
+  }
+
+  @Test
+  @TestDuringDevelopment
+  public void testMetatypeWithCapabilitiesAndRequirements() {
+    ComponentMetadata componentMetadata = MetadataBuilder
+        .buildComponentMetadata(MultiRequirementAndCapabilityComponent.class);
+
+    ComponentContainerInstance<Object> container = factory
+        .createComponentContainer(componentMetadata);
+
+    container.open();
+    try {
+      waitForService(MultiRequirementAndCapabilityComponent.class);
+      ComponentRevision<Object> componentRevision = container.getResources()[0];
+      List<Capability> capabilities = componentRevision.getCapabilities(null);
+      int i = 0;
+      final int maxIterationNum = 10;
+      final long millisToSleep = 10;
+      while (capabilities.size() < 2 && i < maxIterationNum) {
+        Thread.sleep(millisToSleep);
+        componentRevision = container.getResources()[0];
+        capabilities = componentRevision.getCapabilities(null);
+        i++;
+      }
+
+      Assert.assertEquals(2, capabilities.size());
+      final int expectedRequirementNum = 3;
+      Assert.assertEquals(expectedRequirementNum, componentRevision.getRequirements(null).size());
+
+      MetaTypeProvider metatypeProvider = (MetaTypeProvider) container;
+
+      ObjectClassDefinition objectClassDefinition = metatypeProvider.getObjectClassDefinition(
+          MultiRequirementAndCapabilityComponent.class.getName(), null);
+
+      AttributeDefinition[] attributeDefinitions = objectClassDefinition
+          .getAttributeDefinitions(ObjectClassDefinition.ALL);
+
+      Assert.assertEquals(1, attributeDefinitions.length);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new RuntimeException(e);
+    } finally {
+      container.close();
     }
   }
 

@@ -19,6 +19,7 @@ import org.everit.osgi.ecm.annotation.Activate;
 import org.everit.osgi.ecm.annotation.Component;
 import org.everit.osgi.ecm.annotation.ConfigurationPolicy;
 import org.everit.osgi.ecm.annotation.ServiceRef;
+import org.everit.osgi.ecm.annotation.Update;
 import org.everit.osgi.ecm.annotation.attribute.BooleanAttribute;
 import org.everit.osgi.ecm.component.ComponentContext;
 import org.everit.osgi.ecm.component.ConfigurationException;
@@ -36,9 +37,13 @@ public class FailingComponent {
   public static final String FAIL_DYNAMIC_PROPERTY_SETTER_EXCEPTION_MESSAGE =
       "failedOnPropertySetter";
 
+  public static final String FAIL_ON_UPDATE_ATTRIBUTE = "failOnUpdate";
+
   public static final String FAIL_PROPERTY_SETTER_ATTRIBUTE = "failOnPropertySetter";
 
   public static final String FAIL_PROPERTY_SETTER_EXCEPTION_MESSAGE = "fail_property_setter";
+
+  private boolean failOnUpdate = false;
 
   /**
    * The activate method fails if failOnActivate property is set to true.
@@ -87,6 +92,21 @@ public class FailingComponent {
   public void setFailOnPropertySetter(final boolean failOnPropertySetter) {
     if (failOnPropertySetter) {
       throw new ConfigurationException(FAIL_PROPERTY_SETTER_EXCEPTION_MESSAGE);
+    }
+  }
+
+  @BooleanAttribute(attributeId = FAIL_ON_UPDATE_ATTRIBUTE, defaultValue = false, dynamic = true)
+  public void setFailOnUpdate(final boolean failOnUpdate) {
+    this.failOnUpdate = failOnUpdate;
+  }
+
+  /**
+   * An update method that fails if {@link #failOnUpdate} is set to true.
+   */
+  @Update
+  public void update() {
+    if (failOnUpdate) {
+      throw new ConfigurationException("fail_on_update");
     }
   }
 }

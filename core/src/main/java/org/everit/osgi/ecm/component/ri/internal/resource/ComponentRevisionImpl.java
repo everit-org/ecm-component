@@ -429,7 +429,9 @@ public class ComponentRevisionImpl<C> implements ComponentRevision<C> {
         if (referenceMetadata instanceof ServiceReferenceMetadata) {
           Class<?> serviceInterface = ((ServiceReferenceMetadata) referenceMetadata)
               .getServiceInterface();
-          directives.put(Constants.OBJECTCLASS, serviceInterface.getName());
+          if (serviceInterface != null) {
+            directives.put(Constants.OBJECTCLASS, serviceInterface.getName());
+          }
         }
 
         addFilterToRequirementDefinitionIfExists(directives, requirementDefinition);
