@@ -22,8 +22,7 @@ import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
 
-import javax.naming.ConfigurationException;
-
+import org.everit.osgi.ecm.component.ConfigurationException;
 import org.everit.osgi.ecm.component.resource.ComponentState;
 import org.everit.osgi.ecm.component.ri.internal.ComponentContextImpl;
 import org.everit.osgi.ecm.component.ri.internal.IllegalMetadataException;
