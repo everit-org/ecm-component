@@ -1,18 +1,17 @@
-/**
- * This file is part of Everit - ECM Component RI.
+/*
+ * Copyright (C) 2011 Everit Kft. (http://www.everit.org)
  *
- * Everit - ECM Component RI is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * Everit - ECM Component RI is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
+ *         http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU Lesser General Public License
- * along with Everit - ECM Component RI.  If not, see <http://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.everit.osgi.ecm.component.ri.internal.metatype;
 
@@ -29,6 +28,12 @@ import org.everit.osgi.ecm.metadata.Icon;
 import org.osgi.service.metatype.AttributeDefinition;
 import org.osgi.service.metatype.ObjectClassDefinition;
 
+/**
+ * Implementation of {@link ObjectClassDefinition} for ECM based component containers.
+ *
+ * @param <C>
+ *          Type of the component implementation.
+ */
 public class ObjectClassDefinitionImpl<C> implements ObjectClassDefinition {
 
   private final AttributeDefinition[] attributeDefinitions;
@@ -39,9 +44,12 @@ public class ObjectClassDefinitionImpl<C> implements ObjectClassDefinition {
 
   private final Localizer localizer;
 
+  /**
+   * Constructor.
+   */
   public ObjectClassDefinitionImpl(final ComponentMetadata componentMetadata,
-      final Localizer localizer,
-      final ClassLoader classLoader) {
+      final Localizer localizer, final ClassLoader classLoader) {
+
     this.componentMetadata = componentMetadata;
     this.localizer = localizer;
     this.classLoader = classLoader;
@@ -50,10 +58,12 @@ public class ObjectClassDefinitionImpl<C> implements ObjectClassDefinition {
 
   }
 
-  private AttributeDefinition[] createAttributeDefinitions(final ComponentMetadata componentMetadata) {
-    AttributeMetadata<?>[] attributes = componentMetadata.getAttributes();
+  private AttributeDefinition[] createAttributeDefinitions(
+      final ComponentMetadata pComponentMetadata) {
+
+    AttributeMetadata<?>[] attributes = pComponentMetadata.getAttributes();
     if ((attributes == null) || (attributes.length == 0)) {
-      return null;
+      return noAttributeDefinitions();
     }
 
     List<AttributeDefinition> result = new LinkedList<AttributeDefinition>();
@@ -67,7 +77,7 @@ public class ObjectClassDefinitionImpl<C> implements ObjectClassDefinition {
     }
 
     if (result.size() == 0) {
-      return null;
+      return noAttributeDefinitions();
     }
 
     return result.toArray(new AttributeDefinition[result.size()]);
@@ -84,7 +94,7 @@ public class ObjectClassDefinitionImpl<C> implements ObjectClassDefinition {
       }
     }
     if (result.size() == 0) {
-      return null;
+      return noAttributeDefinitions();
     }
     return result.toArray(new AttributeDefinition[result.size()]);
   }
@@ -92,7 +102,7 @@ public class ObjectClassDefinitionImpl<C> implements ObjectClassDefinition {
   @Override
   public AttributeDefinition[] getAttributeDefinitions(final int filter) {
     if (attributeDefinitions == null) {
-      return null;
+      return returnNull();
     }
 
     if (filter == ObjectClassDefinition.REQUIRED) {
@@ -100,7 +110,7 @@ public class ObjectClassDefinitionImpl<C> implements ObjectClassDefinition {
     } else if (filter == ObjectClassDefinition.OPTIONAL) {
       return generateAttributeDefinitions(false);
     } else {
-      return attributeDefinitions;
+      return attributeDefinitions.clone();
     }
   }
 
@@ -142,6 +152,15 @@ public class ObjectClassDefinitionImpl<C> implements ObjectClassDefinition {
   @Override
   public String getName() {
     return localizer.localize(componentMetadata.getLabel());
+  }
+
+  private AttributeDefinition[] noAttributeDefinitions() {
+    final AttributeDefinition[] noAttributeDefinitions = null;
+    return noAttributeDefinitions;
+  }
+
+  private <N> N returnNull() {
+    return null;
   }
 
 }

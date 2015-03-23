@@ -1,18 +1,17 @@
-/**
- * This file is part of Everit - ECM Component RI.
+/*
+ * Copyright (C) 2011 Everit Kft. (http://www.everit.org)
  *
- * Everit - ECM Component RI is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * Everit - ECM Component RI is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
+ *         http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU Lesser General Public License
- * along with Everit - ECM Component RI.  If not, see <http://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.everit.osgi.ecm.component.ri.internal.metatype;
 
@@ -29,7 +28,15 @@ import org.osgi.framework.wiring.BundleWiring;
 import org.osgi.service.metatype.MetaTypeProvider;
 import org.osgi.service.metatype.ObjectClassDefinition;
 
+/**
+ * Implementation of {@link MetaTypeProvider} for ECM based Component Containers.
+ *
+ * @param <C>
+ *          Type of the Component implementation.
+ */
 public class MetatypeProviderImpl<C> implements MetaTypeProvider {
+
+  private static final String LOCALE_SEPARATOR = "_";
 
   private final BundleContext bundleContext;
 
@@ -37,6 +44,14 @@ public class MetatypeProviderImpl<C> implements MetaTypeProvider {
 
   private final String[] locales;
 
+  /**
+   * Constructor.
+   *
+   * @param componentMetadata
+   *          Metadata of the component container that the {@link MetaTypeProvider} belongs to.
+   * @param bundleContext
+   *          The context of the bundle that created the component container.
+   */
   public MetatypeProviderImpl(final ComponentMetadata componentMetadata,
       final BundleContext bundleContext) {
     this.componentMetadata = componentMetadata;
@@ -45,10 +60,18 @@ public class MetatypeProviderImpl<C> implements MetaTypeProvider {
     this.locales = createLocales();
   }
 
+  private <T> T[] cloneIfNotNull(final T[] original) {
+    if (original == null) {
+      final T[] undefinedValue = null;
+      return undefinedValue;
+    }
+    return original.clone();
+  }
+
   private String[] createLocales() {
     String localizationBase = componentMetadata.getLocalizationBase();
     if (localizationBase == null) {
-      return null;
+      return cloneIfNotNull(null);
     }
 
     int lastIndexOfSlash = localizationBase.lastIndexOf('/');
@@ -68,7 +91,7 @@ public class MetatypeProviderImpl<C> implements MetaTypeProvider {
         BundleWiring.LISTRESOURCES_LOCAL);
 
     if (resources.size() == 0) {
-      return null;
+      return cloneIfNotNull(null);
     }
 
     int localizationBaseLength = localizationBase.length();
@@ -79,24 +102,25 @@ public class MetatypeProviderImpl<C> implements MetaTypeProvider {
           - propertiesExtensionLength);
       if (locale.length() == 0) {
         result.add("");
-      } else if (locale.startsWith("_")) {
+      } else if (locale.startsWith(LOCALE_SEPARATOR)) {
         result.add(locale.substring(1));
       }
     }
 
     if (result.size() == 0) {
-      return null;
+      return cloneIfNotNull(null);
     }
     return result.toArray(new String[result.size()]);
   }
 
   @Override
   public String[] getLocales() {
-    return locales;
+    return cloneIfNotNull(locales);
   }
 
   @Override
-  public ObjectClassDefinition getObjectClassDefinition(final String id, final String localeString) {
+  public ObjectClassDefinition getObjectClassDefinition(final String id,
+      final String localeString) {
     BundleWiring bundleWiring = bundleContext.getBundle().adapt(BundleWiring.class);
     ClassLoader classLoader = bundleWiring.getClassLoader();
     Localizer localizer;
@@ -109,7 +133,7 @@ public class MetatypeProviderImpl<C> implements MetaTypeProvider {
       if (localeString == null) {
         locale = Locale.getDefault();
       } else {
-        String[] localeParts = localeString.split("_");
+        String[] localeParts = localeString.split(LOCALE_SEPARATOR);
         if (localeParts.length == 1) {
           locale = new Locale(localeParts[0]);
         } else if (localeParts.length == 2) {

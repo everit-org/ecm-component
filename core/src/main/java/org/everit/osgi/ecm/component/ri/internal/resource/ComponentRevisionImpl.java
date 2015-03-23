@@ -1,21 +1,21 @@
-/**
- * This file is part of Everit - ECM Component RI.
+/*
+ * Copyright (C) 2011 Everit Kft. (http://www.everit.org)
  *
- * Everit - ECM Component RI is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * Everit - ECM Component RI is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
+ *         http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU Lesser General Public License
- * along with Everit - ECM Component RI.  If not, see <http://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.everit.osgi.ecm.component.ri.internal.resource;
 
+import java.io.Serializable;
 import java.lang.ref.SoftReference;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -45,12 +45,27 @@ import org.osgi.framework.Constants;
 import org.osgi.framework.ServiceReference;
 import org.osgi.framework.ServiceRegistration;
 import org.osgi.framework.wiring.BundleCapability;
+import org.osgi.framework.wiring.BundleRevision;
 import org.osgi.resource.Capability;
 import org.osgi.resource.Requirement;
 import org.osgi.resource.Wire;
 
+/**
+ * Implementation of {@link ComponentRevision} that offers immutable information about the state of
+ * a Component instance.
+ *
+ * @param <C>
+ *          The type of the component implementation.
+ */
 public class ComponentRevisionImpl<C> implements ComponentRevision<C> {
 
+  /**
+   * The builder class of the {@link ComponentRevision} offers thread safe functionality to collect
+   * information about the state of the component and build {@link ComponentRevision} instances.
+   *
+   * @param <C>
+   *          The type of the component implementation.
+   */
   public static class Builder<C> {
 
     private SoftReference<ComponentRevisionImpl<C>> cache = null;
@@ -76,6 +91,9 @@ public class ComponentRevisionImpl<C> implements ComponentRevision<C> {
       this.properties = properties;
     }
 
+    /**
+     * Called when the component instance becomes active.
+     */
     public synchronized void active() {
       this.cache = null;
       this.state = ComponentState.ACTIVE;
@@ -83,11 +101,25 @@ public class ComponentRevisionImpl<C> implements ComponentRevision<C> {
 
     }
 
-    public synchronized void addServiceRegistration(final ServiceRegistration<?> serviceRegistration) {
+    /**
+     * Called when the component registers a new OSGi service that is shown as the capability of the
+     * component.
+     *
+     * @param serviceRegistration
+     *          The service that was registered.
+     */
+    public synchronized void addServiceRegistration(
+        final ServiceRegistration<?> serviceRegistration) {
+
       cache = null;
       serviceRegistrations.add(serviceRegistration);
     }
 
+    /**
+     * Builds a new {@link ComponentRevision} based on the snapshot of the component state.
+     *
+     * @return The freshly created {@link ComponentRevision}.
+     */
     public synchronized ComponentRevisionImpl<C> build() {
       if (cache != null) {
         ComponentRevisionImpl<C> componentRevisionImpl = cache.get();
@@ -101,6 +133,14 @@ public class ComponentRevisionImpl<C> implements ComponentRevision<C> {
 
     }
 
+    /**
+     * Called when the component fails.
+     *
+     * @param cause
+     *          The cause of the failure.
+     * @param permanent
+     *          Whether the failure is permanent or temporary.
+     */
     public synchronized void fail(final Throwable cause, final boolean permanent) {
       this.cache = null;
       this.cause = cause;
@@ -112,19 +152,23 @@ public class ComponentRevisionImpl<C> implements ComponentRevision<C> {
       }
     }
 
-    public Set<ServiceRegistration<?>> getCloneOfServiceRegistrations() {
+    /**
+     * Returns a clone of the held service registrations.
+     *
+     * @return A clone of the service registrations of the component.
+     */
+    public synchronized Set<ServiceRegistration<?>> getCloneOfServiceRegistrations() {
       @SuppressWarnings("unchecked")
       Set<ServiceRegistration<?>> result = (Set<ServiceRegistration<?>>) serviceRegistrations
           .clone();
       return result;
     }
 
-    public Map<String, Object> getProperties() {
-      // TODO do not give this out only if it is immutable
+    public synchronized Map<String, Object> getProperties() {
       return properties;
     }
 
-    public ComponentState getState() {
+    public synchronized ComponentState getState() {
       return state;
     }
 
@@ -134,6 +178,10 @@ public class ComponentRevisionImpl<C> implements ComponentRevision<C> {
       serviceRegistrations.remove(serviceRegistration);
     }
 
+    /**
+     * Called when the component is starting (activate method is called but it has not finished
+     * yet).
+     */
     public synchronized void starting() {
       this.cache = null;
       this.state = ComponentState.STARTING;
@@ -141,24 +189,29 @@ public class ComponentRevisionImpl<C> implements ComponentRevision<C> {
       this.processingThread = Thread.currentThread();
     }
 
-    public synchronized void stopped(final ComponentState targetState) {
+    /**
+     * Called when the component is stopped due to some reason (it is stopped completely or the
+     * component has to be restarted due to updating non-dynamic attributes).
+     */
+    public synchronized void stopped() {
       this.cache = null;
-      if (targetState != ComponentState.UPDATING_CONFIGURATION) {
-        this.processingThread = null;
-      }
-      if ((targetState == ComponentState.STOPPED)
-          || (targetState == ComponentState.UPDATING_CONFIGURATION)) {
-        cause = null;
-      }
-      state = targetState;
+      this.processingThread = null;
+      this.cause = null;
+      this.state = ComponentState.STOPPED;
     }
 
+    /**
+     * Called when the component is stopping (The deactivate method runs).
+     */
     public synchronized void stopping() {
       this.cache = null;
       this.state = ComponentState.STOPPING;
       this.processingThread = Thread.currentThread();
     }
 
+    /**
+     * Called when the component becomes unsatisfied.
+     */
     public synchronized void unsatisfied() {
       this.cache = null;
       this.state = ComponentState.UNSATISFIED;
@@ -166,10 +219,15 @@ public class ComponentRevisionImpl<C> implements ComponentRevision<C> {
       this.cause = null;
     }
 
+    /**
+     * Called when the component properties are updated.
+     *
+     * @param properties
+     *          The new properties of the component.s
+     */
     public synchronized void updateProperties(final Map<String, Object> properties) {
       this.cache = null;
       this.properties = properties;
-      this.state = ComponentState.UPDATING_CONFIGURATION;
     }
 
     public synchronized void updateSuitingsForAttribute(final ReferenceMetadata referenceMetadata,
@@ -177,29 +235,49 @@ public class ComponentRevisionImpl<C> implements ComponentRevision<C> {
       this.cache = null;
       suitingsByAttributeIds.put(referenceMetadata, suitings);
     }
-  }
 
-  private static final class ComponentRequirementComparator implements Comparator<Requirement> {
-    @Override
-    public int compare(final Requirement o1, final Requirement o2) {
-      return ((ComponentRequirement<?>) o1).getRequirementId().compareTo(
-          ((ComponentRequirement<?>) o2).getRequirementId());
+    public synchronized void updatingConfiguration() {
+      this.cache = null;
+      this.processingThread = Thread.currentThread();
+      this.cause = null;
+      this.state = ComponentState.UPDATING_CONFIGURATION;
     }
   }
 
+  /**
+   * Comparator that can be used to short requirements based on their ids.
+   */
+  private static final class ComponentRequirementComparator implements Comparator<Requirement>,
+      Serializable {
+
+    private static final long serialVersionUID = 6122207464125210506L;
+
+    @Override
+    public int compare(final Requirement o1, final Requirement o2) {
+      return ((ComponentRequirement<?, ?>) o1).getRequirementId().compareTo(
+          ((ComponentRequirement<?, ?>) o2).getRequirementId());
+    }
+  }
+
+  /**
+   * Holder class for Requirement and Wire mapping.
+   */
   private static class RequirementsAndWires {
     public Map<String, List<Requirement>> requirements = new HashMap<String, List<Requirement>>();
 
     public List<Wire> wires = new ArrayList<Wire>();
   }
 
-  private static final ComponentRequirementComparator REQUIREMENT_COMPARATOR = new ComponentRequirementComparator();
+  private static final ComponentRequirementComparator REQUIREMENT_COMPARATOR =
+      new ComponentRequirementComparator();
 
   private final Map<String, List<Capability>> capabilitiesByNamespace;
 
   private final Throwable cause;
 
   private final ComponentContainer<C> container;
+
+  private final BundleRevision declaringResource;
 
   private final Thread processingThread;
 
@@ -213,7 +291,15 @@ public class ComponentRevisionImpl<C> implements ComponentRevision<C> {
 
   private final Map<Requirement, List<Wire>> wiresByRequirement;
 
-  private ComponentRevisionImpl(final Builder<C> builder) {
+  /**
+   * Constructor that should be called by the builder.
+   *
+   * @param builder
+   *          The builder of the {@link ComponentRevisionImpl}.
+   */
+  protected ComponentRevisionImpl(final Builder<C> builder) {
+    declaringResource = builder.container.getBundleContext().getBundle()
+        .adapt(BundleRevision.class);
     this.state = builder.state;
     this.processingThread = builder.processingThread;
     this.cause = builder.cause;
@@ -245,6 +331,13 @@ public class ComponentRevisionImpl<C> implements ComponentRevision<C> {
     this.wiresByRequirement = convertToUnmodifiableWireMap(lWiresByRequirement);
   }
 
+  private void addFilterToRequirementDefinitionIfExists(final Map<String, String> directives,
+      final RequirementDefinition<?> requirementDefinition) {
+    if (requirementDefinition.getFilter() != null) {
+      directives.put("filter", requirementDefinition.getFilter().toString());
+    }
+  }
+
   private <CONNECTOR> void addToWireMap(final Map<CONNECTOR, List<Wire>> map,
       final CONNECTOR connector,
       final Wire wire) {
@@ -266,6 +359,19 @@ public class ComponentRevisionImpl<C> implements ComponentRevision<C> {
       entry.setValue(Collections.unmodifiableList(entry.getValue()));
     }
     return Collections.unmodifiableMap(map);
+  }
+
+  private String createFullRequirementId(final ReferenceMetadata referenceMetadata,
+      final String referenceId,
+      final Suiting<?> suiting) {
+    String fullRequirementId = referenceId;
+    if (referenceMetadata.isMultiple()
+        || (referenceMetadata.getReferenceConfigurationType()
+          == ReferenceConfigurationType.CLAUSE)) {
+
+      fullRequirementId += "[" + suiting.getRequirement().getRequirementId() + "]";
+    }
+    return fullRequirementId;
   }
 
   private Map<String, List<Capability>> evaluateCapabilities(final Builder<C> builder) {
@@ -298,34 +404,22 @@ public class ComponentRevisionImpl<C> implements ComponentRevision<C> {
 
     Set<Entry<ReferenceMetadata, Suiting<?>[]>> suitingEntries = builder.suitingsByAttributeIds
         .entrySet();
-    Iterator<Entry<ReferenceMetadata, Suiting<?>[]>> iterator = suitingEntries.iterator();
+    Iterator<Entry<ReferenceMetadata, Suiting<?>[]>> suitingEntryIterator =
+        suitingEntries.iterator();
 
     RequirementsAndWires result = new RequirementsAndWires();
 
-    while (iterator.hasNext()) {
-      Map.Entry<ReferenceMetadata, Suiting<?>[]> entry = iterator.next();
+    while (suitingEntryIterator.hasNext()) {
+      Map.Entry<ReferenceMetadata, Suiting<?>[]> entry = suitingEntryIterator.next();
       ReferenceMetadata referenceMetadata = entry.getKey();
       String referenceId = referenceMetadata.getReferenceId();
-      String namespace = ServiceCapability.SERVICE_CAPABILITY_NAMESPACE;
-      if (referenceMetadata instanceof BundleCapabilityReferenceMetadata) {
-        namespace = ((BundleCapabilityReferenceMetadata) referenceMetadata).getNamespace();
-      }
+      String namespace = resolveNamespaceForWire(referenceMetadata);
 
-      List<Requirement> requirementsOfNS = result.requirements.get(namespace);
-      if (requirementsOfNS == null) {
-        requirementsOfNS = new ArrayList<Requirement>();
-        result.requirements.put(namespace, requirementsOfNS);
-      }
+      List<Requirement> requirementsOfNS = getOrCreateRequirementListOfNS(result, namespace);
 
       Suiting<?>[] suitings = entry.getValue();
       for (Suiting<?> suiting : suitings) {
-        String fullRequirementId = referenceId;
-        if (referenceMetadata.isMultiple()
-            || (referenceMetadata.getReferenceConfigurationType()
-              == ReferenceConfigurationType.CLAUSE)) {
-
-          fullRequirementId += "[" + suiting.getRequirement().getRequirementId() + "]";
-        }
+        String fullRequirementId = createFullRequirementId(referenceMetadata, referenceId, suiting);
 
         Map<String, String> directives = new LinkedHashMap<String, String>();
         RequirementDefinition<?> requirementDefinition = suiting.getRequirement();
@@ -335,16 +429,9 @@ public class ComponentRevisionImpl<C> implements ComponentRevision<C> {
           directives.put(Constants.OBJECTCLASS, serviceInterface.getName());
         }
 
-        if (requirementDefinition.getFilter() != null) {
-          directives.put("filter", requirementDefinition.getFilter().toString());
-        }
+        addFilterToRequirementDefinitionIfExists(directives, requirementDefinition);
 
-        Class<? extends Capability> capabilityType;
-        if (referenceMetadata instanceof ServiceReferenceMetadata) {
-          capabilityType = ServiceCapability.class;
-        } else {
-          capabilityType = BundleCapability.class;
-        }
+        Class<? extends Capability> capabilityType = specifyCapabilityType(referenceMetadata);
 
         @SuppressWarnings("unchecked")
         Class<Capability> simpleCapabilityType = (Class<Capability>) capabilityType;
@@ -352,9 +439,10 @@ public class ComponentRevisionImpl<C> implements ComponentRevision<C> {
         HashMap<String, Object> attributes = new LinkedHashMap<String, Object>(
             requirementDefinition.getAttributes());
 
-        ComponentRequirementImpl<Capability> requirement = new ComponentRequirementImpl<Capability>(
-            fullRequirementId, namespace, this, Collections.unmodifiableMap(directives),
-            Collections.unmodifiableMap(attributes), simpleCapabilityType);
+        ComponentRequirementImpl<C, Capability> requirement =
+            new ComponentRequirementImpl<C, Capability>(
+                fullRequirementId, namespace, this, Collections.unmodifiableMap(directives),
+                Collections.unmodifiableMap(attributes), simpleCapabilityType);
 
         requirementsOfNS.add(requirement);
 
@@ -413,6 +501,21 @@ public class ComponentRevisionImpl<C> implements ComponentRevision<C> {
   }
 
   @Override
+  public BundleRevision getDeclaringResource() {
+    return declaringResource;
+  }
+
+  private List<Requirement> getOrCreateRequirementListOfNS(final RequirementsAndWires result,
+      final String namespace) {
+    List<Requirement> requirementsOfNS = result.requirements.get(namespace);
+    if (requirementsOfNS == null) {
+      requirementsOfNS = new ArrayList<Requirement>();
+      result.requirements.put(namespace, requirementsOfNS);
+    }
+    return requirementsOfNS;
+  }
+
+  @Override
   public Thread getProcessingThread() {
     return processingThread;
   }
@@ -432,6 +535,12 @@ public class ComponentRevisionImpl<C> implements ComponentRevision<C> {
     return state;
   }
 
+  /**
+   * Returns the wires that belong to and known by the component this {@link ComponentRevision}
+   * belongs to.
+   *
+   * @return The wires created by the component this {@link ComponentRevision} belongs to.
+   */
   public List<Wire> getWires() {
     Set<Entry<Capability, List<Wire>>> entrySet = wiresByCapability.entrySet();
     if (entrySet.size() == 0) {
@@ -450,6 +559,13 @@ public class ComponentRevisionImpl<C> implements ComponentRevision<C> {
     return result;
   }
 
+  /**
+   * Finds {@link Wire}s by the {@link Capability} they wires to.
+   *
+   * @param capability
+   *          The {@link Capability} of the {@link Wire}s.
+   * @return A list of {@link Wire}s that are wired to the specified {@link Capability}.
+   */
   public List<Wire> getWiresByCapability(final Capability capability) {
     List<Wire> wireList = wiresByCapability.get(capability);
     if (wireList == null) {
@@ -458,11 +574,38 @@ public class ComponentRevisionImpl<C> implements ComponentRevision<C> {
     return wireList;
   }
 
+  /**
+   * Finds {@link Wire}s by requirements they wire to.
+   *
+   * @param requirement
+   *          The {@link Requirement} that {@link Wire#getRequirement()} would return.
+   * @return The {@link Wire} which returns the specified {@link Requirement} in case of calling
+   *         {@link Wire#getRequirement()}.
+   */
   public List<Wire> getWiresByRequirement(final Requirement requirement) {
     List<Wire> wireList = wiresByRequirement.get(requirement);
     if (wireList == null) {
       return Collections.emptyList();
     }
     return wireList;
+  }
+
+  private String resolveNamespaceForWire(final ReferenceMetadata referenceMetadata) {
+    String namespace = ServiceCapability.SERVICE_CAPABILITY_NAMESPACE;
+    if (referenceMetadata instanceof BundleCapabilityReferenceMetadata) {
+      namespace = ((BundleCapabilityReferenceMetadata) referenceMetadata).getNamespace();
+    }
+    return namespace;
+  }
+
+  private Class<? extends Capability> specifyCapabilityType(
+      final ReferenceMetadata referenceMetadata) {
+    Class<? extends Capability> capabilityType;
+    if (referenceMetadata instanceof ServiceReferenceMetadata) {
+      capabilityType = ServiceCapability.class;
+    } else {
+      capabilityType = BundleCapability.class;
+    }
+    return capabilityType;
   }
 }

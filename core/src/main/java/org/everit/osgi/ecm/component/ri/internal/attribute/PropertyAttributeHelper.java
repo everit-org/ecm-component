@@ -1,24 +1,22 @@
-/**
- * This file is part of Everit - ECM Component RI.
+/*
+ * Copyright (C) 2011 Everit Kft. (http://www.everit.org)
  *
- * Everit - ECM Component RI is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * Everit - ECM Component RI is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
+ *         http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU Lesser General Public License
- * along with Everit - ECM Component RI.  If not, see <http://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.everit.osgi.ecm.component.ri.internal.attribute;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodHandles.Lookup;
 import java.lang.reflect.Array;
 import java.lang.reflect.Method;
 import java.util.HashMap;
@@ -34,6 +32,14 @@ import org.everit.osgi.ecm.metadata.PropertyAttributeMetadata;
 import org.everit.osgi.ecm.util.method.MethodDescriptor;
 import org.osgi.framework.Constants;
 
+/**
+ * Helper class to manage attributes of components that have property behavior (setter methods).
+ *
+ * @param <C>
+ *          The type of the component.
+ * @param <V_ARRAY>
+ *          The type of the property default value array.
+ */
 public class PropertyAttributeHelper<C, V_ARRAY> {
 
   private static final Map<Class<?>, Class<?>> PRIMITIVE_BOXING_TYPE_MAPPING;
@@ -56,6 +62,14 @@ public class PropertyAttributeHelper<C, V_ARRAY> {
 
   private final MethodHandle methodHandle;
 
+  /**
+   * Constructor.
+   *
+   * @param componentContext
+   *          Context of the component that the property belongs to.
+   * @param attributeMetadata
+   *          The metadata of the attribute.
+   */
   public PropertyAttributeHelper(final ComponentContextImpl<C> componentContext,
       final PropertyAttributeMetadata<V_ARRAY> attributeMetadata) {
 
@@ -65,6 +79,12 @@ public class PropertyAttributeHelper<C, V_ARRAY> {
 
   }
 
+  /**
+   * Calls the setter of the property if it is available and the omponent is not failed.
+   *
+   * @param newValue
+   *          The new value of the property that is passed to the setter.
+   */
   public void applyValue(final Object newValue) {
     Object parameterValue = resolveValue(newValue);
     if (componentContext.getState() == ComponentState.FAILED) {
@@ -107,7 +127,7 @@ public class PropertyAttributeHelper<C, V_ARRAY> {
       return null;
     }
 
-    Lookup lookup = MethodHandles.lookup();
+    MethodHandles.Lookup lookup = MethodHandles.lookup();
     try {
       return lookup.unreflect(setter);
     } catch (IllegalAccessException e) {
@@ -123,7 +143,7 @@ public class PropertyAttributeHelper<C, V_ARRAY> {
     if (!valueClass.isArray()) {
       failDuringValueResolution("An array was expected as value for attribute '"
           + attributeMetadata.getAttributeId() + "' but got '" + valueClass.getCanonicalName()
-          + "'");
+          + '\'');
       return null;
     }
 
@@ -213,23 +233,22 @@ public class PropertyAttributeHelper<C, V_ARRAY> {
       }
     }
 
-    if (!simpleValueClass.equals(attributeType)) {
+    if (!simpleValueClass.equals(attributeType)
+        && (!attributeType.isPrimitive() || !PRIMITIVE_BOXING_TYPE_MAPPING.get(attributeType)
+            .equals(simpleValueClass))) {
 
-      if (!attributeType.isPrimitive() || !PRIMITIVE_BOXING_TYPE_MAPPING.get(attributeType)
-          .equals(simpleValueClass)) {
-
-        StringBuilder sb = new StringBuilder("Either ");
-        if (attributeType.isPrimitive()) {
-          sb.append(PRIMITIVE_BOXING_TYPE_MAPPING.get(attributeType).getCanonicalName())
-              .append(" or ");
-        }
-        sb.append(attributeType.getCanonicalName()).append(" was expected for attribute '")
-            .append(attributeMetadata.getAttributeId()).append("' but got ")
-            .append(valueClass.getCanonicalName());
-        failDuringValueResolution(sb.toString());
-        return null;
+      StringBuilder sb = new StringBuilder("Either ");
+      if (attributeType.isPrimitive()) {
+        sb.append(PRIMITIVE_BOXING_TYPE_MAPPING.get(attributeType).getCanonicalName())
+            .append(" or ");
       }
+      sb.append(attributeType.getCanonicalName()).append(" was expected for attribute '")
+          .append(attributeMetadata.getAttributeId()).append("' but got ")
+          .append(valueClass.getCanonicalName());
+      failDuringValueResolution(sb.toString());
+      return null;
     }
+
     return simpleValue;
   }
 

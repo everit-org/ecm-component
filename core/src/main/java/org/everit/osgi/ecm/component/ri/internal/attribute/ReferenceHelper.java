@@ -1,25 +1,24 @@
-/**
- * This file is part of Everit - ECM Component RI.
+/*
+ * Copyright (C) 2011 Everit Kft. (http://www.everit.org)
  *
- * Everit - ECM Component RI is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * Everit - ECM Component RI is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
+ *         http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU Lesser General Public License
- * along with Everit - ECM Component RI.  If not, see <http://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.everit.osgi.ecm.component.ri.internal.attribute;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodHandles.Lookup;
 import java.lang.reflect.Method;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -43,20 +42,29 @@ import org.osgi.framework.Filter;
 import org.osgi.framework.FrameworkUtil;
 import org.osgi.framework.InvalidSyntaxException;
 
+/**
+ * Super class of classes that help managing the lifecycle and actions of references.
+ *
+ * @param <CAPABILITY>
+ *          The type of the capability that the reference requires.
+ * @param <COMPONENT>
+ *          The type of the component implementation.
+ * @param <METADATA>
+ *          The type of the metadata class that belongs to the reference.
+ */
 public abstract class ReferenceHelper<CAPABILITY, COMPONENT, METADATA extends ReferenceMetadata> {
 
+  /**
+   * {@link CapabilityConsumer} implementation for references that call the necessary
+   * {@link ReferenceEventHandler} of the component if a change happens.
+   */
   protected class ReferenceCapabilityConsumer implements CapabilityConsumer<CAPABILITY> {
 
-    private final ReferenceHelper<CAPABILITY, COMPONENT, METADATA> owner;
-
-    public ReferenceCapabilityConsumer(final ReferenceHelper<CAPABILITY, COMPONENT, METADATA> owner) {
-      this.owner = owner;
-    }
-
     @Override
-    public void accept(final Suiting<CAPABILITY>[] pSuitings, final Boolean pSatisfied) {
+    public void accept(final Suiting<CAPABILITY>[] pSuitings, final boolean pSatisfied) {
       suitings = pSuitings;
       satisfied = pSatisfied;
+      ReferenceHelper<CAPABILITY, COMPONENT, METADATA> owner = ReferenceHelper.this;
       if (pSatisfied) {
         if (!satisfiedNotificationSent) {
           satisfiedNotificationSent = true;
@@ -94,14 +102,27 @@ public abstract class ReferenceHelper<CAPABILITY, COMPONENT, METADATA extends Re
 
   private final METADATA referenceMetadata;
 
-  private volatile boolean satisfied = false;
+  private boolean satisfied = false;
 
-  private volatile boolean satisfiedNotificationSent = false;
+  private boolean satisfiedNotificationSent = false;
 
   private final MethodHandle setterMethodHandle;
 
-  private volatile Suiting<CAPABILITY>[] suitings;
+  private Suiting<CAPABILITY>[] suitings;
 
+  /**
+   * Constructor of {@link ReferenceHelper}.
+   *
+   * @param referenceMetadata
+   *          The metadata that describes the attributes of the reference.
+   * @param componentContext
+   *          The context of the component that the reference blongs to.
+   * @param eventHandler
+   *          The event handler that should be called if there is any change in the state of the
+   *          reference.
+   * @throws IllegalAccessException
+   *           if there is an issue during resolving the setter method.
+   */
   public ReferenceHelper(final METADATA referenceMetadata,
       final ComponentContextImpl<COMPONENT> componentContext,
       final ReferenceEventHandler eventHandler) throws IllegalAccessException {
@@ -122,7 +143,7 @@ public abstract class ReferenceHelper<CAPABILITY, COMPONENT, METADATA extends Re
             + "' could not be found for class " + componentContext.getComponentType());
       }
 
-      Lookup lookup = MethodHandles.lookup();
+      MethodHandles.Lookup lookup = MethodHandles.lookup();
 
       this.setterMethodHandle = lookup.unreflect(setterMethod);
 
@@ -139,7 +160,8 @@ public abstract class ReferenceHelper<CAPABILITY, COMPONENT, METADATA extends Re
         array = false;
       } else {
         if (parameterTypes[0].isArray()) {
-          if (AbstractReferenceHolder.class.isAssignableFrom(parameterTypes[0].getComponentType())) {
+          if (AbstractReferenceHolder.class
+              .isAssignableFrom(parameterTypes[0].getComponentType())) {
             holder = true;
           } else {
             holder = false;
@@ -154,15 +176,12 @@ public abstract class ReferenceHelper<CAPABILITY, COMPONENT, METADATA extends Re
 
     RequirementDefinition<CAPABILITY>[] requirements = resolveRequirements();
 
-    if (requirements == null) {
-      @SuppressWarnings("unchecked")
-      RequirementDefinition<CAPABILITY>[] lRequirements = new RequirementDefinition[0];
-      requirements = lRequirements;
-    }
-
-    this.collector = createCollector(new ReferenceCapabilityConsumer(this), requirements);
+    this.collector = createCollector(new ReferenceCapabilityConsumer(), requirements);
   }
 
+  /**
+   * Calls the setter method with the current referenced object(s).
+   */
   public void bind() {
     try {
       if (setterMethodHandle != null) {
@@ -203,6 +222,12 @@ public abstract class ReferenceHelper<CAPABILITY, COMPONENT, METADATA extends Re
     return result;
   }
 
+  private RequirementDefinition<CAPABILITY>[] emptyRequirementDefinitionsArray() {
+    @SuppressWarnings("unchecked")
+    RequirementDefinition<CAPABILITY>[] result = new RequirementDefinition[0];
+    return result;
+  }
+
   private void failConfiguration(final String message, final Exception e) {
     String attributeId = referenceMetadata.getAttributeId();
     Map<String, Object> properties = componentContext.getProperties();
@@ -214,6 +239,61 @@ public abstract class ReferenceHelper<CAPABILITY, COMPONENT, METADATA extends Re
     } else {
       componentContext.fail(new ConfigurationException(finalMessage), false);
     }
+  }
+
+  private void fillAttributesOfRequirementFromClause(final Map<String, Object> attributes,
+      final Clause clauses) {
+
+    Attribute[] parsedAttributes = clauses.getAttributes();
+    for (Attribute attribute : parsedAttributes) {
+      attributes.put(attribute.getName(), attribute.getValue());
+    }
+  }
+
+  private RequirementDefinition<CAPABILITY>[] generateRequirementDefinitions(
+      final String[] requirementStringArray, final ReferenceConfigurationType configurationType) {
+
+    RequirementDefinition<CAPABILITY>[] result = createRequirementDefinitionArray(
+        requirementStringArray.length);
+
+    for (int i = 0; i < requirementStringArray.length; i++) {
+      String requirementString = requirementStringArray[i];
+
+      Map<String, Object> attributes = new LinkedHashMap<>();
+      String requirementId = "" + i;
+      String filterString = requirementString;
+
+      if (configurationType == ReferenceConfigurationType.CLAUSE) {
+        if (requirementString == null) {
+          failConfiguration("Value must be defined", null);
+          return emptyRequirementDefinitionsArray();
+        }
+        try {
+          Clause[] clauses = Parser.parseClauses(new String[] { requirementString });
+          if (clauses != null) {
+            fillAttributesOfRequirementFromClause(attributes, clauses[0]);
+            requirementId = clauses[0].getName();
+            filterString = clauses[0].getDirective("filter");
+          }
+        } catch (IllegalArgumentException e) {
+          failConfiguration("Invalid clause: " + requirementString, e);
+          return emptyRequirementDefinitionsArray();
+        }
+      }
+
+      Filter filter = null;
+      if (filterString != null) {
+        try {
+          filter = FrameworkUtil.createFilter(filterString);
+        } catch (InvalidSyntaxException e) {
+          failConfiguration("Invalid OSGi filter expression: " + requirementString, e);
+          return emptyRequirementDefinitionsArray();
+        }
+      }
+      result[i] = new RequirementDefinition<CAPABILITY>(requirementId, filter, attributes);
+
+    }
+    return result;
   }
 
   public ComponentContextImpl<COMPONENT> getComponentContext() {
@@ -252,6 +332,17 @@ public abstract class ReferenceHelper<CAPABILITY, COMPONENT, METADATA extends Re
     collector.open();
   }
 
+  private void replaceEmptyStringWithNullInRequirementsArray(
+      final String[] requirementStringArray) {
+
+    for (int i = 0; i < requirementStringArray.length; i++) {
+      String requirementString = requirementStringArray[i];
+      if ((requirementString != null) && "".equals(requirementString.trim())) {
+        requirementStringArray[i] = null;
+      }
+    }
+  }
+
   private RequirementDefinition<CAPABILITY>[] resolveRequirements() {
     String attributeId = referenceMetadata.getAttributeId();
     Map<String, Object> properties = componentContext.getProperties();
@@ -270,76 +361,31 @@ public abstract class ReferenceHelper<CAPABILITY, COMPONENT, METADATA extends Re
     } else {
       failConfiguration("Only String and String[] is accepted: "
           + requirementAttribute.getClass().getCanonicalName(), null);
-      return null;
+      return emptyRequirementDefinitionsArray();
     }
 
-    for (int i = 0; i < requirementStringArray.length; i++) {
-      String requirementString = requirementStringArray[i];
-      if ((requirementString != null) && "".equals(requirementString.trim())) {
-        requirementStringArray[i] = null;
-      }
-    }
+    replaceEmptyStringWithNullInRequirementsArray(requirementStringArray);
 
     ReferenceConfigurationType configurationType = referenceMetadata
         .getReferenceConfigurationType();
 
-    RequirementDefinition<CAPABILITY>[] result = createRequirementDefinitionArray(
-        requirementStringArray.length);
-
-    for (int i = 0; i < requirementStringArray.length; i++) {
-      String requirementString = requirementStringArray[i];
-
-      Map<String, Object> attributes = new LinkedHashMap<>();
-      String requirementId = "" + i;
-      String filterString = requirementString;
-
-      if (configurationType == ReferenceConfigurationType.CLAUSE) {
-        if (requirementString == null) {
-          failConfiguration("Value must be defined", null);
-          return null;
-        }
-        try {
-          Clause[] clauses = Parser.parseClauses(new String[] { requirementString });
-          if (clauses != null) {
-            Attribute[] parsedAttributes = clauses[0].getAttributes();
-            for (Attribute attribute : parsedAttributes) {
-              attributes.put(attribute.getName(), attribute.getValue());
-            }
-            requirementId = clauses[0].getName();
-            filterString = clauses[0].getDirective("filter");
-          }
-        } catch (IllegalArgumentException e) {
-          failConfiguration("Invalid clause: " + requirementString, e);
-          return null;
-        }
-      }
-
-      Filter filter = null;
-      if (filterString != null) {
-        try {
-          filter = FrameworkUtil.createFilter(filterString);
-        } catch (InvalidSyntaxException e) {
-          failConfiguration("Invalid OSGi filter expression: " + requirementString, e);
-          return null;
-        }
-      }
-      result[i] = new RequirementDefinition<CAPABILITY>(requirementId, filter, attributes);
-
-    }
-    return result;
+    return generateRequirementDefinitions(requirementStringArray, configurationType);
   }
 
+  /**
+   * Called when the configuration of the component is updated.
+   */
   public void updateConfiguration() {
     RequirementDefinition<CAPABILITY>[] newRequirements = resolveRequirements();
-    if (newRequirements == null) {
-      // Means that resolving failed so we must return
+    if (componentContext.isFailed()) {
       return;
     }
 
     try {
       collector.updateRequirements(newRequirements);
     } catch (RuntimeException e) {
-      failConfiguration("Cannot update requirements on tracker: " + newRequirements, e);
+      failConfiguration(
+          "Cannot update requirements on tracker: " + Arrays.toString(newRequirements), e);
     }
   }
 }

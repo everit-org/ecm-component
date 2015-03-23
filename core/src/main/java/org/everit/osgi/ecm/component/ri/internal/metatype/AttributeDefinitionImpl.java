@@ -1,18 +1,17 @@
-/**
- * This file is part of Everit - ECM Component RI.
+/*
+ * Copyright (C) 2011 Everit Kft. (http://www.everit.org)
  *
- * Everit - ECM Component RI is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * Everit - ECM Component RI is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
+ *         http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU Lesser General Public License
- * along with Everit - ECM Component RI.  If not, see <http://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.everit.osgi.ecm.component.ri.internal.metatype;
 
@@ -24,6 +23,13 @@ import org.everit.osgi.ecm.metadata.PasswordAttributeMetadata;
 import org.everit.osgi.ecm.metadata.SelectablePropertyAttributeMetadata;
 import org.osgi.service.metatype.AttributeDefinition;
 
+/**
+ * Implemenation class of {@link AttributeDefinition} that provides information about an attribute
+ * of the component via MetatypeService.
+ *
+ * @param <V_ARRAY>
+ *          The type of the default value array of the attribute.
+ */
 public class AttributeDefinitionImpl<V_ARRAY> implements AttributeDefinition,
     AttributeMetadataHolder<V_ARRAY> {
 
@@ -39,6 +45,14 @@ public class AttributeDefinitionImpl<V_ARRAY> implements AttributeDefinition,
 
   private final String[] optionValues;
 
+  /**
+   * Constructor.
+   *
+   * @param attributeMetadata
+   *          The metadata information of the component attribute.
+   * @param localizer
+   *          The localizer helps generating localized representation of the labels.
+   */
   public AttributeDefinitionImpl(final AttributeMetadata<V_ARRAY> attributeMetadata,
       final Localizer localizer) {
     this.attributeMetadata = attributeMetadata;
@@ -89,6 +103,14 @@ public class AttributeDefinitionImpl<V_ARRAY> implements AttributeDefinition,
     }
   }
 
+  private <T> T[] cloneIfNotNull(final T[] original) {
+    if (original == null) {
+      final T[] undefinedValue = null;
+      return undefinedValue;
+    }
+    return original.clone();
+  }
+
   private int convertValueTypeToAttributeType(final Class<?> valueType) {
     if (boolean.class.equals(valueType)) {
       return AttributeDefinition.BOOLEAN;
@@ -116,11 +138,11 @@ public class AttributeDefinitionImpl<V_ARRAY> implements AttributeDefinition,
   private String[] createDefaultValueArray() {
     V_ARRAY tmpDefaultValue = attributeMetadata.getDefaultValue();
     if (tmpDefaultValue == null) {
-      return null;
+      return cloneIfNotNull(null);
     }
     int length = Array.getLength(tmpDefaultValue);
     if (length == 0) {
-      return null;
+      return cloneIfNotNull(null);
     }
 
     String[] result = new String[length];
@@ -144,7 +166,7 @@ public class AttributeDefinitionImpl<V_ARRAY> implements AttributeDefinition,
 
   @Override
   public String[] getDefaultValue() {
-    return defaultValue;
+    return cloneIfNotNull(defaultValue);
   }
 
   @Override
@@ -169,12 +191,12 @@ public class AttributeDefinitionImpl<V_ARRAY> implements AttributeDefinition,
 
   @Override
   public String[] getOptionLabels() {
-    return optionLabels;
+    return cloneIfNotNull(optionLabels);
   }
 
   @Override
   public String[] getOptionValues() {
-    return optionValues;
+    return cloneIfNotNull(optionValues);
   }
 
   @Override
@@ -184,7 +206,6 @@ public class AttributeDefinitionImpl<V_ARRAY> implements AttributeDefinition,
 
   @Override
   public String validate(final String value) {
-    // TODO Auto-generated method stub
     return null;
   }
 

@@ -1,18 +1,17 @@
-/**
- * This file is part of Everit - ECM Component RI.
+/*
+ * Copyright (C) 2011 Everit Kft. (http://www.everit.org)
  *
- * Everit - ECM Component RI is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * Everit - ECM Component RI is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
+ *         http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU Lesser General Public License
- * along with Everit - ECM Component RI.  If not, see <http://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.everit.osgi.ecm.component.ri.internal.resource;
 
@@ -22,11 +21,20 @@ import org.everit.osgi.ecm.component.resource.ComponentRequirement;
 import org.everit.osgi.ecm.component.resource.ComponentRevision;
 import org.osgi.resource.Capability;
 
-public class ComponentRequirementImpl<C extends Capability> implements ComponentRequirement<C> {
+/**
+ * {@link org.osgi.resource.Requirement} implementation for ECM based components.
+ *
+ * @param <COMPONENT>
+ *          The type of the component implementation.
+ * @param <CAPABILITY>
+ *          The type of the {@link Capability} that this requirement accepts.
+ */
+public class ComponentRequirementImpl<COMPONENT, CAPABILITY extends Capability> implements
+    ComponentRequirement<COMPONENT, CAPABILITY> {
 
   private final Map<String, Object> attributes;
 
-  private final Class<C> capabilityType;
+  private final Class<CAPABILITY> capabilityType;
 
   private final Map<String, String> directives;
 
@@ -34,11 +42,14 @@ public class ComponentRequirementImpl<C extends Capability> implements Component
 
   private final String requirementId;
 
-  private final ComponentRevisionImpl resource;
+  private final ComponentRevisionImpl<COMPONENT> resource;
 
+  /**
+   * Constructor.
+   */
   public ComponentRequirementImpl(final String requirementId, final String namespace,
-      final ComponentRevisionImpl resource, final Map<String, String> directives,
-      final Map<String, Object> attributes, final Class<C> capabilityType) {
+      final ComponentRevisionImpl<COMPONENT> resource, final Map<String, String> directives,
+      final Map<String, Object> attributes, final Class<CAPABILITY> capabilityType) {
     this.requirementId = requirementId;
     this.namespace = namespace;
     this.resource = resource;
@@ -48,7 +59,7 @@ public class ComponentRequirementImpl<C extends Capability> implements Component
   }
 
   @Override
-  public Class<C> getAcceptedCapabilityType() {
+  public Class<CAPABILITY> getAcceptedCapabilityType() {
     return capabilityType;
   }
 
@@ -73,7 +84,7 @@ public class ComponentRequirementImpl<C extends Capability> implements Component
   }
 
   @Override
-  public ComponentRevision getResource() {
+  public ComponentRevision<COMPONENT> getResource() {
     return resource;
   }
 

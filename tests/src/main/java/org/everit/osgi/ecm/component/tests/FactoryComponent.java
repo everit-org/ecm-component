@@ -1,18 +1,17 @@
-/**
- * This file is part of Everit - ECM Component RI Tests.
+/*
+ * Copyright (C) 2011 Everit Kft. (http://www.everit.org)
  *
- * Everit - ECM Component RI Tests is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * Everit - ECM Component RI Tests is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
+ *         http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU Lesser General Public License
- * along with Everit - ECM Component RI Tests.  If not, see <http://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.everit.osgi.ecm.component.tests;
 
@@ -31,34 +30,41 @@ import org.everit.osgi.ecm.annotation.attribute.PasswordAttribute;
 import org.everit.osgi.ecm.annotation.attribute.ShortAttribute;
 import org.everit.osgi.ecm.component.ComponentContext;
 import org.everit.osgi.ecm.component.resource.ComponentRevision;
+import org.osgi.framework.Constants;
 import org.osgi.service.metatype.MetaTypeService;
 
-@Component(metatype = true, componentId = "TestFactoryClass", configurationPolicy = ConfigurationPolicy.FACTORY,
-        localizationBase = "/OSGI-INF/metatype/test")
+/**
+ * Component for testing Factory functionality.
+ */
+@Component(metatype = true, componentId = "TestFactoryClass",
+    configurationPolicy = ConfigurationPolicy.FACTORY,
+    localizationBase = "/OSGI-INF/metatype/test")
 @Service
 public class FactoryComponent {
 
-    @ShortAttribute
-    private short lau;
+  @ShortAttribute
+  private short lau;
 
-    @PasswordAttribute
-    private String password;
+  @PasswordAttribute
+  private String password;
 
-    @IntegerAttribute(options = { @IntegerAttributeOption(label = "option 0", value = 0),
-            @IntegerAttributeOption(label = "option 1", value = 1) }, defaultValue = 1)
-    private int selectableInteger;
+  @IntegerAttribute(options = { @IntegerAttributeOption(label = "option 0", value = 0),
+      @IntegerAttributeOption(label = "option 1", value = 1) }, defaultValue = 1)
+  private int selectableInteger;
 
-    @ServiceRef
-    private MetaTypeService someReference;
+  @ServiceRef
+  private MetaTypeService someReference;
 
-    @Activate
-    public void activate(final ComponentContext<FactoryComponent> context) {
-        Dictionary<String, Object> properties = new Hashtable<String, Object>();
-        ComponentRevision<FactoryComponent> componentRevision = context.getComponentRevision();
-        Map<String, Object> componentProperties = componentRevision.getProperties();
-        Object servicePid = componentProperties.get("service.pid");
-        properties.put("service.pid", servicePid);
-        ;
-        context.registerService(String.class, "testService", properties);
-    }
+  /**
+   * Activator of the component that registers a new service.
+   */
+  @Activate
+  public void activate(final ComponentContext<FactoryComponent> context) {
+    Dictionary<String, Object> properties = new Hashtable<String, Object>();
+    ComponentRevision<FactoryComponent> componentRevision = context.getComponentRevision();
+    Map<String, Object> componentProperties = componentRevision.getProperties();
+    Object servicePid = componentProperties.get(Constants.SERVICE_PID);
+    properties.put("service.pid", servicePid);
+    context.registerService(String.class, "testService", properties);
+  }
 }

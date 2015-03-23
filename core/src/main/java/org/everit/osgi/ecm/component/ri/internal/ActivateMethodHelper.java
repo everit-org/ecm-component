@@ -1,18 +1,17 @@
-/**
- * This file is part of Everit - ECM Component RI.
+/*
+ * Copyright (C) 2011 Everit Kft. (http://www.everit.org)
  *
- * Everit - ECM Component RI is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * Everit - ECM Component RI is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
+ *         http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU Lesser General Public License
- * along with Everit - ECM Component RI.  If not, see <http://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.everit.osgi.ecm.component.ri.internal;
 
@@ -29,7 +28,29 @@ import org.everit.osgi.ecm.util.method.MethodDescriptor;
 import org.everit.osgi.ecm.util.method.MethodUtil;
 import org.osgi.framework.BundleContext;
 
+/**
+ * Helper class to resolve and call the activate method of the component. Resolving will similar
+ * rules as it is defined in Declarative Services specification:
+ *
+ * <p>
+ * If the metadata information contains parameter types for the activate method, the specified
+ * method will be used. If parameter types are not provided, then the following methods will be
+ * searched and the first result will be used:
+ * <ul>
+ * <li>a method with a {@link ComponentContext} parameter</li>
+ * <li>a method with a {@link BundleContext} parameter</li>
+ * <li>a method with a {@link Map} parameter</li>
+ * <li>a method that contains one or more of the following parameters: {@link ComponentContext},
+ * {@link BundleContext}, {@link Map}</li>
+ * <li>a method without any parameter</li>
+ * </ul>
+ *
+ * @param <C>
+ *          Type of the Component implementation.
+ */
 public class ActivateMethodHelper<C> {
+
+  private static final int MAX_ACTIVATE_METHOD_PARAM_NUM = 3;
 
   private final ComponentContextImpl<C> componentContext;
 
@@ -41,8 +62,12 @@ public class ActivateMethodHelper<C> {
 
   private Method method = null;
 
-  public ActivateMethodHelper(final ComponentContextImpl<C> componentContext, final Class<?> clazz) {
+  /**
+   * Constructor.
+   */
+  public ActivateMethodHelper(final ComponentContextImpl<C> componentContext) {
     this.componentContext = componentContext;
+    Class<C> componentType = componentContext.getComponentType();
     ComponentMetadata componentMetadata = componentContext.getComponentContainer()
         .getComponentMetadata();
     MethodDescriptor methodDescriptor = componentMetadata.getActivate();
@@ -53,30 +78,34 @@ public class ActivateMethodHelper<C> {
     String methodName = methodDescriptor.getMethodName();
     Method locatedMethod = null;
     if (methodDescriptor.getParameterTypeNames() != null) {
-      locatedMethod = methodDescriptor.locate(clazz, false);
-      validateMethod(locatedMethod);
+      locatedMethod = methodDescriptor.locate(componentType, false);
+      if (!validateMethod(locatedMethod)) {
+        Exception e = new IllegalMetadataException("Invalid activate method: "
+            + locatedMethod.toGenericString());
+        componentContext.fail(e, true);
+        return;
+      }
     } else {
       locatedMethod = new MethodDescriptor(methodName,
-          new String[] { ComponentContext.class.getName() })
-          .locate(clazz, false);
+          new String[] { ComponentContext.class.getName() }).locate(componentType, false);
 
       if (locatedMethod == null) {
         locatedMethod = new MethodDescriptor(methodName,
-            new String[] { BundleContext.class.getName() })
-            .locate(clazz, false);
+            new String[] { BundleContext.class.getName() }).locate(componentType, false);
       }
 
       if (locatedMethod == null) {
         locatedMethod = new MethodDescriptor(methodName, new String[] { Map.class.getName() })
-            .locate(clazz, false);
+            .locate(componentType, false);
       }
 
       if (locatedMethod == null) {
-        locatedMethod = locateMethodWithMinTwoParams(clazz);
+        locatedMethod = locateMethodWithMinTwoParams(componentType);
       }
 
       if (locatedMethod == null) {
-        locatedMethod = new MethodDescriptor(methodName, new String[0]).locate(clazz, false);
+        locatedMethod = new MethodDescriptor(methodName, new String[0])
+            .locate(componentType, false);
       }
     }
     if (locatedMethod == null) {
@@ -95,6 +124,16 @@ public class ActivateMethodHelper<C> {
 
   }
 
+  /**
+   * Call the activate method on the component instance.
+   *
+   * @param instance
+   *          The component instance.
+   * @throws IllegalAccessException
+   *           thrown by java reflection API.
+   * @throws InvocationTargetException
+   *           if activate method throws an exception.
+   */
   public void call(final Object instance)
       throws IllegalAccessException, InvocationTargetException {
     if (method == null) {
@@ -149,11 +188,10 @@ public class ActivateMethodHelper<C> {
         Class<?>[] parameterTypes = method.getParameterTypes();
         int parameterNum = parameterTypes.length;
         if (MethodUtil.isMethodAccessibleFromClass(clazz, declaredMethod, false)
-            && (parameterNum >= 2) && (parameterNum <= 3)) {
+            && (parameterNum >= 2) && (parameterNum <= MAX_ACTIVATE_METHOD_PARAM_NUM)
+            && validateMethod(declaredMethod)) {
 
-          if (validateMethod(declaredMethod)) {
-            foundMethod = declaredMethod;
-          }
+          foundMethod = declaredMethod;
         }
       }
 
@@ -162,9 +200,9 @@ public class ActivateMethodHelper<C> {
     return foundMethod;
   }
 
-  private boolean validateMethod(final Method method) {
-    Class<?>[] parameterTypes = method.getParameterTypes();
-    if (parameterTypes.length > 3) {
+  private boolean validateMethod(final Method pMethod) {
+    Class<?>[] parameterTypes = pMethod.getParameterTypes();
+    if (parameterTypes.length > MAX_ACTIVATE_METHOD_PARAM_NUM) {
       return false;
     }
 

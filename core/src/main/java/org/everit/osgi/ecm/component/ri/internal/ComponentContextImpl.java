@@ -1,18 +1,17 @@
-/**
- * This file is part of Everit - ECM Component RI.
+/*
+ * Copyright (C) 2011 Everit Kft. (http://www.everit.org)
  *
- * Everit - ECM Component RI is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * Everit - ECM Component RI is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
+ *         http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU Lesser General Public License
- * along with Everit - ECM Component RI.  If not, see <http://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.everit.osgi.ecm.component.ri.internal;
 
@@ -28,6 +27,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.locks.Lock;
@@ -59,8 +59,19 @@ import org.osgi.framework.ServiceReference;
 import org.osgi.framework.ServiceRegistration;
 import org.osgi.framework.wiring.BundleWiring;
 
+/**
+ * The context of a component instance. This is the most important class that manages the entire
+ * lifecycle of one instance of the component.
+ *
+ * @param <C>
+ *          The type of the component implementation.
+ */
 public class ComponentContextImpl<C> implements ComponentContext<C> {
 
+  /**
+   * Event handler that catches all events of references and based on satisfaction, starts or
+   * unsatisfies the component instance.
+   */
   private class ReferenceEventHandlerImpl implements ReferenceEventHandler {
 
     @Override
@@ -76,10 +87,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
             referenceHelper.getSuitings());
 
         ComponentState state = getState();
-        if ((satisfiedReferences == referenceHelpers.size())
-            && ((state == ComponentState.UNSATISFIED)
-            || (state == ComponentState.UPDATING_CONFIGURATION))) {
-
+        if (satisfiedReferences == referenceHelpers.size() && state == ComponentState.UNSATISFIED) {
           starting();
         }
       } finally {
@@ -100,7 +108,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
             referenceHelper.getSuitings());
 
         ComponentState state = getState();
-        if ((state == ComponentState.ACTIVE) || (state == ComponentState.UPDATING_CONFIGURATION)) {
+        if (state == ComponentState.ACTIVE) {
           stopping(ComponentState.UNSATISFIED);
         }
       } finally {
@@ -181,6 +189,16 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
     this(componentContainer, bundleContext, null);
   }
 
+  /**
+   * Constructor.
+   *
+   * @param componentContainer
+   *          The component container that created this context.
+   * @param bundleContext
+   *          The context of the bundle that opened the Component Container.
+   * @param properties
+   *          The configuration of the component.
+   */
   public ComponentContextImpl(final AbstractComponentContainer<C> componentContainer,
       final BundleContext bundleContext, final Dictionary<String, Object> properties) {
 
@@ -206,7 +224,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
       return;
     }
 
-    activateMethodHelper = new ActivateMethodHelper<C>(this, componentType);
+    activateMethodHelper = new ActivateMethodHelper<C>(this);
 
     if (isFailed()) {
       return;
@@ -218,10 +236,10 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
 
     serviceInterfaces = resolveServiceInterfaces();
 
-    deactivateMethod = resolveAnnotatedMethod("Deactivate", componentContainer
+    deactivateMethod = resolveAnnotatedMethod("deactivate", componentContainer
         .getComponentMetadata().getDeactivate());
 
-    updateMethod = resolveAnnotatedMethod("Update", componentContainer
+    updateMethod = resolveAnnotatedMethod("update", componentContainer
         .getComponentMetadata().getUpdate());
 
   }
@@ -236,6 +254,9 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
     }
   }
 
+  /**
+   * Closing the component context that stops the component instance as well if it is started.
+   */
   public void close() {
     Lock writeLock = readWriteLock.writeLock();
     writeLock.lock();
@@ -303,6 +324,17 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
     return true;
   }
 
+  /**
+   * Sets FAILED state for the ComponentContext, unregisters the OSGi services registered via the
+   * {@link ComponentContext} and removes the instance object.
+   *
+   * @param e
+   *          The cause of the component failure.
+   * @param permanent
+   *          Whether the failure is permanent or not. In case of non-permanent failure, a
+   *          configuration update will change the state of the component, while a permanent failure
+   *          can be changed only by upgrading the component instance binary.
+   */
   public void fail(final Throwable e, final boolean permanent) {
     revisionBuilder.fail(e, permanent);
 
@@ -394,19 +426,24 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
     return revisionBuilder.getState();
   }
 
-  private boolean isFailed() {
+  public boolean isFailed() {
     ComponentState state = getState();
     return (ComponentState.FAILED == state) || (ComponentState.FAILED_PERMANENT == state);
   }
 
+  /**
+   * Whether the component is satisfied based on the currently satisfied references or not.
+   *
+   * @return true if all of the references are satisfied, otherwise false.
+   */
   public boolean isSatisfied() {
-    Lock readLock = readWriteLock.readLock();
-    readLock.lock();
-    boolean result = satisfiedReferences == referenceHelpers.size();
-    readLock.unlock();
-    return result;
+    return satisfiedReferences == referenceHelpers.size();
   }
 
+  /**
+   * Opens the component that means that configuration will be processed, all references will be
+   * tracked and if all references are satisfied the component will be started.
+   */
   public void open() {
     Lock writeLock = readWriteLock.writeLock();
     writeLock.lock();
@@ -427,7 +464,9 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
           referenceAttributeHelper.open();
         }
         // TODO multi-threading issue might come here
-        if (!isSatisfied()) {
+        if (isSatisfied()) {
+          starting();
+        } else {
           revisionBuilder.unsatisfied();
         }
       }
@@ -436,42 +475,56 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
     }
   }
 
+  private void prepareConfigurationUpdate(final ComponentState stateBeforeUpdate,
+      final Map<String, Object> newProperties) {
+
+    if (stateBeforeUpdate == ComponentState.ACTIVE
+        && shouldRestartForNewConfiguraiton(newProperties)) {
+      stopping(ComponentState.UPDATING_CONFIGURATION);
+    } else if (stateBeforeUpdate == ComponentState.UNSATISFIED
+        || stateBeforeUpdate == ComponentState.FAILED) {
+      revisionBuilder.updatingConfiguration();
+    }
+  }
+
   @Override
   public <S> ServiceRegistration<S> registerService(final Class<S> clazz, final S service,
       final Dictionary<String, ?> properties) {
     validateComponentStateForServiceRegistration();
-    ServiceRegistration<S> serviceRegistration = bundleContext.registerService(clazz, service,
+    ServiceRegistration<S> lServiceRegistration = bundleContext.registerService(clazz, service,
         properties);
-    return registerServiceInternal(serviceRegistration);
+    return registerServiceInternal(lServiceRegistration);
   }
 
   @Override
   public ServiceRegistration<?> registerService(final String clazz, final Object service,
       final Dictionary<String, ?> properties) {
     validateComponentStateForServiceRegistration();
-    ServiceRegistration<?> serviceRegistration = bundleContext.registerService(clazz, service,
+    ServiceRegistration<?> lServiceRegistration = bundleContext.registerService(clazz, service,
         properties);
-    return registerServiceInternal(serviceRegistration);
+    return registerServiceInternal(lServiceRegistration);
   }
 
   @Override
   public ServiceRegistration<?> registerService(final String[] clazzes, final Object service,
       final Dictionary<String, ?> properties) {
     validateComponentStateForServiceRegistration();
-    ServiceRegistration<?> serviceRegistration = bundleContext.registerService(clazzes, service,
+    ServiceRegistration<?> lServiceRegistration = bundleContext.registerService(clazzes, service,
         properties);
-    return registerServiceInternal(serviceRegistration);
+    return registerServiceInternal(lServiceRegistration);
   }
 
-  private <S> ServiceRegistration<S> registerServiceInternal(final ServiceRegistration<S> original) {
-    ComponentServiceRegistration<S, C> componentServiceRegistration = new ComponentServiceRegistration<S, C>(
-        this, original);
+  private <S> ServiceRegistration<S> registerServiceInternal(
+      final ServiceRegistration<S> original) {
+
+    ComponentServiceRegistration<S, C> componentServiceRegistration =
+        new ComponentServiceRegistration<S, C>(this, original);
     revisionBuilder.addServiceRegistration(componentServiceRegistration);
     return componentServiceRegistration;
   }
 
-  void removeServiceRegistration(final ServiceRegistration<?> serviceRegistration) {
-    revisionBuilder.removeServiceRegistration(serviceRegistration);
+  void removeServiceRegistration(final ServiceRegistration<?> pServiceRegistration) {
+    revisionBuilder.removeServiceRegistration(pServiceRegistration);
   }
 
   private Method resolveAnnotatedMethod(final String methodType,
@@ -481,14 +534,15 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
     }
     Method method = methodDescriptor.locate(componentType, false);
     if (method == null) {
-      Exception exception = new IllegalMetadataException("Could not find method '"
-          + methodDescriptor.toString()
+      Exception exception = new IllegalMetadataException("Could not find " + methodType
+          + " method '" + methodDescriptor.toString()
           + "' for type " + componentType);
       fail(exception, true);
     }
     if (method.getParameterTypes().length > 0) {
       Exception exception = new IllegalMetadataException(
-          "Deactivate method must not have any parameters. Method '"
+          methodType.substring(0, 1).toUpperCase(Locale.getDefault()) + methodType.substring(1)
+              + " method must not have any parameters. Method '"
               + method.toGenericString() + "' of type " + componentType + " does have.");
       fail(exception, true);
     }
@@ -530,7 +584,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
   private String[] resolveServiceInterfaces() {
     ServiceMetadata serviceMetadata = componentContainer.getComponentMetadata().getService();
     if (serviceMetadata == null) {
-      return null;
+      return new String[0];
     }
 
     Class<?>[] clazzes = serviceMetadata.getClazzes();
@@ -553,22 +607,16 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
     return new String[] { componentType.getName() };
   }
 
-  public void restart() {
-    Lock writeLock = readWriteLock.writeLock();
-    writeLock.lock();
-    try {
-      ComponentState state = getState();
-      if (state != ComponentState.ACTIVE) {
-        throw new IllegalStateException(
-            "Only ACTIVE components can be restarted, while the state of the component "
-                + componentContainer.getComponentMetadata().getComponentId() + " is "
-                + state.toString());
-      }
-      stopping(ComponentState.STOPPING);
-      starting();
-    } finally {
-      writeLock.unlock();
+  private void restart() {
+    ComponentState state = getState();
+    if (state != ComponentState.ACTIVE) {
+      throw new IllegalStateException(
+          "Only ACTIVE components can be restarted, while the state of the component "
+              + componentContainer.getComponentMetadata().getComponentId() + " is "
+              + state.toString());
     }
+    stopping(ComponentState.STOPPING);
+    starting();
   }
 
   private boolean shouldRestartForNewConfiguraiton(final Map<String, Object> newProperties) {
@@ -592,10 +640,11 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
   private void starting() {
     Lock writeLock = readWriteLock.writeLock();
     writeLock.lock();
-    if (getState() == ComponentState.FAILED_PERMANENT) {
-      return;
-    }
     try {
+      if (getState() == ComponentState.FAILED_PERMANENT) {
+        return;
+      }
+
       revisionBuilder.starting();
 
       try {
@@ -629,7 +678,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
         return;
       }
 
-      if (serviceInterfaces != null) {
+      if (serviceInterfaces.length > 0) {
         serviceRegistration = registerService(serviceInterfaces, instance,
             new Hashtable<String, Object>(
                 properties));
@@ -641,8 +690,6 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
   }
 
   private void stopping(final ComponentState targetState) {
-    Lock writeLock = readWriteLock.writeLock();
-    writeLock.lock();
     try {
       revisionBuilder.stopping();
       if (serviceRegistration != null) {
@@ -656,7 +703,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
           } catch (IllegalAccessException | IllegalArgumentException
               | InvocationTargetException e) {
             // TODO Auto-generated catch block
-            e.printStackTrace();
+            e.printStackTrace(System.err);
           }
         }
         unregisterServices();
@@ -664,8 +711,20 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
       }
 
     } finally {
-      revisionBuilder.stopped(targetState);
-      writeLock.unlock();
+      switch (targetState) {
+        case STOPPED:
+          revisionBuilder.stopped();
+          break;
+        case UNSATISFIED:
+          revisionBuilder.unsatisfied();
+          break;
+        case UPDATING_CONFIGURATION:
+          revisionBuilder.updatingConfiguration();
+          break;
+        default:
+          throw new RuntimeException("Target state " + targetState
+              + " is not allowed after stopping");
+      }
     }
   }
 
@@ -683,80 +742,96 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
     }
   }
 
+  /**
+   * Updates the configuration on the component instance. In case non-dynamic properties or
+   * references are changed, the component instance will be restarted (during restart the old object
+   * will be dropped).
+   *
+   * @param properties
+   *          The new configuration of the component.
+   */
   public void updateConfiguration(final Dictionary<String, ?> properties) {
     Lock writeLock = readWriteLock.writeLock();
     writeLock.lock();
     try {
-      ComponentState state = getState();
-      if (state == ComponentState.FAILED_PERMANENT) {
+      if (getState() == ComponentState.FAILED_PERMANENT) {
         return;
       }
-      Map<String, Object> newProperties = resolveProperties(properties);
-      if (state == ComponentState.FAILED) {
-        try {
-          instance = componentType.newInstance();
-        } catch (InstantiationException | IllegalAccessException | RuntimeException e) {
-          fail(e, true);
-          return;
-        }
-      } else if (state == ComponentState.UNSATISFIED) {
-        revisionBuilder.stopped(ComponentState.UPDATING_CONFIGURATION);
-      } else if (state == ComponentState.ACTIVE
-          && shouldRestartForNewConfiguraiton(newProperties)) {
-        stopping(ComponentState.UPDATING_CONFIGURATION);
-        state = ComponentState.STOPPED;
-      }
+      updateConfigurationInLock(properties);
+    } finally {
+      writeLock.unlock();
+    }
+  }
 
-      Map<String, Object> oldProperties = getProperties();
-      revisionBuilder.updateProperties(newProperties);
-      for (ReferenceHelper<?, C, ?> referenceHelper : referenceHelpers) {
-        String attributeId = referenceHelper.getReferenceMetadata().getAttributeId();
+  private void updateConfigurationInLock(final Dictionary<String, ?> properties) {
+    ComponentState stateBeforeUpdate = getState();
 
-        Object newValue = newProperties.get(attributeId);
-        Object oldValue = oldProperties.get(attributeId);
+    Map<String, Object> oldProperties = getProperties();
+    Map<String, Object> newProperties = resolveProperties(properties);
 
-        if (!equals(oldValue, newValue)) {
-          referenceHelper.updateConfiguration();
-          if (isFailed()) {
-            return;
-          }
-        }
-        if (!referenceHelper.isOpened()) {
-          referenceHelper.open();
-        }
-      }
+    // After this preparing, the component will be either UPDATING_CONFIGURATION or ACTIVE
+    prepareConfigurationUpdate(stateBeforeUpdate, newProperties);
+
+    revisionBuilder.updateProperties(newProperties);
+
+    updateReferences(newProperties, oldProperties);
+
+    ComponentState stateAfterReferenceUpdate = getState();
+    if (stateAfterReferenceUpdate == ComponentState.UNSATISFIED || isFailed()) {
+      return;
+    }
+
+    if (!isSatisfied()) {
+      revisionBuilder.unsatisfied();
+    } else if (stateAfterReferenceUpdate == ComponentState.UPDATING_CONFIGURATION) {
+      starting();
+    } else {
+      // This means that the component is active after references are updated
+      updatePropertiesOnComponentInstance(newProperties, oldProperties);
+
       if (isFailed()) {
         return;
       }
 
-      if (state == ComponentState.ACTIVE) {
-        for (PropertyAttributeHelper<C, Object> helper : propertyAttributeHelpers) {
-          String attributeId = helper.getAttributeMetadata().getAttributeId();
+      callUpdateMethod();
+    }
+  }
 
-          Object oldValue = oldProperties.get(attributeId);
-          Object newValue = newProperties.get(attributeId);
+  private void updatePropertiesOnComponentInstance(final Map<String, Object> newProperties,
+      final Map<String, Object> oldProperties) {
+    for (PropertyAttributeHelper<C, Object> helper : propertyAttributeHelpers) {
+      String attributeId = helper.getAttributeMetadata().getAttributeId();
 
-          if (!equals(oldValue, newValue)) {
-            helper.applyValue(newValue);
-            if (isFailed()) {
-              return;
-            }
-          }
-        }
-        callUpdateMethod();
-      } else if (getState() == ComponentState.UPDATING_CONFIGURATION) {
-        if (isSatisfied()) {
-          if (state == ComponentState.ACTIVE) {
-            revisionBuilder.active();
-          } else {
-            starting();
-          }
-        } else {
-          revisionBuilder.unsatisfied();
+      Object oldValue = oldProperties.get(attributeId);
+      Object newValue = newProperties.get(attributeId);
+
+      if (!equals(oldValue, newValue)) {
+        helper.applyValue(newValue);
+
+        if (isFailed()) {
+          return;
         }
       }
-    } finally {
-      writeLock.unlock();
+    }
+  }
+
+  private void updateReferences(final Map<String, Object> newProperties,
+      final Map<String, Object> oldProperties) {
+    for (ReferenceHelper<?, C, ?> referenceHelper : referenceHelpers) {
+      String attributeId = referenceHelper.getReferenceMetadata().getAttributeId();
+
+      Object newValue = newProperties.get(attributeId);
+      Object oldValue = oldProperties.get(attributeId);
+
+      if (!equals(oldValue, newValue)) {
+        referenceHelper.updateConfiguration();
+        if (isFailed()) {
+          return;
+        }
+      }
+      if (!referenceHelper.isOpened()) {
+        referenceHelper.open();
+      }
     }
   }
 
