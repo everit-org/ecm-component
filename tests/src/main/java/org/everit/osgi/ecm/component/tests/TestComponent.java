@@ -133,7 +133,7 @@ public class TestComponent {
   }
 
   public boolean[] getBooleanArrayAttribute() {
-    return booleanArrayAttribute;
+    return booleanArrayAttribute.clone();
   }
 
   public Boolean getBooleanAttribute() {
@@ -141,7 +141,7 @@ public class TestComponent {
   }
 
   public byte[] getByteArrayAttribute() {
-    return byteArrayAttribute;
+    return byteArrayAttribute.clone();
   }
 
   public byte getByteAttribute() {
@@ -149,7 +149,7 @@ public class TestComponent {
   }
 
   public char[] getCharArrayAttribute() {
-    return charArrayAttribute;
+    return charArrayAttribute.clone();
   }
 
   public char getCharAttribute() {
@@ -157,7 +157,7 @@ public class TestComponent {
   }
 
   public double[] getDoubleArrayAttribute() {
-    return doubleArrayAttribute;
+    return doubleArrayAttribute.clone();
   }
 
   public double getDoubleAttribute() {
@@ -165,7 +165,7 @@ public class TestComponent {
   }
 
   public float[] getFloatArrayAttribute() {
-    return floatArrayAttribute;
+    return floatArrayAttribute.clone();
   }
 
   public float getFloatAttribute() {
@@ -173,7 +173,7 @@ public class TestComponent {
   }
 
   public int[] getIntArrayAttribute() {
-    return intArrayAttribute;
+    return intArrayAttribute.clone();
   }
 
   public int getIntAttribute() {
@@ -181,7 +181,7 @@ public class TestComponent {
   }
 
   public long[] getLongArrayAttribute() {
-    return longArrayAttribute;
+    return longArrayAttribute.clone();
   }
 
   public long getLongAttribute() {
@@ -189,7 +189,7 @@ public class TestComponent {
   }
 
   public String[] getPasswordArrayAttribute() {
-    return passwordArrayAttribute;
+    return passwordArrayAttribute.clone();
   }
 
   public String getPasswordAttribute() {
@@ -197,7 +197,7 @@ public class TestComponent {
   }
 
   public short[] getShortArrayAttribute() {
-    return shortArrayAttribute;
+    return shortArrayAttribute.clone();
   }
 
   public short getShortAttribute() {
@@ -205,7 +205,7 @@ public class TestComponent {
   }
 
   public String[] getStringArrayAttribute() {
-    return stringArrayAttribute;
+    return stringArrayAttribute.clone();
   }
 
   public String getStringAttribute() {
@@ -217,7 +217,7 @@ public class TestComponent {
   }
 
   public void setByteArrayAttribute(final byte[] byteArrayAttribute) {
-    this.byteArrayAttribute = byteArrayAttribute;
+    this.byteArrayAttribute = byteArrayAttribute.clone();
   }
 
   public void setByteAttribute(final byte byteAttribute) {
@@ -225,7 +225,7 @@ public class TestComponent {
   }
 
   public void setCharArrayAttribute(final char[] charArrayAttribute) {
-    this.charArrayAttribute = charArrayAttribute;
+    this.charArrayAttribute = charArrayAttribute.clone();
   }
 
   public void setCharAttribute(final char charAttribute) {
@@ -237,7 +237,7 @@ public class TestComponent {
   }
 
   public void setDoubleArrayAttribute(final double[] doubleArrayAttribute) {
-    this.doubleArrayAttribute = doubleArrayAttribute;
+    this.doubleArrayAttribute = doubleArrayAttribute.clone();
   }
 
   public void setDoubleAttribute(final double doubleAttribute) {
@@ -245,7 +245,7 @@ public class TestComponent {
   }
 
   public void setFloatArrayAttribute(final float[] floatArrayAttribute) {
-    this.floatArrayAttribute = floatArrayAttribute;
+    this.floatArrayAttribute = floatArrayAttribute.clone();
   }
 
   public void setFloatAttribute(final float floatAttribute) {
@@ -254,7 +254,7 @@ public class TestComponent {
 
   @IntegerAttribute
   public void setIntArrayAttribute(final int[] intArrayAttribute) {
-    this.intArrayAttribute = intArrayAttribute;
+    this.intArrayAttribute = intArrayAttribute.clone();
   }
 
   public void setIntAttribute(final int intAttribute) {
@@ -262,7 +262,7 @@ public class TestComponent {
   }
 
   public void setLongArrayAttribute(final long[] longArrayAttribute) {
-    this.longArrayAttribute = longArrayAttribute;
+    this.longArrayAttribute = longArrayAttribute.clone();
   }
 
   public void setLongAttribute(final long longAttribute) {
@@ -270,7 +270,7 @@ public class TestComponent {
   }
 
   public void setPasswordArrayAttribute(final String[] passwordArrayAttribute) {
-    this.passwordArrayAttribute = passwordArrayAttribute;
+    this.passwordArrayAttribute = passwordArrayAttribute.clone();
   }
 
   public void setPasswordAttribute(final String passwordAttribute) {
@@ -278,7 +278,7 @@ public class TestComponent {
   }
 
   public void setShortArrayAttribute(final short[] shortArrayAttribute) {
-    this.shortArrayAttribute = shortArrayAttribute;
+    this.shortArrayAttribute = shortArrayAttribute.clone();
   }
 
   public void setShortAttribute(final short shortAttribute) {
@@ -290,7 +290,7 @@ public class TestComponent {
   }
 
   public void setStringArrayAttribute(final String[] stringArrayAttribute) {
-    this.stringArrayAttribute = stringArrayAttribute;
+    this.stringArrayAttribute = stringArrayAttribute.clone();
   }
 
   public void setStringAttribute(final String stringAttribute) {

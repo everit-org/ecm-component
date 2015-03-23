@@ -347,11 +347,11 @@ public class ECMTest {
         Assert.assertEquals('a', testComponent.getCharAttribute());
         Assert.assertArrayEquals(new char[] { 'a' }, testComponent.getCharArrayAttribute());
 
-        Assert.assertTrue(TEST_VALUE_DOUBLE == testComponent.getDoubleAttribute());
+        Assert.assertEquals(TEST_VALUE_DOUBLE, testComponent.getDoubleAttribute(), 0);
         Assert.assertTrue(Arrays.equals(new double[] { TEST_VALUE_DOUBLE },
             testComponent.getDoubleArrayAttribute()));
 
-        Assert.assertTrue(TEST_VALUE_FLOAT == testComponent.getFloatAttribute());
+        Assert.assertEquals(TEST_VALUE_FLOAT, testComponent.getFloatAttribute(), 0);
         Assert.assertTrue(Arrays.equals(new float[] { TEST_VALUE_FLOAT },
             testComponent.getFloatArrayAttribute()));
 

@@ -45,7 +45,11 @@ public class BundleCapabilityTestComponent {
   private BundleCapability bcReference;
 
   public BundleCapability[] getBcArrayReference() {
-    return bcArrayReference;
+    return bcArrayReference.clone();
+  }
+
+  public BundleCapability getBcClauseReference() {
+    return bcClauseReference;
   }
 
   public BundleCapabilityHolder getBcHolderReference() {
@@ -57,7 +61,7 @@ public class BundleCapabilityTestComponent {
   }
 
   public void setBcArrayReference(final BundleCapability[] bcArrayReference) {
-    this.bcArrayReference = bcArrayReference;
+    this.bcArrayReference = bcArrayReference.clone();
   }
 
   public void setBcClauseReference(final BundleCapability bcClauseReference) {

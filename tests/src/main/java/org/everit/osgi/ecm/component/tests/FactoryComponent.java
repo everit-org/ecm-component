@@ -67,4 +67,20 @@ public class FactoryComponent {
     properties.put("service.pid", servicePid);
     context.registerService(String.class, "testService", properties);
   }
+
+  public short getLau() {
+    return lau;
+  }
+
+  public String getPassword() {
+    return password;
+  }
+
+  public int getSelectableInteger() {
+    return selectableInteger;
+  }
+
+  public MetaTypeService getSomeReference() {
+    return someReference;
+  }
 }
