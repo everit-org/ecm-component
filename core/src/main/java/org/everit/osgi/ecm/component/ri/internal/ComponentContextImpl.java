@@ -119,10 +119,19 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
     @Override
     public void updateDynamicWithoutSatisfactionChange(
         final ReferenceHelper<?, ?, ? extends ReferenceMetadata> referenceHelper) {
-      revisionBuilder.updateSuitingsForAttribute(referenceHelper.getReferenceMetadata(),
-          referenceHelper.getSuitings());
-      if (getState() == ComponentState.ACTIVE) {
-        referenceHelper.bind();
+      Lock writeLock = readWriteLock.writeLock();
+      writeLock.lock();
+      try {
+        revisionBuilder.updateSuitingsForAttribute(referenceHelper.getReferenceMetadata(),
+            referenceHelper.getSuitings());
+        if (getState() == ComponentState.ACTIVE) {
+          referenceHelper.bind();
+        }
+        if (getState() == ComponentState.ACTIVE && !configurationUpdateInProgress) {
+          callUpdateMethod();
+        }
+      } finally {
+        writeLock.unlock();
       }
     }
 
@@ -161,6 +170,8 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
   private final AbstractComponentContainer<C> componentContainer;
 
   private Class<C> componentType;
+
+  private boolean configurationUpdateInProgress = false;
 
   private Method deactivateMethod;
 
@@ -768,6 +779,8 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
   }
 
   private void updateConfigurationInLock(final Dictionary<String, ?> properties) {
+    configurationUpdateInProgress = true;
+
     ComponentState stateBeforeUpdate = getState();
 
     Map<String, Object> oldProperties = getProperties();
@@ -798,6 +811,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
       }
 
       callUpdateMethod();
+      configurationUpdateInProgress = false;
     }
   }
 
