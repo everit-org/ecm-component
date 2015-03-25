@@ -813,6 +813,11 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
       callUpdateMethod();
       configurationUpdateInProgress = false;
     }
+
+    if (serviceRegistration != null) {
+      serviceRegistration.setProperties(new Hashtable<String, Object>(newProperties));
+    }
+
   }
 
   private void updatePropertiesOnComponentInstance(final Map<String, Object> newProperties,
