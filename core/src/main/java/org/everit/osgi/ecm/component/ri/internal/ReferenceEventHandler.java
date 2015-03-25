@@ -30,6 +30,6 @@ public interface ReferenceEventHandler {
 
   void updateNonDynamic(ReferenceHelper<?, ?, ? extends ReferenceMetadata> referenceHelper);
 
-  void updateWithoutSatisfactionChange(
+  void updateDynamicWithoutSatisfactionChange(
       ReferenceHelper<?, ?, ? extends ReferenceMetadata> referenceHelper);
 }

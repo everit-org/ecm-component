@@ -117,6 +117,16 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
     }
 
     @Override
+    public void updateDynamicWithoutSatisfactionChange(
+        final ReferenceHelper<?, ?, ? extends ReferenceMetadata> referenceHelper) {
+      revisionBuilder.updateSuitingsForAttribute(referenceHelper.getReferenceMetadata(),
+          referenceHelper.getSuitings());
+      if (getState() == ComponentState.ACTIVE) {
+        referenceHelper.bind();
+      }
+    }
+
+    @Override
     public void updateNonDynamic(
         final ReferenceHelper<?, ?, ? extends ReferenceMetadata> referenceHelper) {
       Lock writeLock = readWriteLock.writeLock();
@@ -131,13 +141,6 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
       } finally {
         writeLock.unlock();
       }
-    }
-
-    @Override
-    public void updateWithoutSatisfactionChange(
-        final ReferenceHelper<?, ?, ? extends ReferenceMetadata> referenceHelper) {
-      revisionBuilder.updateSuitingsForAttribute(referenceHelper.getReferenceMetadata(),
-          referenceHelper.getSuitings());
     }
 
   }

@@ -71,8 +71,7 @@ public abstract class ReferenceHelper<CAPABILITY, COMPONENT, METADATA extends Re
           eventHandler.satisfied(owner);
         } else {
           if (referenceMetadata.isDynamic()) {
-            eventHandler.updateWithoutSatisfactionChange(owner);
-            bind();
+            eventHandler.updateDynamicWithoutSatisfactionChange(owner);
           } else {
             eventHandler.updateNonDynamic(owner);
           }
@@ -82,7 +81,7 @@ public abstract class ReferenceHelper<CAPABILITY, COMPONENT, METADATA extends Re
           satisfiedNotificationSent = false;
           eventHandler.unsatisfied(owner);
         } else {
-          eventHandler.updateWithoutSatisfactionChange(owner);
+          eventHandler.updateDynamicWithoutSatisfactionChange(owner);
         }
       }
     }
@@ -377,9 +376,6 @@ public abstract class ReferenceHelper<CAPABILITY, COMPONENT, METADATA extends Re
    */
   public void updateConfiguration() {
     RequirementDefinition<CAPABILITY>[] newRequirements = resolveRequirements();
-    if (componentContext.isFailed()) {
-      return;
-    }
 
     try {
       collector.updateRequirements(newRequirements);
