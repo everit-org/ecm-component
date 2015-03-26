@@ -81,7 +81,7 @@ public class ComponentRevisionImpl<C> implements ComponentRevision<C> {
     private final LinkedHashSet<ServiceRegistration<?>> serviceRegistrations =
         new LinkedHashSet<ServiceRegistration<?>>();
 
-    private ComponentState state = ComponentState.STOPPED;
+    private ComponentState state = ComponentState.INACTIVE;
 
     private final Map<ReferenceMetadata, Suiting<?>[]> suitingsByAttributeIds =
         new HashMap<ReferenceMetadata, Suiting<?>[]>();
@@ -172,10 +172,33 @@ public class ComponentRevisionImpl<C> implements ComponentRevision<C> {
       return state;
     }
 
+    /**
+     * Called when the component is stopped due to some reason (it is stopped completely or the
+     * component has to be restarted due to updating non-dynamic attributes).
+     */
+    public synchronized void inactive() {
+      this.cache = null;
+      this.processingThread = null;
+      this.cause = null;
+      this.state = ComponentState.INACTIVE;
+    }
+
     public synchronized void removeServiceRegistration(
         final ServiceRegistration<?> serviceRegistration) {
       cache = null;
       serviceRegistrations.remove(serviceRegistration);
+    }
+
+    /**
+     * In case there is no cause, this will be the new one, otherwise the passed cause parameter
+     * will be add as a suppressed cause of the original.
+     */
+    public synchronized void setOrAddSuppressedCause(final Throwable cause) {
+      if (this.cause == null) {
+        this.cause = cause;
+      } else {
+        this.cause.addSuppressed(cause);
+      }
     }
 
     /**
@@ -187,17 +210,6 @@ public class ComponentRevisionImpl<C> implements ComponentRevision<C> {
       this.state = ComponentState.STARTING;
       this.cause = null;
       this.processingThread = Thread.currentThread();
-    }
-
-    /**
-     * Called when the component is stopped due to some reason (it is stopped completely or the
-     * component has to be restarted due to updating non-dynamic attributes).
-     */
-    public synchronized void stopped() {
-      this.cache = null;
-      this.processingThread = null;
-      this.cause = null;
-      this.state = ComponentState.STOPPED;
     }
 
     /**

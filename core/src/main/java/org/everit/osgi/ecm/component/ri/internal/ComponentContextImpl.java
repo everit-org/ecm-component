@@ -279,7 +279,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
       }
       opened = false;
       if (getState() == ComponentState.ACTIVE) {
-        stopping(ComponentState.STOPPED);
+        stopping(ComponentState.INACTIVE);
       } else {
         closeReferenceHelpers();
       }
@@ -349,17 +349,24 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
    *          can be changed only by upgrading the component instance binary.
    */
   public void fail(final Throwable e, final boolean permanent) {
+    if (getState() == ComponentState.ACTIVE) {
+      fail(e, permanent, true);
+    }
+  }
+
+  private void fail(final Throwable e, final boolean permanent, final boolean stopComponent) {
+    revisionBuilder.setOrAddSuppressedCause(e);
     if (isFailed()) {
       return;
     }
 
+    if (stopComponent) {
+      stopping(ComponentState.FAILED);
+    } else {
+      instance = null;
+    }
+
     revisionBuilder.fail(e, permanent);
-
-    // TODO call fail method
-    unregisterServices();
-    instance = null;
-
-    return;
   }
 
   private void fillAttributeHelpers(final AttributeMetadata<?>[] attributes) {
@@ -471,7 +478,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
         throw new IllegalStateException("Cannot open a component context that is already opened");
       }
       opened = true;
-      if (getState() != ComponentState.STOPPED) {
+      if (getState() != ComponentState.INACTIVE) {
         return;
       }
       revisionBuilder.updateProperties(revisionBuilder.getProperties());
@@ -695,9 +702,11 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
           }
         }
         activateMethodHelper.call(instance);
-      } catch (RuntimeException | ReflectiveOperationException e) {
-        fail(e, false);
+      } catch (IllegalAccessException e) {
+        fail(e, true);
         return;
+      } catch (InvocationTargetException e) {
+        fail(e.getCause(), false, true);
       }
 
       if (serviceInterfaces.length > 0) {
@@ -724,8 +733,11 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
             deactivateMethod.invoke(instance);
           } catch (IllegalAccessException | IllegalArgumentException
               | InvocationTargetException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace(System.err);
+            if (targetState == ComponentState.FAILED) {
+              revisionBuilder.setOrAddSuppressedCause(e);
+            } else {
+              e.printStackTrace(System.err);
+            }
           }
         }
         unregisterServices();
@@ -734,8 +746,8 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
 
     } finally {
       switch (targetState) {
-        case STOPPED:
-          revisionBuilder.stopped();
+        case INACTIVE:
+          revisionBuilder.inactive();
           break;
         case UNSATISFIED:
           revisionBuilder.unsatisfied();
@@ -743,11 +755,9 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
         case UPDATING_CONFIGURATION:
           revisionBuilder.updatingConfiguration();
           break;
-        case STOPPING:
-          break;
         default:
-          throw new RuntimeException("Target state " + targetState
-              + " is not allowed after stopping");
+          // Do nothing as in case STOPPING state remains the same, in case of FAILED* the state
+          // will be set by the caller function
       }
     }
   }
