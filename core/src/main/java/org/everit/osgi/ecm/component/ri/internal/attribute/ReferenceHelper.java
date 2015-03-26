@@ -173,8 +173,8 @@ public abstract class ReferenceHelper<CAPABILITY, COMPONENT, METADATA extends Re
       }
     }
 
-    RequirementDefinition<CAPABILITY>[] requirements = resolveRequirements();
-
+    @SuppressWarnings("unchecked")
+    RequirementDefinition<CAPABILITY>[] requirements = new RequirementDefinition[0];
     this.collector = createCollector(new ReferenceCapabilityConsumer(), requirements);
   }
 
@@ -328,6 +328,7 @@ public abstract class ReferenceHelper<CAPABILITY, COMPONENT, METADATA extends Re
   }
 
   public void open() {
+    updateConfiguration();
     collector.open();
   }
 

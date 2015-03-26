@@ -47,7 +47,6 @@ import org.everit.osgi.ecm.component.ri.internal.resource.ComponentRevisionImpl;
 import org.everit.osgi.ecm.metadata.AttributeMetadata;
 import org.everit.osgi.ecm.metadata.BundleCapabilityReferenceMetadata;
 import org.everit.osgi.ecm.metadata.ComponentMetadata;
-import org.everit.osgi.ecm.metadata.MetadataValidationException;
 import org.everit.osgi.ecm.metadata.PropertyAttributeMetadata;
 import org.everit.osgi.ecm.metadata.ReferenceMetadata;
 import org.everit.osgi.ecm.metadata.ServiceMetadata;
@@ -350,8 +349,13 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
    *          can be changed only by upgrading the component instance binary.
    */
   public void fail(final Throwable e, final boolean permanent) {
+    if (isFailed()) {
+      return;
+    }
+
     revisionBuilder.fail(e, permanent);
 
+    // TODO call fail method
     unregisterServices();
     instance = null;
 
@@ -383,7 +387,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
                 (BundleCapabilityReferenceMetadata) attributeMetadata, this, referenceEventHandler);
 
           }
-        } catch (IllegalAccessException | MetadataValidationException e) {
+        } catch (IllegalAccessException | RuntimeException e) {
           fail(e, true);
           return;
         }
@@ -477,7 +481,9 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
         for (ReferenceHelper<?, C, ?> referenceAttributeHelper : referenceHelpers) {
           referenceAttributeHelper.open();
         }
-        // TODO multi-threading issue might come here
+        if (isFailed()) {
+          return;
+        }
         if (isSatisfied()) {
           starting();
         } else {
@@ -854,6 +860,9 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
       }
       if (!referenceHelper.isOpened()) {
         referenceHelper.open();
+        if (isFailed()) {
+          return;
+        }
       }
     }
   }
