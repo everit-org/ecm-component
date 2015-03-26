@@ -64,7 +64,6 @@ import org.osgi.util.tracker.ServiceTracker;
     @StringAttribute(attributeId = TestRunnerConstants.SERVICE_PROPERTY_TEST_ID,
         defaultValue = "ECMTest") })
 @Service
-@TestDuringDevelopment
 public class ECMTest {
 
   private static final int SERVICE_AVAILABILITY_TIMEOUT = 1000;
@@ -454,6 +453,7 @@ public class ECMTest {
   }
 
   @Test
+  @TestDuringDevelopment
   public void testWrongActivateMethodComponent() {
     BundleContext bundleContext = componentContext.getBundleContext();
     ComponentContainerFactory factory = new ComponentContainerFactory(bundleContext);

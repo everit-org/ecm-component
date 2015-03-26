@@ -349,9 +349,11 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
    *          can be changed only by upgrading the component instance binary.
    */
   public void fail(final Throwable e, final boolean permanent) {
+    boolean stopComponent = false;
     if (getState() == ComponentState.ACTIVE) {
-      fail(e, permanent, true);
+      stopComponent = true;
     }
+    fail(e, permanent, stopComponent);
   }
 
   private void fail(final Throwable e, final boolean permanent, final boolean stopComponent) {
