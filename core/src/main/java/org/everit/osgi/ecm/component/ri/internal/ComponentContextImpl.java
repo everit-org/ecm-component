@@ -760,6 +760,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
         default:
           // Do nothing as in case STOPPING state remains the same, in case of FAILED* the state
           // will be set by the caller function
+          break;
       }
     }
   }
