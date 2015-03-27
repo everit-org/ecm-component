@@ -709,6 +709,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
         return;
       } catch (InvocationTargetException e) {
         fail(e.getCause(), false, true);
+        return;
       }
 
       if (serviceInterfaces.length > 0) {
