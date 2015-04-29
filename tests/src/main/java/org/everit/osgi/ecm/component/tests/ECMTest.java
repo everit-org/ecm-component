@@ -269,7 +269,7 @@ public class ECMTest {
       failingServiceRegistration = null;
 
       componentRevision = container.getResources()[0];
-      Assert.assertEquals(ComponentState.FAILED, componentRevision.getState());
+      Assert.assertEquals(ComponentState.ACTIVE, componentRevision.getState());
 
       updateConfiguration(managedService, configuration);
       componentRevision = container.getResources()[0];
