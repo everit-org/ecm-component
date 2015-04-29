@@ -86,7 +86,8 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
             referenceHelper.getSuitings());
 
         ComponentState state = getState();
-        if (satisfiedReferences == referenceHelpers.size() && state == ComponentState.UNSATISFIED) {
+        if (satisfiedReferences == referenceHelpers.size()
+            && (state == ComponentState.UNSATISFIED || state == ComponentState.FAILED)) {
           starting();
         }
       } finally {
@@ -109,6 +110,8 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
         ComponentState state = getState();
         if (state == ComponentState.ACTIVE) {
           stopping(ComponentState.UNSATISFIED);
+        } else if (state == ComponentState.FAILED) {
+          revisionBuilder.unsatisfied();
         }
       } finally {
         writeLock.unlock();
@@ -123,11 +126,14 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
       try {
         revisionBuilder.updateSuitingsForAttribute(referenceHelper.getReferenceMetadata(),
             referenceHelper.getSuitings());
-        if (getState() == ComponentState.ACTIVE) {
+        ComponentState state = getState();
+        if (state == ComponentState.ACTIVE) {
           referenceHelper.bind();
-        }
-        if (getState() == ComponentState.ACTIVE && !configurationUpdateInProgress) {
-          callUpdateMethod();
+          if (getState() == ComponentState.ACTIVE && !configurationUpdateInProgress) {
+            callUpdateMethod();
+          }
+        } else if (state == ComponentState.FAILED && !configurationUpdateInProgress) {
+          starting();
         }
       } finally {
         writeLock.unlock();
@@ -140,12 +146,19 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
       Lock writeLock = readWriteLock.writeLock();
       writeLock.lock();
       try {
-        if (getState() == ComponentState.ACTIVE) {
-          restart();
+        ComponentState state = getState();
+        if (state == ComponentState.ACTIVE) {
+          revisionBuilder.stopping();
         }
-        // TODO do it together with state change atomically.
         revisionBuilder.updateSuitingsForAttribute(referenceHelper.getReferenceMetadata(),
             referenceHelper.getSuitings());
+
+        if (state == ComponentState.ACTIVE) {
+          restart();
+        } else if (state == ComponentState.FAILED) {
+          starting();
+        }
+
       } finally {
         writeLock.unlock();
       }
@@ -639,13 +652,6 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
   }
 
   private void restart() {
-    ComponentState state = getState();
-    if (state != ComponentState.ACTIVE) {
-      throw new IllegalStateException(
-          "Only ACTIVE components can be restarted, while the state of the component "
-              + componentContainer.getComponentMetadata().getComponentId() + " is "
-              + state.toString());
-    }
     stopping(ComponentState.STOPPING);
     starting();
   }
