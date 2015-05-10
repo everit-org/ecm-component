@@ -20,7 +20,6 @@ import java.util.Arrays;
 import java.util.Hashtable;
 import java.util.List;
 
-import org.everit.osgi.dev.testrunner.TestDuringDevelopment;
 import org.everit.osgi.dev.testrunner.TestRunnerConstants;
 import org.everit.osgi.ecm.annotation.Activate;
 import org.everit.osgi.ecm.annotation.Component;
@@ -345,7 +344,6 @@ public class ECMTest {
   }
 
   @Test
-  @TestDuringDevelopment
   public void testMetatypeWithCapabilitiesAndRequirements() {
     ComponentMetadata componentMetadata = MetadataBuilder
         .buildComponentMetadata(MultiRequirementAndCapabilityComponent.class);
@@ -453,7 +451,6 @@ public class ECMTest {
   }
 
   @Test
-  @TestDuringDevelopment
   public void testWrongActivateMethodComponent() {
     BundleContext bundleContext = componentContext.getBundleContext();
     ComponentContainerFactory factory = new ComponentContainerFactory(bundleContext);

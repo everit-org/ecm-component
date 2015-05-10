@@ -81,6 +81,11 @@ public class BundleCapabilityReferenceAttributeHelper<COMPONENT> extends
         getReferenceMetadata().getStateMask());
   }
 
+  @Override
+  public void free() {
+    // Do nothing
+  }
+
   private Object[] resolveParameterArray() {
     Suiting<BundleCapability>[] lSuitings = getSuitings();
 

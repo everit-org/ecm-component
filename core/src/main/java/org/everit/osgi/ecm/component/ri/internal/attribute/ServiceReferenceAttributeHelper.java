@@ -20,8 +20,6 @@ import java.lang.reflect.Array;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
 import java.util.TreeMap;
 
 import org.everit.osgi.capabilitycollector.AbstractCapabilityCollector;
@@ -29,11 +27,10 @@ import org.everit.osgi.capabilitycollector.RequirementDefinition;
 import org.everit.osgi.capabilitycollector.ServiceReferenceCollector;
 import org.everit.osgi.capabilitycollector.Suiting;
 import org.everit.osgi.ecm.component.ServiceHolder;
-import org.everit.osgi.ecm.component.resource.ComponentState;
 import org.everit.osgi.ecm.component.ri.internal.ComponentContextImpl;
 import org.everit.osgi.ecm.component.ri.internal.ReferenceEventHandler;
 import org.everit.osgi.ecm.metadata.ServiceReferenceMetadata;
-import org.osgi.framework.BundleContext;
+import org.osgi.framework.ServiceObjects;
 import org.osgi.framework.ServiceReference;
 
 /**
@@ -48,11 +45,24 @@ public class ServiceReferenceAttributeHelper<S, COMPONENT> extends
     ReferenceHelper<ServiceReference<S>, COMPONENT, ServiceReferenceMetadata> {
 
   /**
+   * {@link ServiceObjects} with counter, where counter tells how many times the
+   * {@link ServiceObjects} was used to get service.
+   *
+   * @param <S>
+   *          The type of the OSGi service.
+   */
+  private static class ServiceObjectsWithCounter<S> {
+    public int counter = 0;
+
+    public ServiceObjects<S> serviceObjects;
+  }
+
+  /**
    * Mapping of {@link Suiting}s and the requested OSGi service instance (suiting contain only
    * service reference).
    *
    * @param <S>
-   *          The of the OSGi service.
+   *          The type of the OSGi service.
    */
   private static class SuitingWithService<S> {
     public S service;
@@ -62,7 +72,8 @@ public class ServiceReferenceAttributeHelper<S, COMPONENT> extends
 
   private Map<String, SuitingWithService<S>> previousSuitingsByRequirementId = new TreeMap<>();
 
-  private final Map<ServiceReference<S>, Integer> usedServiceReferences = new HashMap<>();
+  private final Map<ServiceReference<S>, ServiceObjectsWithCounter<S>> serviceObjectsByReferences =
+      new HashMap<>();
 
   public ServiceReferenceAttributeHelper(final ServiceReferenceMetadata referenceMetadata,
       final ComponentContextImpl<COMPONENT> componentContext,
@@ -71,13 +82,20 @@ public class ServiceReferenceAttributeHelper<S, COMPONENT> extends
     super(referenceMetadata, componentContext, eventHandler);
   }
 
-  private void addToUsedServiceReferences(final ServiceReference<S> serviceReference) {
-    Integer count = usedServiceReferences.get(serviceReference);
-    if (count == null) {
-      count = 0;
+  private S addToUsedServiceReferences(final ServiceReference<S> serviceReference) {
+    ServiceObjectsWithCounter<S> serviceObjectsWithCounter = serviceObjectsByReferences
+        .get(serviceReference);
+    if (serviceObjectsWithCounter == null) {
+      serviceObjectsWithCounter = new ServiceObjectsWithCounter<>();
+      serviceObjectsWithCounter.serviceObjects = getComponentContext().getBundleContext()
+          .getServiceObjects(serviceReference);
+      serviceObjectsByReferences.put(serviceReference, serviceObjectsWithCounter);
     }
-    count = count + 1;
-    usedServiceReferences.put(serviceReference, count);
+
+    S service = serviceObjectsWithCounter.serviceObjects.getService();
+
+    serviceObjectsWithCounter.counter++;
+    return service;
   }
 
   @Override
@@ -93,8 +111,8 @@ public class ServiceReferenceAttributeHelper<S, COMPONENT> extends
       ServiceReference<S> serviceReference = suiting.getCapability();
       RequirementDefinition<ServiceReference<S>> requirement = suiting.getRequirement();
 
-      String requirementId = suiting
-          .getRequirement().getRequirementId();
+      String requirementId = suiting.getRequirement().getRequirementId();
+
       SuitingWithService<S> previousSuitingWithService = previousSuitingsByRequirementId
           .get(requirementId);
 
@@ -103,9 +121,7 @@ public class ServiceReferenceAttributeHelper<S, COMPONENT> extends
           || (previousSuitingWithService.suiting.getCapability()
               .compareTo(suiting.getCapability()) != 0)) {
 
-        BundleContext bundleContext = getComponentContext().getBundleContext();
-        service = bundleContext.getService(serviceReference);
-        addToUsedServiceReferences(serviceReference);
+        service = addToUsedServiceReferences(serviceReference);
         if (service != null) {
           SuitingWithService<S> suitingWithService = new SuitingWithService<S>();
           suitingWithService.service = service;
@@ -115,6 +131,7 @@ public class ServiceReferenceAttributeHelper<S, COMPONENT> extends
       } else {
         previousSuitingsByRequirementId.remove(requirementId);
         service = previousSuitingWithService.service;
+        newSuitingMapping.put(requirementId, previousSuitingWithService);
       }
 
       if (isHolder()) {
@@ -129,14 +146,10 @@ public class ServiceReferenceAttributeHelper<S, COMPONENT> extends
     }
 
     callSetterWithParameters(parameter);
-    if (getComponentContext().getState() == ComponentState.FAILED) {
-      return;
-    }
 
     Collection<SuitingWithService<S>> previousSuitings = previousSuitingsByRequirementId.values();
     for (SuitingWithService<S> suitingWithService : previousSuitings) {
-      ServiceReference<S> serviceReference = suitingWithService.suiting.getCapability();
-      removeFromUsedServiceReferences(serviceReference);
+      removeFromUsedServiceReferences(suitingWithService);
     }
 
     previousSuitingsByRequirementId = newSuitingMapping;
@@ -168,18 +181,7 @@ public class ServiceReferenceAttributeHelper<S, COMPONENT> extends
   public synchronized void close() {
     super.close();
 
-    Set<Entry<ServiceReference<S>, Integer>> usedServiceReferenceEntries = usedServiceReferences
-        .entrySet();
-    BundleContext bundleContext = getComponentContext().getBundleContext();
-    for (Entry<ServiceReference<S>, Integer> entry : usedServiceReferenceEntries) {
-      ServiceReference<S> serviceReference = entry.getKey();
-      Integer count = entry.getValue();
-      for (int i = 0, n = count.intValue(); i < n; i++) {
-        bundleContext.ungetService(serviceReference);
-      }
-    }
-    usedServiceReferences.clear();
-    previousSuitingsByRequirementId.clear();
+    releaseServices();
   }
 
   @Override
@@ -193,17 +195,36 @@ public class ServiceReferenceAttributeHelper<S, COMPONENT> extends
         serviceInterface, items, consumer, false);
   }
 
-  private void removeFromUsedServiceReferences(final ServiceReference<S> serviceReference) {
-    Integer count = usedServiceReferences.get(serviceReference);
-    if (count == null) {
-      return;
+  @Override
+  public void free() {
+    releaseServices();
+  }
+
+  private void releaseServices() {
+    Collection<SuitingWithService<S>> suitingsWithServices = previousSuitingsByRequirementId
+        .values();
+
+    for (SuitingWithService<S> suitingWithService : suitingsWithServices) {
+      removeFromUsedServiceReferences(suitingWithService);
     }
-    count = count - 1;
-    if (count.intValue() == 0) {
-      getComponentContext().getBundleContext().ungetService(serviceReference);
-      usedServiceReferences.remove(serviceReference);
-    } else {
-      usedServiceReferences.put(serviceReference, count);
+
+    serviceObjectsByReferences.clear();
+    previousSuitingsByRequirementId.clear();
+  }
+
+  private void removeFromUsedServiceReferences(final SuitingWithService<S> suitingWithService) {
+    S service = suitingWithService.service;
+    if (service != null) {
+      ServiceReference<S> serviceReference = suitingWithService.suiting.getCapability();
+      ServiceObjectsWithCounter<S> serviceObjectsWithCounter = serviceObjectsByReferences
+          .get(serviceReference);
+      serviceObjectsWithCounter.serviceObjects.ungetService(service);
+
+      serviceObjectsWithCounter.counter--;
+
+      if (serviceObjectsWithCounter.counter == 0) {
+        serviceObjectsByReferences.remove(serviceReference);
+      }
     }
   }
 

@@ -240,6 +240,12 @@ public abstract class ReferenceHelper<CAPABILITY, COMPONENT, METADATA extends Re
     }
   }
 
+  /**
+   * Called when the component failes and every attached resource should be unattached. E.g.: unget
+   * services that were previously got.
+   */
+  public abstract void free();
+
   private void fillAttributesOfRequirementFromClause(final Map<String, Object> attributes,
       final Clause clauses) {
 

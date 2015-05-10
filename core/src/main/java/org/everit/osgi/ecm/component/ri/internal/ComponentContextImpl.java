@@ -418,6 +418,12 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
     }
   }
 
+  private void freeReferences() {
+    for (ReferenceHelper<?, C, ?> referenceHelper : referenceHelpers) {
+      referenceHelper.free();
+    }
+  }
+
   @Override
   public BundleContext getBundleContext() {
     return bundleContext;
@@ -750,6 +756,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
           }
         }
         unregisterServices();
+        freeReferences();
         instance = null;
       }
 
