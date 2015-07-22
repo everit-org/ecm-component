@@ -374,8 +374,9 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
 
   private void fail(final Throwable e, final boolean permanent, final boolean stopComponent) {
     logService.log(LogService.LOG_ERROR,
-        "Component error during " + revisionBuilder.getState().toString()
-            + " state with properties: " + revisionBuilder.getProperties().toString(),
+        "Component error: {id: '" + componentContainer.getComponentMetadata().getComponentId()
+            + "', state: " + revisionBuilder.getState().toString() + ", properties: "
+            + revisionBuilder.getProperties().toString() + "}",
         e);
     revisionBuilder.setOrAddSuppressedCause(e);
     if (isFailed()) {
@@ -755,8 +756,10 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
             deactivateMethod.invoke(instance);
           } catch (IllegalAccessException | IllegalArgumentException
               | InvocationTargetException e) {
-            logService.log(LogService.LOG_ERROR, "Component error during stopping with properties: "
-                + revisionBuilder.getProperties(), e);
+            logService.log(LogService.LOG_ERROR, "Component error: {id: '"
+                + componentContainer.getComponentMetadata().getComponentId()
+                + "', state: " + revisionBuilder.getState().toString() + ", properties: "
+                + revisionBuilder.getProperties().toString() + "}", e);
             if (targetState == ComponentState.FAILED) {
               revisionBuilder.setOrAddSuppressedCause(e);
             } else {
