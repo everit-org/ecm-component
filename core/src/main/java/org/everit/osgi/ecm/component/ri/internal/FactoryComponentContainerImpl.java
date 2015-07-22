@@ -33,6 +33,7 @@ import org.osgi.framework.Constants;
 import org.osgi.framework.ServiceRegistration;
 import org.osgi.service.cm.ConfigurationException;
 import org.osgi.service.cm.ManagedServiceFactory;
+import org.osgi.service.log.LogService;
 import org.osgi.service.metatype.MetaTypeProvider;
 
 /**
@@ -42,8 +43,8 @@ import org.osgi.service.metatype.MetaTypeProvider;
  * @param <C>
  *          The type of the component implementation.
  */
-public class FactoryComponentContainerImpl<C> extends AbstractComponentContainer<C> implements
-    ManagedServiceFactory {
+public class FactoryComponentContainerImpl<C> extends AbstractComponentContainer<C>
+    implements ManagedServiceFactory {
 
   private final Map<String, ComponentContextImpl<C>> components =
       new ConcurrentHashMap<String, ComponentContextImpl<C>>();
@@ -51,8 +52,8 @@ public class FactoryComponentContainerImpl<C> extends AbstractComponentContainer
   private ServiceRegistration<?> serviceRegistration;
 
   public FactoryComponentContainerImpl(final ComponentMetadata componentMetadata,
-      final BundleContext bundleContext) {
-    super(componentMetadata, bundleContext);
+      final BundleContext bundleContext, final LogService logService) {
+    super(componentMetadata, bundleContext, logService);
   }
 
   @Override
@@ -138,7 +139,7 @@ public class FactoryComponentContainerImpl<C> extends AbstractComponentContainer
       componentContextImpl.updateConfiguration(properties);
     } else {
       ComponentContextImpl<C> newComponent = new ComponentContextImpl<C>(this, getBundleContext(),
-          props);
+          props, getLogService());
       components.put(pid, newComponent);
       newComponent.open();
     }

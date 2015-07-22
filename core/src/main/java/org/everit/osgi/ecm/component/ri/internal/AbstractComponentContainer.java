@@ -28,6 +28,7 @@ import org.osgi.framework.BundleContext;
 import org.osgi.resource.Capability;
 import org.osgi.resource.Requirement;
 import org.osgi.resource.Wire;
+import org.osgi.service.log.LogService;
 import org.osgi.service.metatype.MetaTypeProvider;
 import org.osgi.service.metatype.ObjectClassDefinition;
 
@@ -45,6 +46,8 @@ public abstract class AbstractComponentContainer<C> implements MetaTypeProvider,
 
   private final ComponentMetadata componentMetadata;
 
+  private final LogService logService;
+
   private final MetatypeProviderImpl<C> metatypeProvider;
 
   /**
@@ -54,11 +57,14 @@ public abstract class AbstractComponentContainer<C> implements MetaTypeProvider,
    *          The metadata information of the components that should be managed by this container.
    * @param bundleContext
    *          The context of the bundle that implemented the component.
+   * @param logService
+   *          The logger to send info about events to.
    */
   public AbstractComponentContainer(final ComponentMetadata componentMetadata,
-      final BundleContext bundleContext) {
+      final BundleContext bundleContext, final LogService logService) {
     this.componentMetadata = componentMetadata;
     this.bundleContext = bundleContext;
+    this.logService = logService;
     this.metatypeProvider = new MetatypeProviderImpl<C>(componentMetadata, bundleContext);
   }
 
@@ -89,6 +95,10 @@ public abstract class AbstractComponentContainer<C> implements MetaTypeProvider,
   @Override
   public String[] getLocales() {
     return metatypeProvider.getLocales();
+  }
+
+  protected LogService getLogService() {
+    return logService;
   }
 
   @Override

@@ -17,9 +17,11 @@ package org.everit.osgi.ecm.component.ri;
 
 import org.everit.osgi.ecm.component.ri.internal.ComponentContainerImpl;
 import org.everit.osgi.ecm.component.ri.internal.FactoryComponentContainerImpl;
+import org.everit.osgi.ecm.component.ri.internal.JavaLogService;
 import org.everit.osgi.ecm.metadata.ComponentMetadata;
 import org.everit.osgi.ecm.metadata.ConfigurationPolicy;
 import org.osgi.framework.BundleContext;
+import org.osgi.service.log.LogService;
 
 /**
  * Factory class to create {@link org.everit.osgi.ecm.component.resource.ComponentContainer}s.
@@ -28,15 +30,36 @@ public class ComponentContainerFactory {
 
   private final BundleContext bundleContext;
 
+  private final LogService logService;
+
+  /**
+   * Same as using the constructor ComponentcontainerFactory(bundleContext, null).
+   *
+   * @param bundleContext
+   *          The context of the bundle that would like to create and open
+   *          {@link ComponentContainerInstance}s.
+   */
+  public ComponentContainerFactory(final BundleContext bundleContex) {
+    this(bundleContex, null);
+  }
+
   /**
    * Constructor.
    *
    * @param bundleContext
    *          The context of the bundle that would like to create and open
    *          {@link ComponentContainerInstance}s.
+   * @param logService
+   *          The logService to log to or <code>null</code> if the standard JDK logger should be
+   *          used.
    */
-  public ComponentContainerFactory(final BundleContext bundleContext) {
+  public ComponentContainerFactory(final BundleContext bundleContext, final LogService logService) {
     this.bundleContext = bundleContext;
+    if (logService != null) {
+      this.logService = logService;
+    } else {
+      this.logService = new JavaLogService();
+    }
   }
 
   /**
@@ -50,9 +73,9 @@ public class ComponentContainerFactory {
   public <C> ComponentContainerInstance<C> createComponentContainer(
       final ComponentMetadata componentMetadata) {
     if (ConfigurationPolicy.FACTORY.equals(componentMetadata.getConfigurationPolicy())) {
-      return new FactoryComponentContainerImpl<C>(componentMetadata, bundleContext);
+      return new FactoryComponentContainerImpl<C>(componentMetadata, bundleContext, logService);
     } else {
-      return new ComponentContainerImpl<C>(componentMetadata, bundleContext);
+      return new ComponentContainerImpl<C>(componentMetadata, bundleContext, logService);
     }
   }
 }

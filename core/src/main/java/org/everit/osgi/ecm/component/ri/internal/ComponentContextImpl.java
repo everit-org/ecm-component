@@ -57,6 +57,7 @@ import org.osgi.framework.BundleContext;
 import org.osgi.framework.ServiceReference;
 import org.osgi.framework.ServiceRegistration;
 import org.osgi.framework.wiring.BundleWiring;
+import org.osgi.service.log.LogService;
 
 /**
  * The context of a component instance. This is the most important class that manages the entire
@@ -189,6 +190,8 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
 
   private C instance;
 
+  private final LogService logService;
+
   private boolean opened = false;
 
   private final List<PropertyAttributeHelper<C, Object>> propertyAttributeHelpers =
@@ -210,11 +213,6 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
 
   private Method updateMethod;
 
-  public ComponentContextImpl(final AbstractComponentContainer<C> componentContainer,
-      final BundleContext bundleContext) {
-    this(componentContainer, bundleContext, null);
-  }
-
   /**
    * Constructor.
    *
@@ -223,13 +221,18 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
    * @param bundleContext
    *          The context of the bundle that opened the Component Container.
    * @param properties
-   *          The configuration of the component.
+   *          The configuration of the component or <code>null</code> if configuration does not
+   *          exist.
+   * @param logService
+   *          The logger to forward information about events to.
    */
   public ComponentContextImpl(final AbstractComponentContainer<C> componentContainer,
-      final BundleContext bundleContext, final Dictionary<String, Object> properties) {
+      final BundleContext bundleContext, final Dictionary<String, Object> properties,
+      final LogService logService) {
 
     this.bundleContext = bundleContext;
     this.componentContainer = componentContainer;
+    this.logService = logService;
     this.revisionBuilder = new ComponentRevisionImpl.Builder<C>(componentContainer,
         resolveProperties(properties));
 
@@ -370,6 +373,10 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
   }
 
   private void fail(final Throwable e, final boolean permanent, final boolean stopComponent) {
+    logService.log(LogService.LOG_ERROR,
+        "Component error during " + revisionBuilder.getState().toString()
+            + " state with properties: " + revisionBuilder.getProperties().toString(),
+        e);
     revisionBuilder.setOrAddSuppressedCause(e);
     if (isFailed()) {
       return;
@@ -748,6 +755,8 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
             deactivateMethod.invoke(instance);
           } catch (IllegalAccessException | IllegalArgumentException
               | InvocationTargetException e) {
+            logService.log(LogService.LOG_ERROR, "Component error during stopping with properties: "
+                + revisionBuilder.getProperties(), e);
             if (targetState == ComponentState.FAILED) {
               revisionBuilder.setOrAddSuppressedCause(e);
             } else {

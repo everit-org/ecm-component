@@ -30,6 +30,7 @@ import org.osgi.framework.Constants;
 import org.osgi.framework.ServiceRegistration;
 import org.osgi.service.cm.ConfigurationException;
 import org.osgi.service.cm.ManagedService;
+import org.osgi.service.log.LogService;
 import org.osgi.service.metatype.MetaTypeProvider;
 
 /**
@@ -39,8 +40,8 @@ import org.osgi.service.metatype.MetaTypeProvider;
  * @param <C>
  *          The type of the implementation.
  */
-public class ComponentContainerImpl<C> extends AbstractComponentContainer<C> implements
-    ManagedService {
+public class ComponentContainerImpl<C> extends AbstractComponentContainer<C>
+    implements ManagedService {
 
   private final AtomicReference<ComponentContextImpl<C>> componentAtomicReference =
       new AtomicReference<ComponentContextImpl<C>>();
@@ -48,8 +49,8 @@ public class ComponentContainerImpl<C> extends AbstractComponentContainer<C> imp
   private ServiceRegistration<?> serviceRegistration;
 
   public ComponentContainerImpl(final ComponentMetadata componentMetadata,
-      final BundleContext bundleContext) {
-    super(componentMetadata, bundleContext);
+      final BundleContext bundleContext, final LogService logService) {
+    super(componentMetadata, bundleContext, logService);
   }
 
   @Override
@@ -107,7 +108,7 @@ public class ComponentContainerImpl<C> extends AbstractComponentContainer<C> imp
     ComponentContextImpl<C> componentImpl = componentAtomicReference.get();
     if (ConfigurationPolicy.IGNORE.equals(componentMetadata.getConfigurationPolicy())
         && (componentImpl == null)) {
-      componentImpl = new ComponentContextImpl<C>(this, getBundleContext());
+      componentImpl = new ComponentContextImpl<C>(this, getBundleContext(), null, getLogService());
       componentAtomicReference.set(componentImpl);
       componentImpl.open();
       return;
@@ -128,7 +129,7 @@ public class ComponentContainerImpl<C> extends AbstractComponentContainer<C> imp
 
     if ((componentImpl == null)
         && ((properties != null) || ConfigurationPolicy.OPTIONAL.equals(configurationPolicy))) {
-      componentImpl = new ComponentContextImpl<C>(this, getBundleContext(), props);
+      componentImpl = new ComponentContextImpl<C>(this, getBundleContext(), props, getLogService());
       componentAtomicReference.set(componentImpl);
       componentImpl.open();
     } else if ((componentImpl != null) && (properties == null)
