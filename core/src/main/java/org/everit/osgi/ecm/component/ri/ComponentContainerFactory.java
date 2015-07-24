@@ -39,8 +39,8 @@ public class ComponentContainerFactory {
    *          The context of the bundle that would like to create and open
    *          {@link ComponentContainerInstance}s.
    */
-  public ComponentContainerFactory(final BundleContext bundleContex) {
-    this(bundleContex, null);
+  public ComponentContainerFactory(final BundleContext bundleContext) {
+    this(bundleContext, null);
   }
 
   /**
@@ -67,6 +67,8 @@ public class ComponentContainerFactory {
    *
    * @param componentMetadata
    *          The metadata of the component(s) that should be instantiated by the container.
+   * @param <C>
+   *          The type of the ComponentContainerInstance.
    * @return The component container instance that manages the lifecycle of the components. The
    *         instance is registered as an OSGi service after it is opened.
    */

@@ -46,6 +46,12 @@ public class ObjectClassDefinitionImpl<C> implements ObjectClassDefinition {
 
   /**
    * Constructor.
+   * @param componentMetadata
+   *         the component meta data
+   * @param localizer
+   *         the localizer
+   * @param classLoader
+   *         the classloader
    */
   public ObjectClassDefinitionImpl(final ComponentMetadata componentMetadata,
       final Localizer localizer, final ClassLoader classLoader) {

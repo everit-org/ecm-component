@@ -56,8 +56,7 @@ public class ComponentContainerImpl<C> extends AbstractComponentContainer<C>
   @Override
   public void close() {
     ComponentContextImpl<C> componentImpl = componentAtomicReference.get();
-    if ((componentImpl != null)
-        && (getComponentMetadata().getConfigurationPolicy() == ConfigurationPolicy.IGNORE)) {
+    if (componentImpl != null) {
       componentImpl.close();
       componentAtomicReference.set(null);
     }
