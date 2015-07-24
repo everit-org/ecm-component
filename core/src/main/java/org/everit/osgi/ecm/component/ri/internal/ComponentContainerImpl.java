@@ -19,6 +19,7 @@ import java.util.Dictionary;
 import java.util.Hashtable;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.everit.osgi.ecm.component.resource.ComponentContainer;
@@ -43,6 +44,8 @@ import org.osgi.service.metatype.MetaTypeProvider;
 public class ComponentContainerImpl<C> extends AbstractComponentContainer<C>
     implements ManagedService {
 
+  private AtomicBoolean closed = new AtomicBoolean(true);
+
   private final AtomicReference<ComponentContextImpl<C>> componentAtomicReference =
       new AtomicReference<ComponentContextImpl<C>>();
 
@@ -55,10 +58,13 @@ public class ComponentContainerImpl<C> extends AbstractComponentContainer<C>
 
   @Override
   public void close() {
-    ComponentContextImpl<C> componentImpl = componentAtomicReference.get();
-    if (componentImpl != null) {
-      componentImpl.close();
-      componentAtomicReference.set(null);
+    boolean closing = closed.compareAndSet(false, true);
+    if (closing) {
+      ComponentContextImpl<C> componentImpl = componentAtomicReference.get();
+      if (componentImpl != null) {
+        componentImpl.close();
+        componentAtomicReference.set(null);
+      }
     }
     if (serviceRegistration != null) {
       serviceRegistration.unregister();
@@ -82,6 +88,7 @@ public class ComponentContainerImpl<C> extends AbstractComponentContainer<C>
 
   @Override
   public void open() {
+    closed.set(false);
     BundleContext context = getBundleContext();
     Dictionary<String, Object> properties = new Hashtable<String, Object>();
     List<String> serviceInterfaces = new LinkedList<String>();
@@ -134,8 +141,10 @@ public class ComponentContainerImpl<C> extends AbstractComponentContainer<C>
     } else if ((componentImpl != null) && (properties == null)
         && !ConfigurationPolicy.OPTIONAL.equals(configurationPolicy)) {
 
-      componentImpl.close();
-      componentAtomicReference.set(null);
+      if (closed.compareAndSet(false, true)) {
+        componentImpl.close();
+        componentAtomicReference.set(null);
+      }
 
     } else if (componentImpl != null) {
       @SuppressWarnings("unchecked")
