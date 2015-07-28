@@ -29,7 +29,7 @@
 
   <groupId>org.everit.osgi</groupId>
   <artifactId>org.everit.osgi.ecm.component.ri</artifactId>
-  <version>1.2.2</version>
+  <version>1.2.3-SNAPSHOT</version>
 
   <packaging>bundle</packaging>
   <name>Everit - ECM Component RI</name>
