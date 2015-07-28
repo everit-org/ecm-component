@@ -35,6 +35,7 @@ import org.everit.osgi.ecm.component.resource.ComponentState;
 import org.everit.osgi.ecm.component.ri.ComponentContainerFactory;
 import org.everit.osgi.ecm.component.ri.ComponentContainerInstance;
 import org.everit.osgi.ecm.metadata.ComponentMetadata;
+import org.everit.templating.util.Supplier;
 import org.junit.Assert;
 import org.junit.Test;
 import org.osgi.framework.BundleContext;
@@ -64,6 +65,8 @@ import org.osgi.util.tracker.ServiceTracker;
         defaultValue = "ECMTest") })
 @Service
 public class ECMTest {
+
+  private static final int ONE_SEC_IN_MILLIS = 1000;
 
   private static final int SERVICE_AVAILABILITY_TIMEOUT = 1000;
 
@@ -471,6 +474,43 @@ public class ECMTest {
     }
   }
 
+  @Test
+  public void testWrongReferenceConfiguration() {
+    BundleContext bundleContext = componentContext.getBundleContext();
+    ComponentContainerFactory factory = new ComponentContainerFactory(bundleContext);
+
+    ComponentMetadata componentMetadata = MetadataBuilder
+        .buildComponentMetadata(MultiRequirementAndCapabilityComponent.class);
+
+    ComponentContainerInstance<Object> container =
+        factory.createComponentContainer(componentMetadata);
+
+    container.open();
+
+    try {
+
+      waitForTrueSupplied(ONE_SEC_IN_MILLIS, () -> container.getResources().length == 1);
+
+      Assert.assertNotEquals(ComponentState.FAILED, container.getResources()[0].getState());
+
+      ManagedService managedService = (ManagedService) container;
+
+      Hashtable<String, Object> configuration = new Hashtable<>();
+      configuration.put("someRef.target", new String[] { "(WrongSyntax)" });
+      updateConfiguration(managedService, configuration);
+
+      Assert.assertEquals(ComponentState.FAILED, container.getResources()[0].getState());
+
+      configuration.put("someRef.target", new String[] { "(service.id>=0)" });
+      updateConfiguration(managedService, configuration);
+
+      Assert.assertNotEquals(ComponentState.FAILED, container.getResources()[0].getState());
+    } finally {
+      container.close();
+    }
+
+  }
+
   private void updateConfiguration(final ManagedService managedService,
       final Hashtable<String, Object> configuration) {
     try {
@@ -506,5 +546,24 @@ public class ECMTest {
     } finally {
       tracker.close();
     }
+  }
+
+  private void waitForTrueSupplied(final long timeout, final Supplier<Boolean> supplier) {
+    long startTime = System.currentTimeMillis();
+    long endTime = startTime;
+    boolean result = supplier.get();
+    while (endTime - startTime < timeout && !result) {
+      try {
+        Thread.sleep(1);
+      } catch (InterruptedException e) {
+        throw new RuntimeException(e);
+      }
+      result = supplier.get();
+      endTime = System.currentTimeMillis();
+    }
+    if (!result) {
+      Assert.fail("Timeout");
+    }
+
   }
 }

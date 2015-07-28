@@ -75,19 +75,37 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
   private class ReferenceEventHandlerImpl implements ReferenceEventHandler {
 
     @Override
+    public void failedDuringConfigurationUpdate(
+        final ReferenceHelper<?, ?, ? extends ReferenceMetadata> referenceHelper) {
+      Lock writeLock = readWriteLock.writeLock();
+      writeLock.lock();
+      try {
+        satisfiedReferenceHelpers.remove(referenceHelper);
+        revisionBuilder.updateSuitingsForAttribute(referenceHelper.getReferenceMetadata(),
+            referenceHelper.getSuitings());
+      } finally {
+        writeLock.unlock();
+      }
+    }
+
+    @Override
     public synchronized void satisfied(
         final ReferenceHelper<?, ?, ? extends ReferenceMetadata> referenceHelper) {
       Lock writeLock = readWriteLock.writeLock();
       writeLock.lock();
       try {
-        satisfiedReferences++;
+        satisfiedReferenceHelpers.add(referenceHelper);
 
         // TODO do it together with state change atomically.
         revisionBuilder.updateSuitingsForAttribute(referenceHelper.getReferenceMetadata(),
             referenceHelper.getSuitings());
 
+        if (configurationUpdateInProgress) {
+          return;
+        }
+
         ComponentState state = getState();
-        if (satisfiedReferences == referenceHelpers.size()
+        if (satisfiedReferenceHelpers.size() == referenceHelpers.size()
             && (state == ComponentState.UNSATISFIED || state == ComponentState.FAILED)) {
           starting();
         }
@@ -102,11 +120,15 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
       Lock writeLock = readWriteLock.writeLock();
       writeLock.lock();
       try {
-        satisfiedReferences--;
+        satisfiedReferenceHelpers.remove(referenceHelper);
 
         // TODO do it together with state change atomically.
         revisionBuilder.updateSuitingsForAttribute(referenceHelper.getReferenceMetadata(),
             referenceHelper.getSuitings());
+
+        if (configurationUpdateInProgress) {
+          return;
+        }
 
         ComponentState state = getState();
         if (state == ComponentState.ACTIVE) {
@@ -156,10 +178,9 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
 
         if (state == ComponentState.ACTIVE) {
           restart();
-        } else if (state == ComponentState.FAILED) {
+        } else if (state == ComponentState.FAILED && !configurationUpdateInProgress) {
           starting();
         }
-
       } finally {
         writeLock.unlock();
       }
@@ -205,7 +226,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
 
   private final ComponentRevisionImpl.Builder<C> revisionBuilder;
 
-  private int satisfiedReferences = 0;
+  private final Set<ReferenceHelper<?, ?, ?>> satisfiedReferenceHelpers = new HashSet<>();
 
   private String[] serviceInterfaces;
 
@@ -491,7 +512,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
    * @return true if all of the references are satisfied, otherwise false.
    */
   public boolean isSatisfied() {
-    return satisfiedReferences == referenceHelpers.size();
+    return satisfiedReferenceHelpers.size() == referenceHelpers.size();
   }
 
   /**
@@ -813,18 +834,19 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
   public void updateConfiguration(final Dictionary<String, ?> properties) {
     Lock writeLock = readWriteLock.writeLock();
     writeLock.lock();
+    configurationUpdateInProgress = true;
     try {
       if (getState() == ComponentState.FAILED_PERMANENT) {
         return;
       }
       updateConfigurationInLock(properties);
     } finally {
+      configurationUpdateInProgress = false;
       writeLock.unlock();
     }
   }
 
   private void updateConfigurationInLock(final Dictionary<String, ?> properties) {
-    configurationUpdateInProgress = true;
 
     ComponentState stateBeforeUpdate = getState();
 
@@ -856,7 +878,6 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
       }
 
       callUpdateMethod();
-      configurationUpdateInProgress = false;
     }
 
     if (serviceRegistration != null) {
@@ -893,15 +914,9 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
 
       if (!equals(oldValue, newValue)) {
         referenceHelper.updateConfiguration();
-        if (isFailed()) {
-          return;
-        }
       }
       if (!referenceHelper.isOpened()) {
         referenceHelper.open();
-        if (isFailed()) {
-          return;
-        }
       }
     }
   }

@@ -24,12 +24,15 @@ import org.everit.osgi.ecm.metadata.ReferenceMetadata;
  */
 public interface ReferenceEventHandler {
 
+  void failedDuringConfigurationUpdate(
+      ReferenceHelper<?, ?, ? extends ReferenceMetadata> referenceHelper);
+
   void satisfied(ReferenceHelper<?, ?, ? extends ReferenceMetadata> referenceHelper);
 
   void unsatisfied(ReferenceHelper<?, ?, ? extends ReferenceMetadata> referenceHelper);
 
-  void updateNonDynamic(ReferenceHelper<?, ?, ? extends ReferenceMetadata> referenceHelper);
-
   void updateDynamicWithoutSatisfactionChange(
       ReferenceHelper<?, ?, ? extends ReferenceMetadata> referenceHelper);
+
+  void updateNonDynamic(ReferenceHelper<?, ?, ? extends ReferenceMetadata> referenceHelper);
 }

@@ -65,7 +65,10 @@ public abstract class ReferenceHelper<CAPABILITY, COMPONENT, METADATA extends Re
       suitings = pSuitings;
       satisfied = pSatisfied;
       ReferenceHelper<CAPABILITY, COMPONENT, METADATA> owner = ReferenceHelper.this;
-      if (pSatisfied) {
+      if (configurationUpdateFailure) {
+        satisfiedNotificationSent = false;
+        eventHandler.failedDuringConfigurationUpdate(owner);
+      } else if (pSatisfied) {
         if (!satisfiedNotificationSent) {
           satisfiedNotificationSent = true;
           eventHandler.satisfied(owner);
@@ -92,6 +95,8 @@ public abstract class ReferenceHelper<CAPABILITY, COMPONENT, METADATA extends Re
   private final AbstractCapabilityCollector<CAPABILITY> collector;
 
   private final ComponentContextImpl<COMPONENT> componentContext;
+
+  private boolean configurationUpdateFailure = false;
 
   private final ReferenceEventHandler eventHandler;
 
@@ -227,7 +232,7 @@ public abstract class ReferenceHelper<CAPABILITY, COMPONENT, METADATA extends Re
     return result;
   }
 
-  private void failConfiguration(final String message, final Exception e) {
+  private void failConfiguration(final String message, final Throwable e) {
     String attributeId = referenceMetadata.getAttributeId();
     Map<String, Object> properties = componentContext.getProperties();
     String servicePid = String.valueOf(properties.get(Constants.SERVICE_PID));
@@ -240,12 +245,6 @@ public abstract class ReferenceHelper<CAPABILITY, COMPONENT, METADATA extends Re
     }
   }
 
-  /**
-   * Called when the component failes and every attached resource should be unattached. E.g.: unget
-   * services that were previously got.
-   */
-  public abstract void free();
-
   private void fillAttributesOfRequirementFromClause(final Map<String, Object> attributes,
       final Clause clauses) {
 
@@ -254,6 +253,12 @@ public abstract class ReferenceHelper<CAPABILITY, COMPONENT, METADATA extends Re
       attributes.put(attribute.getName(), attribute.getValue());
     }
   }
+
+  /**
+   * Called when the component failes and every attached resource should be unattached. E.g.: unget
+   * services that were previously got.
+   */
+  public abstract void free();
 
   private RequirementDefinition<CAPABILITY>[] generateRequirementDefinitions(
       final String[] requirementStringArray, final ReferenceConfigurationType configurationType) {
@@ -384,11 +389,18 @@ public abstract class ReferenceHelper<CAPABILITY, COMPONENT, METADATA extends Re
   public void updateConfiguration() {
     RequirementDefinition<CAPABILITY>[] newRequirements = resolveRequirements();
 
+    if (getComponentContext().isFailed()) {
+      configurationUpdateFailure = true;
+    } else {
+      configurationUpdateFailure = false;
+    }
+
     try {
       collector.updateRequirements(newRequirements);
-    } catch (RuntimeException e) {
+    } catch (Throwable e) {
       failConfiguration(
           "Cannot update requirements on tracker: " + Arrays.toString(newRequirements), e);
+      configurationUpdateFailure = true;
     }
   }
 }
