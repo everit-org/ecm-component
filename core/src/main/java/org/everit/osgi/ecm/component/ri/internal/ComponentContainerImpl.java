@@ -28,7 +28,6 @@ import org.everit.osgi.ecm.metadata.ComponentMetadata;
 import org.everit.osgi.ecm.metadata.ConfigurationPolicy;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.Constants;
-import org.osgi.framework.ServiceRegistration;
 import org.osgi.service.cm.ConfigurationException;
 import org.osgi.service.cm.ManagedService;
 import org.osgi.service.log.LogService;
@@ -49,8 +48,6 @@ public class ComponentContainerImpl<C> extends AbstractComponentContainer<C>
   private final AtomicReference<ComponentContextImpl<C>> componentAtomicReference =
       new AtomicReference<ComponentContextImpl<C>>();
 
-  private ServiceRegistration<?> serviceRegistration;
-
   public ComponentContainerImpl(final ComponentMetadata componentMetadata,
       final BundleContext bundleContext, final LogService logService) {
     super(componentMetadata, bundleContext, logService);
@@ -66,10 +63,7 @@ public class ComponentContainerImpl<C> extends AbstractComponentContainer<C>
         componentAtomicReference.set(null);
       }
     }
-    if (serviceRegistration != null) {
-      serviceRegistration.unregister();
-      serviceRegistration = null;
-    }
+    unregisterService();
   }
 
   @Override
@@ -89,7 +83,6 @@ public class ComponentContainerImpl<C> extends AbstractComponentContainer<C>
   @Override
   public void open() {
     closed.set(false);
-    BundleContext context = getBundleContext();
     Dictionary<String, Object> properties = new Hashtable<String, Object>();
     List<String> serviceInterfaces = new LinkedList<String>();
     serviceInterfaces.add(ComponentContainer.class.getName());
@@ -107,9 +100,7 @@ public class ComponentContainerImpl<C> extends AbstractComponentContainer<C>
       serviceInterfaces.add(ManagedService.class.getName());
     }
 
-    serviceRegistration = context.registerService(
-        serviceInterfaces.toArray(new String[serviceInterfaces.size()]),
-        this, properties);
+    registerService(properties, serviceInterfaces);
 
     ComponentContextImpl<C> componentImpl = componentAtomicReference.get();
     if (ConfigurationPolicy.IGNORE.equals(componentMetadata.getConfigurationPolicy())

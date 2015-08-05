@@ -54,6 +54,7 @@ import org.everit.osgi.ecm.metadata.ServiceReferenceMetadata;
 import org.everit.osgi.ecm.util.method.MethodDescriptor;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
+import org.osgi.framework.Constants;
 import org.osgi.framework.ServiceReference;
 import org.osgi.framework.ServiceRegistration;
 import org.osgi.framework.wiring.BundleWiring;
@@ -188,6 +189,13 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
 
   }
 
+  // TODO move to the component-api costants
+  private static final String PROPERTY_KEY_COMPONENT_ID = "ecm.component.id";
+
+  private static final String PROPERTY_KEY_COMPONENT_SERVICE_PID = "ecm.component.service.pid";
+
+  private static final String PROPERTY_KEY_COMPONENT_CONTAINER_SERVICE_ID = "ecm.component.container.service.id"; // CS_DISABLE_LINE_LENGTH
+
   private static void resolveSuperInterfacesRecurse(final Class<?> currentClass,
       final Set<String> interfaces) {
     Class<?>[] superInterfaces = currentClass.getInterfaces();
@@ -292,6 +300,21 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
     updateMethod = resolveAnnotatedMethod("update", componentContainer
         .getComponentMetadata().getUpdate());
 
+  }
+
+  private void addCommonComponentProperties(final Map<String, Object> properties) {
+    String componentId = componentContainer.getComponentMetadata().getComponentId();
+    Object componentServicePid = properties.get(Constants.SERVICE_PID);
+    Long componentContainerServiceId = componentContainer.getServiceId();
+    if (componentId != null) {
+      properties.put(PROPERTY_KEY_COMPONENT_ID, componentId);
+    }
+    if (componentServicePid != null) {
+      properties.put(PROPERTY_KEY_COMPONENT_SERVICE_PID, componentServicePid);
+    }
+    if (componentContainerServiceId != null) {
+      properties.put(PROPERTY_KEY_COMPONENT_CONTAINER_SERVICE_ID, componentContainerServiceId);
+    }
   }
 
   private void callUpdateMethod() {
@@ -656,6 +679,8 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
         }
       }
     }
+
+    addCommonComponentProperties(result);
 
     return Collections.unmodifiableMap(result);
   }

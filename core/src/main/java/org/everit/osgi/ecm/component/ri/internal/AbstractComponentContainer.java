@@ -25,6 +25,9 @@ import org.everit.osgi.ecm.component.ri.internal.metatype.MetatypeProviderImpl;
 import org.everit.osgi.ecm.component.ri.internal.resource.ComponentRevisionImpl;
 import org.everit.osgi.ecm.metadata.ComponentMetadata;
 import org.osgi.framework.BundleContext;
+import org.osgi.framework.Constants;
+import org.osgi.framework.ServiceReference;
+import org.osgi.framework.ServiceRegistration;
 import org.osgi.resource.Capability;
 import org.osgi.resource.Requirement;
 import org.osgi.resource.Wire;
@@ -49,6 +52,10 @@ public abstract class AbstractComponentContainer<C> implements MetaTypeProvider,
   private final LogService logService;
 
   private final MetatypeProviderImpl<C> metatypeProvider;
+
+  private ServiceRegistration<?> serviceRegistration = null;
+
+  private Long serviceId = null;
 
   /**
    * Constructor.
@@ -109,6 +116,14 @@ public abstract class AbstractComponentContainer<C> implements MetaTypeProvider,
   @Override
   public abstract ComponentRevisionImpl<C>[] getResources();
 
+  public Long getServiceId() {
+    return serviceId;
+  }
+
+  public ServiceReference<?> getServiceReference() {
+    return serviceRegistration.getReference();
+  }
+
   @Override
   public synchronized Wire[] getWires() {
     ComponentRevisionImpl<C>[] componentRevisions = getResources();
@@ -161,5 +176,39 @@ public abstract class AbstractComponentContainer<C> implements MetaTypeProvider,
       result.addAll(componentRevisionImpl.getWiresByRequirement(requirement));
     }
     return result.toArray(new Wire[result.size()]);
+  }
+
+  /**
+   * Registers (or re-registers) the service of the component with the given data. The service
+   * registration will be stored in {@link #serviceRegistration}, and the ID of the service will
+   * stored in {@link #serviceId}.
+   * @param properties
+   *          The service properties.
+   * @param serviceInterfaces
+   *          The interfaces is implemented by the service.
+   */
+  protected void registerService(final Dictionary<String, Object> properties,
+      final List<String> serviceInterfaces) {
+    unregisterService();
+    serviceRegistration = bundleContext.registerService(
+        serviceInterfaces.toArray(new String[serviceInterfaces.size()]),
+        this, properties);
+    ServiceReference<?> reference = getServiceReference();
+    Object serviceIdAsObject = reference.getProperty(Constants.SERVICE_ID);
+    if (serviceIdAsObject instanceof Long) {
+      serviceId = (Long) serviceIdAsObject;
+    }
+  }
+
+  /**
+   * Unregisters the service of the component if the service registration is exists, is setting null
+   * into {@link #serviceRegistration} and {{@link #serviceId}.
+   */
+  protected void unregisterService() {
+    if (serviceRegistration != null) {
+      serviceRegistration.unregister();
+      serviceRegistration = null;
+      serviceId = null;
+    }
   }
 }

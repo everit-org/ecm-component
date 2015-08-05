@@ -30,7 +30,6 @@ import org.everit.osgi.ecm.component.ri.internal.resource.ComponentRevisionImpl;
 import org.everit.osgi.ecm.metadata.ComponentMetadata;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.Constants;
-import org.osgi.framework.ServiceRegistration;
 import org.osgi.service.cm.ConfigurationException;
 import org.osgi.service.cm.ManagedServiceFactory;
 import org.osgi.service.log.LogService;
@@ -49,8 +48,6 @@ public class FactoryComponentContainerImpl<C> extends AbstractComponentContainer
   private final Map<String, ComponentContextImpl<C>> components =
       new ConcurrentHashMap<String, ComponentContextImpl<C>>();
 
-  private ServiceRegistration<?> serviceRegistration;
-
   public FactoryComponentContainerImpl(final ComponentMetadata componentMetadata,
       final BundleContext bundleContext, final LogService logService) {
     super(componentMetadata, bundleContext, logService);
@@ -68,10 +65,7 @@ public class FactoryComponentContainerImpl<C> extends AbstractComponentContainer
       iterator.remove();
     }
 
-    if (serviceRegistration != null) {
-      serviceRegistration.unregister();
-      serviceRegistration = null;
-    }
+    unregisterService();
   }
 
   @Override
@@ -106,7 +100,6 @@ public class FactoryComponentContainerImpl<C> extends AbstractComponentContainer
 
   @Override
   public void open() {
-    BundleContext context = getBundleContext();
     Dictionary<String, Object> properties = new Hashtable<String, Object>();
     List<String> serviceInterfaces = new LinkedList<String>();
     serviceInterfaces.add(ComponentContainer.class.getName());
@@ -122,10 +115,7 @@ public class FactoryComponentContainerImpl<C> extends AbstractComponentContainer
     properties.put(Constants.SERVICE_PID, componentMetadata.getConfigurationPid());
     serviceInterfaces.add(ManagedServiceFactory.class.getName());
 
-    serviceRegistration = context.registerService(
-        serviceInterfaces.toArray(new String[serviceInterfaces.size()]),
-        this, properties);
-
+    registerService(properties, serviceInterfaces);
   }
 
   @Override
