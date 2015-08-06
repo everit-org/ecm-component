@@ -37,6 +37,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import javax.annotation.Generated;
 
 import org.everit.osgi.ecm.component.ComponentContext;
+import org.everit.osgi.ecm.component.ECMComponentConstants;
 import org.everit.osgi.ecm.component.resource.ComponentContainer;
 import org.everit.osgi.ecm.component.resource.ComponentState;
 import org.everit.osgi.ecm.component.ri.internal.attribute.BundleCapabilityReferenceAttributeHelper;
@@ -189,13 +190,6 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
 
   }
 
-  // TODO move to the component-api costants
-  private static final String PROPERTY_KEY_COMPONENT_ID = "ecm.component.id";
-
-  private static final String PROPERTY_KEY_COMPONENT_SERVICE_PID = "ecm.component.service.pid";
-
-  private static final String PROPERTY_KEY_COMPONENT_CONTAINER_SERVICE_ID = "ecm.component.container.service.id"; // CS_DISABLE_LINE_LENGTH
-
   private static void resolveSuperInterfacesRecurse(final Class<?> currentClass,
       final Set<String> interfaces) {
     Class<?>[] superInterfaces = currentClass.getInterfaces();
@@ -307,13 +301,14 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
     Object componentServicePid = properties.get(Constants.SERVICE_PID);
     Long componentContainerServiceId = componentContainer.getServiceId();
     if (componentId != null) {
-      properties.put(PROPERTY_KEY_COMPONENT_ID, componentId);
+      properties.put(ECMComponentConstants.SERVICE_PROP_COMPONENT_ID, componentId);
     }
     if (componentServicePid != null) {
-      properties.put(PROPERTY_KEY_COMPONENT_SERVICE_PID, componentServicePid);
+      properties.put(ECMComponentConstants.SERVICE_PROP_COMPONENT_SERVICE_PID, componentServicePid);
     }
     if (componentContainerServiceId != null) {
-      properties.put(PROPERTY_KEY_COMPONENT_CONTAINER_SERVICE_ID, componentContainerServiceId);
+      properties.put(ECMComponentConstants.SERVICE_PROP_COMPONENT_CONTAINER_SERVICE_ID,
+          componentContainerServiceId);
     }
   }
 
