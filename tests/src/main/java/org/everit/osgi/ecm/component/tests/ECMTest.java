@@ -17,6 +17,8 @@ package org.everit.osgi.ecm.component.tests;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.Dictionary;
 import java.util.Hashtable;
 import java.util.List;
 
@@ -30,6 +32,7 @@ import org.everit.osgi.ecm.annotation.attribute.StringAttribute;
 import org.everit.osgi.ecm.annotation.attribute.StringAttributes;
 import org.everit.osgi.ecm.annotation.metadatabuilder.MetadataBuilder;
 import org.everit.osgi.ecm.component.ComponentContext;
+import org.everit.osgi.ecm.component.ECMComponentConstants;
 import org.everit.osgi.ecm.component.resource.ComponentRevision;
 import org.everit.osgi.ecm.component.resource.ComponentState;
 import org.everit.osgi.ecm.component.ri.ComponentContainerFactory;
@@ -43,6 +46,7 @@ import org.osgi.framework.Constants;
 import org.osgi.framework.Filter;
 import org.osgi.framework.FrameworkUtil;
 import org.osgi.framework.InvalidSyntaxException;
+import org.osgi.framework.ServiceReference;
 import org.osgi.framework.ServiceRegistration;
 import org.osgi.resource.Capability;
 import org.osgi.service.cm.Configuration;
@@ -73,6 +77,8 @@ public class ECMTest {
   private static final double TEST_VALUE_DOUBLE = 1.1D;
 
   private static final float TEST_VALUE_FLOAT = 1.1F;
+
+  private static final String SIMPLE_COMPONENT_METATYPE_NAME = "Simple Component";
 
   private ComponentContext<ECMTest> componentContext;
 
@@ -130,8 +136,8 @@ public class ECMTest {
   public void testBundleCapabilityTestComponent() {
     ComponentMetadata bundleCapabilityTest = MetadataBuilder
         .buildComponentMetadata(BundleCapabilityTestComponent.class);
-    ComponentContainerInstance<BundleCapabilityTestComponent> container =
-        factory.createComponentContainer(bundleCapabilityTest);
+    ComponentContainerInstance<BundleCapabilityTestComponent> container = factory
+        .createComponentContainer(bundleCapabilityTest);
     container.open();
 
     Configuration configuration = null;
@@ -168,6 +174,68 @@ public class ECMTest {
       container.close();
     }
 
+  }
+
+  @Test
+  public void testCustomServicePropertiesOnComponentRegisteredService() {
+
+    Configuration configuration = null;
+    try {
+
+      configuration = configAdmin.getConfiguration(/*SimpleComponent.class.getName()*/
+          SimpleComponent.COMPONENT_ID, null);
+      Dictionary<String, Object> properties = new Hashtable<>();
+      properties.put("simpleStringAttr", "simple string value");
+      configuration.update(properties);
+
+      waitForService(SimpleComponent.class);
+
+      ServiceReference<SimpleComponent> simpleComponentReference = componentContext
+          .getBundleContext().getServiceReference(SimpleComponent.class);
+
+      Object componentContainerServiceId = simpleComponentReference
+          .getProperty(ECMComponentConstants.SERVICE_PROP_COMPONENT_CONTAINER_SERVICE_ID);
+      Object componentId = simpleComponentReference
+          .getProperty(ECMComponentConstants.SERVICE_PROP_COMPONENT_ID);
+      Object componentServicePid = simpleComponentReference
+          .getProperty(ECMComponentConstants.SERVICE_PROP_COMPONENT_SERVICE_PID);
+      Object componentServicePidExp = simpleComponentReference
+          .getProperty(Constants.SERVICE_PID);
+
+      Collection<ServiceReference<ManagedService>> simpleComponentContainerReferences =
+          componentContext.getBundleContext().getServiceReferences(
+              ManagedService.class,
+              "(" + ECMComponentConstants.SERVICE_PROP_COMPONENT_CLASS
+                  + "=" + SimpleComponent.class.getName()
+                  + ")");
+
+      Assert.assertEquals(1, simpleComponentContainerReferences.size());
+      ServiceReference<ManagedService> simpleComponentContainerReference =
+          simpleComponentContainerReferences.iterator().next();
+
+      Object componentName = simpleComponentContainerReference
+          .getProperty(ECMComponentConstants.SERVICE_PROP_COMPONENT_NAME);
+      Object componentContainerServiceIdExp = simpleComponentContainerReference
+          .getProperty(Constants.SERVICE_ID);
+
+      Assert.assertEquals(SimpleComponent.COMPONENT_ID, componentId);
+      Assert.assertEquals(componentServicePidExp, componentServicePid);
+      Assert.assertEquals(componentContainerServiceIdExp, componentContainerServiceId);
+      Assert.assertEquals(SIMPLE_COMPONENT_METATYPE_NAME, componentName);
+
+    } catch (InvalidSyntaxException e) {
+      throw new RuntimeException(e);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    } finally {
+      if (configuration != null) {
+        try {
+          configuration.delete();
+        } catch (IOException e) {
+         throw new RuntimeException(e);
+        }
+      }
+    }
   }
 
   @Test
@@ -482,8 +550,8 @@ public class ECMTest {
     ComponentMetadata componentMetadata = MetadataBuilder
         .buildComponentMetadata(MultiRequirementAndCapabilityComponent.class);
 
-    ComponentContainerInstance<Object> container =
-        factory.createComponentContainer(componentMetadata);
+    ComponentContainerInstance<Object> container = factory
+        .createComponentContainer(componentMetadata);
 
     container.open();
 

@@ -83,10 +83,12 @@
           <instructions>
             <Import-Package>
               org.everit.osgi.ecm.component;version="[1.1,2)",
-              org.everit.osgi.ecm.component.resource;version="[1.1,2)",
+              org.everit.osgi.ecm.component.resource;version="[1.0,2)",
               *
               </Import-Package>
-            <Export-Package>${project.artifactId}</Export-Package>
+            <Export-Package>
+              org.everit.osgi.ecm.component.ri;version="1.2.3"
+            </Export-Package>
           </instructions>
         </configuration>
       </plugin>

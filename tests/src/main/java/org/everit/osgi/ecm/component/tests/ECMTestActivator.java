@@ -32,6 +32,8 @@ public class ECMTestActivator implements BundleActivator {
 
   private ComponentContainerInstance<FactoryComponent> factoryComponent;
 
+  private ComponentContainerInstance<SimpleComponent> simpleComponent;
+
   @Override
   public void start(final BundleContext context) throws Exception {
     ComponentContainerFactory factory = new ComponentContainerFactory(context);
@@ -42,14 +44,20 @@ public class ECMTestActivator implements BundleActivator {
     factoryComponent = factory.createComponentContainer(factoryComponentMetadata);
     factoryComponent.open();
 
+    ComponentMetadata simple = MetadataBuilder.buildComponentMetadata(SimpleComponent.class);
+    simpleComponent = factory.createComponentContainer(simple);
+    simpleComponent.open();
+
     ComponentMetadata ecmTest = MetadataBuilder.buildComponentMetadata(ECMTest.class);
     ecmTestComponent = factory.createComponentContainer(ecmTest);
     ecmTestComponent.open();
+
   }
 
   @Override
   public void stop(final BundleContext context) throws Exception {
     ecmTestComponent.close();
+    simpleComponent.close();
     factoryComponent.close();
   }
 
