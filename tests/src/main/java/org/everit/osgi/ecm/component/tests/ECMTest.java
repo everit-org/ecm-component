@@ -182,8 +182,7 @@ public class ECMTest {
     Configuration configuration = null;
     try {
 
-      configuration = configAdmin.getConfiguration(/*SimpleComponent.class.getName()*/
-          SimpleComponent.COMPONENT_ID, null);
+      configuration = configAdmin.getConfiguration(SimpleComponent.COMPONENT_ID, null);
       Dictionary<String, Object> properties = new Hashtable<>();
       properties.put("simpleStringAttr", "simple string value");
       configuration.update(properties);

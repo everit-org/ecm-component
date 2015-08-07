@@ -181,11 +181,11 @@ public abstract class AbstractComponentContainer<C> implements MetaTypeProvider,
   /**
    * Registers (or re-registers) the service of the component with the given data. The service
    * registration will be stored in {@link #serviceRegistration}, and the ID of the service will
-   * stored in {@link #serviceId}.
+   * be stored in {@link #serviceId}.
    * @param properties
    *          The service properties.
    * @param serviceInterfaces
-   *          The interfaces is implemented by the service.
+   *          The interfaces are implemented by the service.
    */
   protected void registerService(final Dictionary<String, Object> properties,
       final List<String> serviceInterfaces) {
@@ -201,8 +201,8 @@ public abstract class AbstractComponentContainer<C> implements MetaTypeProvider,
   }
 
   /**
-   * Unregisters the service of the component if the service registration is exists, is setting null
-   * into {@link #serviceRegistration} and {{@link #serviceId}.
+   * Unregisters the service of the component if the service registration exists, is setting null
+   * into {@link #serviceRegistration} and {@link #serviceId}.
    */
   protected void unregisterService() {
     if (serviceRegistration != null) {
