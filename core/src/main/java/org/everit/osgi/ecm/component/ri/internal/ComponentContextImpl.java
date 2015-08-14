@@ -37,6 +37,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import javax.annotation.Generated;
 
 import org.everit.osgi.ecm.component.ComponentContext;
+import org.everit.osgi.ecm.component.ECMComponentConstants;
 import org.everit.osgi.ecm.component.resource.ComponentContainer;
 import org.everit.osgi.ecm.component.resource.ComponentState;
 import org.everit.osgi.ecm.component.ri.internal.attribute.BundleCapabilityReferenceAttributeHelper;
@@ -54,6 +55,7 @@ import org.everit.osgi.ecm.metadata.ServiceReferenceMetadata;
 import org.everit.osgi.ecm.util.method.MethodDescriptor;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
+import org.osgi.framework.Constants;
 import org.osgi.framework.ServiceReference;
 import org.osgi.framework.ServiceRegistration;
 import org.osgi.framework.wiring.BundleWiring;
@@ -292,6 +294,22 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
     updateMethod = resolveAnnotatedMethod("update", componentContainer
         .getComponentMetadata().getUpdate());
 
+  }
+
+  private void addCommonComponentProperties(final Map<String, Object> properties) {
+    String componentId = componentContainer.getComponentMetadata().getComponentId();
+    Object componentServicePid = properties.get(Constants.SERVICE_PID);
+    Long componentContainerServiceId = componentContainer.getServiceId();
+    if (componentId != null) {
+      properties.put(ECMComponentConstants.SERVICE_PROP_COMPONENT_ID, componentId);
+    }
+    if (componentServicePid != null) {
+      properties.put(ECMComponentConstants.SERVICE_PROP_COMPONENT_SERVICE_PID, componentServicePid);
+    }
+    if (componentContainerServiceId != null) {
+      properties.put(ECMComponentConstants.SERVICE_PROP_COMPONENT_CONTAINER_SERVICE_ID,
+          componentContainerServiceId);
+    }
   }
 
   private void callUpdateMethod() {
@@ -656,6 +674,8 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
         }
       }
     }
+
+    addCommonComponentProperties(result);
 
     return Collections.unmodifiableMap(result);
   }
