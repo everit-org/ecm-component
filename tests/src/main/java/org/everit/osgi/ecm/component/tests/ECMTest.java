@@ -21,6 +21,7 @@ import java.util.Collection;
 import java.util.Dictionary;
 import java.util.Hashtable;
 import java.util.List;
+import java.util.function.Supplier;
 
 import org.everit.osgi.dev.testrunner.TestRunnerConstants;
 import org.everit.osgi.ecm.annotation.Activate;
@@ -38,7 +39,6 @@ import org.everit.osgi.ecm.component.resource.ComponentState;
 import org.everit.osgi.ecm.component.ri.ComponentContainerFactory;
 import org.everit.osgi.ecm.component.ri.ComponentContainerInstance;
 import org.everit.osgi.ecm.metadata.ComponentMetadata;
-import org.everit.templating.util.Supplier;
 import org.junit.Assert;
 import org.junit.Test;
 import org.osgi.framework.BundleContext;
