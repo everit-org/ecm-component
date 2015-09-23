@@ -708,7 +708,14 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
 
   private void restart() {
     stopping(ComponentState.STOPPING);
-    starting();
+    if (isSatisfied()) {
+      starting();
+    } else {
+      // Happens when component was active and it could wire itself (circular wiring) but service
+      // disappears due to stopping the component.
+      revisionBuilder.unsatisfied();
+    }
+
   }
 
   private boolean shouldRestartForNewConfiguraiton(final Map<String, Object> newProperties) {

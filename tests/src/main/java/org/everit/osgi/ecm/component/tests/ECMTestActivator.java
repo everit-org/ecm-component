@@ -28,6 +28,8 @@ import org.osgi.framework.BundleContext;
  */
 public class ECMTestActivator implements BundleActivator {
 
+  private ComponentContainerInstance<Object> circularityTestComponent;
+
   private ComponentContainerInstance<ECMTest> ecmTestComponent;
 
   private ComponentContainerInstance<FactoryComponent> factoryComponent;
@@ -52,6 +54,11 @@ public class ECMTestActivator implements BundleActivator {
     ecmTestComponent = factory.createComponentContainer(ecmTest);
     ecmTestComponent.open();
 
+    ComponentMetadata circularityTest =
+        MetadataBuilder.buildComponentMetadata(CircularityTest.class);
+    circularityTestComponent = factory.createComponentContainer(circularityTest);
+    circularityTestComponent.open();
+
   }
 
   @Override
@@ -59,6 +66,7 @@ public class ECMTestActivator implements BundleActivator {
     ecmTestComponent.close();
     simpleComponent.close();
     factoryComponent.close();
+    circularityTestComponent.close();
   }
 
 }
