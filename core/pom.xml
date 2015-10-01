@@ -78,12 +78,11 @@
       <plugin>
         <groupId>org.apache.felix</groupId>
         <artifactId>maven-bundle-plugin</artifactId>
+        <version>3.0.0</version>
         <extensions>true</extensions>
         <configuration>
           <instructions>
             <Import-Package>
-              org.everit.osgi.ecm.component;version="[2.0,3)",
-              org.everit.osgi.ecm.component.resource;version="[2.0,3)",
               *
               </Import-Package>
             <Export-Package>
