@@ -145,9 +145,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
             referenceHelper.free();
             break;
           default:
-            throw new IllegalStateException(
-                "This should have never happened. Please file a bug report with the stacktrace"
-                    + " and the description of your use-case");
+            // Do nothing
         }
       } finally {
         writeLock.unlock();
