@@ -135,7 +135,6 @@ public class CircularityTest {
   }
 
   @Test
-  @TestDuringDevelopment
   public void testNonDynamicSingleCircularity() {
     ComponentContainerFactory factory = new ComponentContainerFactory(bundleContext);
     ComponentContainerInstance<Object> nonDependentComponent =

@@ -133,10 +133,21 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
         }
 
         ComponentState state = getState();
-        if (state == ComponentState.ACTIVE) {
-          stopping(ComponentState.UNSATISFIED);
-        } else if (state == ComponentState.FAILED) {
-          revisionBuilder.unsatisfied();
+        switch (state) {
+          case ACTIVE:
+            stopping(ComponentState.UNSATISFIED);
+            break;
+          case FAILED:
+            revisionBuilder.unsatisfied();
+            break;
+          case STOPPING:
+            // happens in case of circular dynamic references
+            referenceHelper.free();
+            break;
+          default:
+            throw new IllegalStateException(
+                "This should have never happened. Please file a bug report with the stacktrace"
+                    + " and the description of your use-case");
         }
       } finally {
         writeLock.unlock();
@@ -840,12 +851,8 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
   }
 
   private void unregisterServices() {
-    if (serviceRegistration != null) {
-      serviceRegistration.unregister();
-    }
     for (ServiceRegistration<?> lServiceRegistration : revisionBuilder
         .getCloneOfServiceRegistrations()) {
-      revisionBuilder.removeServiceRegistration(lServiceRegistration);
       lServiceRegistration.unregister();
     }
   }
