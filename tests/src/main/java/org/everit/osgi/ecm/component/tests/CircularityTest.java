@@ -15,7 +15,6 @@
  */
 package org.everit.osgi.ecm.component.tests;
 
-import org.everit.osgi.dev.testrunner.TestDuringDevelopment;
 import org.everit.osgi.dev.testrunner.TestRunnerConstants;
 import org.everit.osgi.ecm.annotation.Activate;
 import org.everit.osgi.ecm.annotation.Component;
@@ -104,7 +103,6 @@ public class CircularityTest {
   }
 
   @Test
-  @TestDuringDevelopment
   public void testDynamicSingleCircularity() {
     ComponentContainerFactory factory = new ComponentContainerFactory(bundleContext);
     ComponentContainerInstance<Object> nonDependentComponent =

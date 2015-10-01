@@ -74,11 +74,11 @@ public class ECMTest {
 
   private static final int SERVICE_AVAILABILITY_TIMEOUT = 1000;
 
+  private static final String SIMPLE_COMPONENT_METATYPE_NAME = "Simple Component";
+
   private static final double TEST_VALUE_DOUBLE = 1.1D;
 
   private static final float TEST_VALUE_FLOAT = 1.1F;
-
-  private static final String SIMPLE_COMPONENT_METATYPE_NAME = "Simple Component";
 
   private ComponentContext<ECMTest> componentContext;
 
@@ -231,7 +231,7 @@ public class ECMTest {
         try {
           configuration.delete();
         } catch (IOException e) {
-         throw new RuntimeException(e);
+          throw new RuntimeException(e);
         }
       }
     }
