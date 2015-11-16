@@ -177,6 +177,38 @@ public class ECMTest {
   }
 
   @Test
+  public void testComponentUnregistersServiceAfterGettingUnsatisfied() {
+    ComponentMetadata testComponentMetadata = MetadataBuilder
+        .buildComponentMetadata(TestComponent.class);
+    ComponentContainerInstance<Object> container = factory
+        .createComponentContainer(testComponentMetadata);
+    ManagedService managedService = (ManagedService) container;
+    container.open();
+
+    Hashtable<String, Object> properties = createPresetPropertiesForTestComponent();
+    properties.put("testComponentUnregistersServiceAfterGettingUnsatisfied", true);
+    updateConfiguration(managedService, properties);
+
+    try {
+      String filterString = "(testComponentUnregistersServiceAfterGettingUnsatisfied=true)";
+      waitForService(filterString);
+      properties.put("someReference.target", "(nonExistent=nonExistent)");
+      updateConfiguration(managedService, properties);
+
+      BundleContext bundleContext = componentContext.getBundleContext();
+
+      Collection<ServiceReference<TestComponent>> serviceReferences =
+          bundleContext.getServiceReferences(TestComponent.class, filterString);
+
+      Assert.assertEquals(0, serviceReferences.size());
+    } catch (InvalidSyntaxException e) {
+      throw new RuntimeException(e);
+    } finally {
+      container.close();
+    }
+  }
+
+  @Test
   public void testCustomServicePropertiesOnComponentRegisteredService() {
 
     Configuration configuration = null;
@@ -464,59 +496,54 @@ public class ECMTest {
     ComponentContainerInstance<Object> container = factory
         .createComponentContainer(testComponentMetadata);
     container.open();
+
+    ManagedService managedService = (ManagedService) container;
+
+    Hashtable<String, Object> properties = createPresetPropertiesForTestComponent();
+
+    updateConfiguration(managedService, properties);
+
     try {
-      Configuration configuration = configAdmin
-          .getConfiguration("org.everit.osgi.ecm.component.tests.TestComponent", null);
+      TestComponent testComponent = waitForService(TestComponent.class);
 
-      Hashtable<String, Object> properties = createPresetPropertiesForTestComponent();
+      // Check if all of the properties got the right value
+      Assert.assertTrue(testComponent.getBooleanAttribute());
+      Assert.assertTrue(Arrays.equals(new boolean[] { true },
+          testComponent.getBooleanArrayAttribute()));
 
-      configuration.update(properties);
+      Assert.assertEquals((byte) 1, testComponent.getByteAttribute());
+      Assert.assertArrayEquals(new byte[] { 1 }, testComponent.getByteArrayAttribute());
 
-      try {
-        TestComponent testComponent = waitForService(TestComponent.class);
+      Assert.assertEquals('a', testComponent.getCharAttribute());
+      Assert.assertArrayEquals(new char[] { 'a' }, testComponent.getCharArrayAttribute());
 
-        // Check if all of the properties got the right value
-        Assert.assertTrue(testComponent.getBooleanAttribute());
-        Assert.assertTrue(Arrays.equals(new boolean[] { true },
-            testComponent.getBooleanArrayAttribute()));
+      Assert.assertEquals(TEST_VALUE_DOUBLE, testComponent.getDoubleAttribute(), 0);
+      Assert.assertTrue(Arrays.equals(new double[] { TEST_VALUE_DOUBLE },
+          testComponent.getDoubleArrayAttribute()));
 
-        Assert.assertEquals((byte) 1, testComponent.getByteAttribute());
-        Assert.assertArrayEquals(new byte[] { 1 }, testComponent.getByteArrayAttribute());
+      Assert.assertEquals(TEST_VALUE_FLOAT, testComponent.getFloatAttribute(), 0);
+      Assert.assertTrue(Arrays.equals(new float[] { TEST_VALUE_FLOAT },
+          testComponent.getFloatArrayAttribute()));
 
-        Assert.assertEquals('a', testComponent.getCharAttribute());
-        Assert.assertArrayEquals(new char[] { 'a' }, testComponent.getCharArrayAttribute());
+      Assert.assertTrue(1 == testComponent.getIntAttribute());
+      Assert.assertTrue(Arrays.equals(new int[] { 1 }, testComponent.getIntArrayAttribute()));
 
-        Assert.assertEquals(TEST_VALUE_DOUBLE, testComponent.getDoubleAttribute(), 0);
-        Assert.assertTrue(Arrays.equals(new double[] { TEST_VALUE_DOUBLE },
-            testComponent.getDoubleArrayAttribute()));
+      Assert.assertTrue(1L == testComponent.getLongAttribute());
+      Assert.assertTrue(Arrays.equals(new long[] { 1L }, testComponent.getLongArrayAttribute()));
 
-        Assert.assertEquals(TEST_VALUE_FLOAT, testComponent.getFloatAttribute(), 0);
-        Assert.assertTrue(Arrays.equals(new float[] { TEST_VALUE_FLOAT },
-            testComponent.getFloatArrayAttribute()));
+      Assert.assertTrue(1 == testComponent.getShortAttribute());
+      Assert.assertTrue(Arrays.equals(new short[] { 1 }, testComponent.getShortArrayAttribute()));
 
-        Assert.assertTrue(1 == testComponent.getIntAttribute());
-        Assert.assertTrue(Arrays.equals(new int[] { 1 }, testComponent.getIntArrayAttribute()));
+      Assert.assertEquals("123456", testComponent.getPasswordAttribute());
+      Assert.assertArrayEquals(new String[] { "123456" },
+          testComponent.getPasswordArrayAttribute());
 
-        Assert.assertTrue(1L == testComponent.getLongAttribute());
-        Assert.assertTrue(Arrays.equals(new long[] { 1L }, testComponent.getLongArrayAttribute()));
+      Assert.assertEquals("Hello World", testComponent.getStringAttribute());
+      Assert.assertArrayEquals(new String[] { "Hello World" },
+          testComponent.getStringArrayAttribute());
 
-        Assert.assertTrue(1 == testComponent.getShortAttribute());
-        Assert.assertTrue(Arrays.equals(new short[] { 1 }, testComponent.getShortArrayAttribute()));
-
-        Assert.assertEquals("123456", testComponent.getPasswordAttribute());
-        Assert.assertArrayEquals(new String[] { "123456" },
-            testComponent.getPasswordArrayAttribute());
-
-        Assert.assertEquals("Hello World", testComponent.getStringAttribute());
-        Assert.assertArrayEquals(new String[] { "Hello World" },
-            testComponent.getStringArrayAttribute());
-
-      } finally {
-        container.close();
-        configuration.delete();
-      }
-    } catch (IOException e) {
-      throw new RuntimeException(e);
+    } finally {
+      container.close();
     }
   }
 

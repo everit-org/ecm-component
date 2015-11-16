@@ -129,6 +129,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
             referenceHelper.getSuitings());
 
         if (configurationUpdateInProgress) {
+          // Stopping will be called in the end of configuration
           return;
         }
 
@@ -898,7 +899,11 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
     }
 
     if (!isSatisfied()) {
-      revisionBuilder.unsatisfied();
+      if (getState() == ComponentState.ACTIVE) {
+        stopping(ComponentState.UNSATISFIED);
+      } else {
+        revisionBuilder.unsatisfied();
+      }
     } else if (stateAfterReferenceUpdate == ComponentState.UPDATING_CONFIGURATION) {
       starting();
     } else {
