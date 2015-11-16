@@ -1,5 +1,6 @@
 ecm-component
 =============
 
-The main module of the Everit Component Model that contains the Component class.
+The reference implementation of the Everit Component Model.
 
+Documentation: http://everit.org/ecm/index.html
