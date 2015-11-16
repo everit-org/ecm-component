@@ -64,9 +64,9 @@ public class ActivateMethodHelper<C> {
 
   /**
    * Constructor.
-   * 
+   *
    * @param componentContext
-   *         The ComponentContext.
+   *          The ComponentContext.
    */
   public ActivateMethodHelper(final ComponentContextImpl<C> componentContext) {
     this.componentContext = componentContext;
@@ -174,7 +174,8 @@ public class ActivateMethodHelper<C> {
       } else {
         componentContext.fail(new MetadataValidationException(
             "Unrecognized type in Activate method: "
-                + parameterType), true);
+                + parameterType),
+            true);
       }
     }
   }

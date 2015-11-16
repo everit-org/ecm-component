@@ -34,7 +34,7 @@ class ComponentServiceRegistration<S, C> implements ServiceRegistration<S> {
 
   private final ServiceRegistration<S> wrapped;
 
-  public ComponentServiceRegistration(final ComponentContextImpl<C> component,
+  ComponentServiceRegistration(final ComponentContextImpl<C> component,
       final ServiceRegistration<S> wrapped) {
     this.component = component;
     this.wrapped = wrapped;
