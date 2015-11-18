@@ -59,7 +59,7 @@
       <plugin>
         <groupId>org.everit.osgi.dev</groupId>
         <artifactId>eosgi-maven-plugin</artifactId>
-        <version>3.3.1</version>
+        <version>3.3.3</version>
         <configuration>
           <sourceDistPath>${source.dist.folder}</sourceDistPath>
           <jacoco>
@@ -108,12 +108,12 @@
     <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-simple</artifactId>
-      <version>1.7.7</version>
+      <version>1.7.12</version>
     </dependency>
     <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-api</artifactId>
-      <version>1.7.7</version>
+      <version>1.7.12</version>
     </dependency>
 
     <dependency>
@@ -188,19 +188,8 @@
     <!-- Jetty with Http Service -->
 
     <dependency>
-      <groupId>org.apache.felix</groupId>
-      <artifactId>org.apache.felix.http.jetty</artifactId>
-      <version>2.3.0</version>
-      <exclusions>
-        <exclusion>
-          <groupId>org.eclipse.jetty.orbit</groupId>
-          <artifactId>javax.servlet</artifactId>
-        </exclusion>
-      </exclusions>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.felix</groupId>
-      <artifactId>org.apache.felix.http.servlet-api</artifactId>
+      <groupId>org.everit.jetty</groupId>
+      <artifactId>org.everit.jetty.osgi.boot</artifactId>
       <version>1.0.0</version>
     </dependency>
 
@@ -209,7 +198,7 @@
     <dependency>
       <groupId>org.apache.felix</groupId>
       <artifactId>org.apache.felix.webconsole</artifactId>
-      <version>4.2.10</version>
+      <version>4.2.14</version>
     </dependency>
     <dependency>
       <groupId>commons-fileupload</groupId>
