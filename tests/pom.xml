@@ -28,7 +28,7 @@
   </parent>
 
   <artifactId>org.everit.osgi.ecm.component.ri.tests</artifactId>
-  <version>2.0.2</version>
+  <version>3.0.0</version>
 
   <packaging>bundle</packaging>
   <name>Everit - ECM Component RI Tests</name>
@@ -72,6 +72,9 @@
               <framework>felix</framework>
               <systemProperties>
                 <mvel2.disable.jit>true</mvel2.disable.jit>
+                <org.osgi.service.http.port>8080</org.osgi.service.http.port>
+                <org.osgi.service.http.port.secure>8443</org.osgi.service.http.port.secure>
+                
               </systemProperties>
               <vmOptions>
                 <vmOption>-Xdebug</vmOption>
@@ -170,7 +173,7 @@
     <dependency>
       <groupId>org.everit.osgi</groupId>
       <artifactId>org.everit.osgi.ecm.annotation.metadatabuilder</artifactId>
-      <version>2.0.0</version>
+      <version>3.0.0</version>
     </dependency>
 
     <dependency>
@@ -214,7 +217,7 @@
 <!--     <dependency> -->
 <!--       <groupId>org.everit.osgi</groupId> -->
 <!--       <artifactId>org.everit.osgi.ecm.component.webconsole</artifactId> -->
-<!--       <version>1.0.0</version> -->
+<!--       <version>1.2.0</version> -->
 <!--     </dependency> -->
     <dependency>
       <groupId>commons-io</groupId>

@@ -696,13 +696,9 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
       return new String[0];
     }
 
-    Class<?>[] clazzes = serviceMetadata.getClazzes();
+    String[] clazzes = serviceMetadata.getClazzes();
     if (clazzes.length > 0) {
-      String[] result = new String[clazzes.length];
-      for (int i = 0; i < clazzes.length; i++) {
-        result[i] = clazzes[i].getName();
-      }
-      return result;
+      return clazzes;
     }
 
     // Auto detect

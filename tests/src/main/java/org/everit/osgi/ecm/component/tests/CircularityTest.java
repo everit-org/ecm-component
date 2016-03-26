@@ -94,7 +94,8 @@ public class CircularityTest {
     }
 
     ServiceMetadata serviceMetadata =
-        new ServiceMetadataBuilder().withClazzes(new Class[] { CircularClass.class }).build();
+        new ServiceMetadataBuilder().withClazzes(new String[] { CircularClass.class.getName() })
+            .build();
     cmetadataBuilder.withService(serviceMetadata);
 
     ComponentMetadata componentMetadata = cmetadataBuilder.build();

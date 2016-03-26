@@ -67,7 +67,8 @@ public class BundleCapabilityReferenceAttributeHelper<COMPONENT> extends
     } catch (Throwable e) {
       getComponentContext().fail(
           new ConfigurationException("Error during updating reference: "
-              + getReferenceMetadata().getReferenceId(), e), false);
+              + getReferenceMetadata().getReferenceId(), e),
+          false);
     }
   }
 
