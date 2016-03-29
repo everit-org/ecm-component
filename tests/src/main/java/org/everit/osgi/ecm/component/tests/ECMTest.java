@@ -74,8 +74,6 @@ public class ECMTest {
 
   private static final int SERVICE_AVAILABILITY_TIMEOUT = 1000;
 
-  private static final String SIMPLE_COMPONENT_METATYPE_NAME = "Simple Component";
-
   private static final double TEST_VALUE_DOUBLE = 1.1D;
 
   private static final float TEST_VALUE_FLOAT = 1.1F;
@@ -224,14 +222,8 @@ public class ECMTest {
       ServiceReference<SimpleComponent> simpleComponentReference = componentContext
           .getBundleContext().getServiceReference(SimpleComponent.class);
 
-      Object componentContainerServiceId = simpleComponentReference
-          .getProperty(ECMComponentConstants.SERVICE_PROP_COMPONENT_CONTAINER_SERVICE_ID);
       Object componentId = simpleComponentReference
           .getProperty(ECMComponentConstants.SERVICE_PROP_COMPONENT_ID);
-      Object componentServicePid = simpleComponentReference
-          .getProperty(ECMComponentConstants.SERVICE_PROP_COMPONENT_SERVICE_PID);
-      Object componentServicePidExp = simpleComponentReference
-          .getProperty(Constants.SERVICE_PID);
 
       Collection<ServiceReference<ManagedService>> simpleComponentContainerReferences =
           componentContext.getBundleContext().getServiceReferences(
@@ -241,18 +233,8 @@ public class ECMTest {
                   + ")");
 
       Assert.assertEquals(1, simpleComponentContainerReferences.size());
-      ServiceReference<ManagedService> simpleComponentContainerReference =
-          simpleComponentContainerReferences.iterator().next();
-
-      Object componentName = simpleComponentContainerReference
-          .getProperty(ECMComponentConstants.SERVICE_PROP_COMPONENT_NAME);
-      Object componentContainerServiceIdExp = simpleComponentContainerReference
-          .getProperty(Constants.SERVICE_ID);
 
       Assert.assertEquals(SimpleComponent.COMPONENT_ID, componentId);
-      Assert.assertEquals(componentServicePidExp, componentServicePid);
-      Assert.assertEquals(componentContainerServiceIdExp, componentContainerServiceId);
-      Assert.assertEquals(SIMPLE_COMPONENT_METATYPE_NAME, componentName);
 
     } catch (InvalidSyntaxException e) {
       throw new RuntimeException(e);
@@ -630,9 +612,12 @@ public class ECMTest {
         componentContext.getBundleContext(), filter, null);
     tracker.open();
     try {
+      long millisBefore = System.currentTimeMillis();
       T result = tracker.waitForService(SERVICE_AVAILABILITY_TIMEOUT);
+      long millisAfter = System.currentTimeMillis();
       if (result == null) {
-        Assert.fail("No service for component is available");
+        Assert.fail("No service for component is available. Waited " + (millisAfter - millisBefore)
+            + " ms.");
       }
       return result;
     } catch (InterruptedException e) {

@@ -53,9 +53,9 @@ public abstract class AbstractComponentContainer<C> implements MetaTypeProvider,
 
   private final MetatypeProviderImpl<C> metatypeProvider;
 
-  private ServiceRegistration<?> serviceRegistration = null;
-
   private Long serviceId = null;
+
+  private ServiceRegistration<?> serviceRegistration = null;
 
   /**
    * Constructor.
@@ -85,8 +85,6 @@ public abstract class AbstractComponentContainer<C> implements MetaTypeProvider,
    */
   protected void addCommonServiceProperties(final Dictionary<String, Object> properties) {
     properties.put(ECMComponentConstants.SERVICE_PROP_COMPONENT_CLASS, componentMetadata.getType());
-    properties.put(ECMComponentConstants.SERVICE_PROP_COMPONENT_NAME, this.metatypeProvider
-        .getObjectClassDefinition(null, null).getName());
   }
 
   @Override
@@ -180,8 +178,9 @@ public abstract class AbstractComponentContainer<C> implements MetaTypeProvider,
 
   /**
    * Registers (or re-registers) the service of the component with the given data. The service
-   * registration will be stored in {@link #serviceRegistration}, and the ID of the service will
-   * be stored in {@link #serviceId}.
+   * registration will be stored in {@link #serviceRegistration}, and the ID of the service will be
+   * stored in {@link #serviceId}.
+   *
    * @param properties
    *          The service properties.
    * @param serviceInterfaces

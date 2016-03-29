@@ -55,7 +55,6 @@ import org.everit.osgi.ecm.metadata.ServiceReferenceMetadata;
 import org.everit.osgi.ecm.util.method.MethodDescriptor;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
-import org.osgi.framework.Constants;
 import org.osgi.framework.ServiceReference;
 import org.osgi.framework.ServiceRegistration;
 import org.osgi.framework.wiring.BundleWiring;
@@ -308,17 +307,8 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
 
   private void addCommonComponentProperties(final Map<String, Object> properties) {
     String componentId = componentContainer.getComponentMetadata().getComponentId();
-    Object componentServicePid = properties.get(Constants.SERVICE_PID);
-    Long componentContainerServiceId = componentContainer.getServiceId();
     if (componentId != null) {
       properties.put(ECMComponentConstants.SERVICE_PROP_COMPONENT_ID, componentId);
-    }
-    if (componentServicePid != null) {
-      properties.put(ECMComponentConstants.SERVICE_PROP_COMPONENT_SERVICE_PID, componentServicePid);
-    }
-    if (componentContainerServiceId != null) {
-      properties.put(ECMComponentConstants.SERVICE_PROP_COMPONENT_CONTAINER_SERVICE_ID,
-          componentContainerServiceId);
     }
   }
 
