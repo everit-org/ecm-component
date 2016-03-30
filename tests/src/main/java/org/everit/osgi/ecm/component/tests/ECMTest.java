@@ -76,13 +76,11 @@ import org.osgi.util.tracker.ServiceTracker;
 @TestDuringDevelopment
 public class ECMTest {
 
-  private static final int ONE_SEC_IN_MILLIS = 1000;
-
-  private static final int SERVICE_AVAILABILITY_TIMEOUT = 1000;
-
   private static final double TEST_VALUE_DOUBLE = 1.1D;
 
   private static final float TEST_VALUE_FLOAT = 1.1F;
+
+  private static final int WAITING_TIMEOUT = 1000;
 
   private ComponentContext<ECMTest> componentContext;
 
@@ -221,7 +219,7 @@ public class ECMTest {
       waitForService(filterString);
       properties.put("someReference.target", "(nonExistent=nonExistent)");
       updateConfiguration(container, properties);
-      waitForTrueSupplied(1000,
+      waitForTrueSupplied(
           () -> container.getResources()[0].getState() == ComponentState.UNSATISFIED);
 
       BundleContext bundleContext = componentContext.getBundleContext();
@@ -313,13 +311,13 @@ public class ECMTest {
     Hashtable<String, Object> configuration = new Hashtable<>();
     configuration.put(FailingComponent.FAIL_DYNAMIC_PROPERTY_SETTER_ATTRIBUTE, true);
     updateConfiguration(container, configuration);
-    waitForTrueSupplied(1000, () -> getComponentState(container) == ComponentState.FAILED);
+    waitForTrueSupplied(() -> getComponentState(container) == ComponentState.FAILED);
 
     Assert.assertEquals(ComponentState.FAILED, getComponentState(container));
 
     configuration.remove(FailingComponent.FAIL_DYNAMIC_PROPERTY_SETTER_ATTRIBUTE);
     updateConfiguration(container, configuration);
-    waitForTrueSupplied(1000, () -> getComponentState(container) == ComponentState.ACTIVE);
+    waitForTrueSupplied(() -> getComponentState(container) == ComponentState.ACTIVE);
 
     Assert.assertEquals(ComponentState.ACTIVE, getComponentState(container));
   }
@@ -328,7 +326,7 @@ public class ECMTest {
       final ComponentContainerInstance<FailingComponent> container) {
     Hashtable<String, Object> properties = new Hashtable<String, Object>();
     updateConfiguration(container, properties);
-    waitForTrueSupplied(1000, () -> getComponentState(container) == ComponentState.ACTIVE);
+    waitForTrueSupplied(() -> getComponentState(container) == ComponentState.ACTIVE);
     Assert.assertEquals(1, container.getResources().length);
   }
 
@@ -349,7 +347,7 @@ public class ECMTest {
       serviceRegistration = componentContext.registerService(
           String.class, "", properties);
 
-      waitForTrueSupplied(1000, () -> getComponentState(container) == ComponentState.ACTIVE);
+      waitForTrueSupplied(() -> getComponentState(container) == ComponentState.ACTIVE);
       Assert.assertEquals(ComponentState.ACTIVE, getComponentState(container));
       serviceRegistration.unregister();
       serviceRegistration = null;
@@ -372,7 +370,7 @@ public class ECMTest {
       Assert.assertEquals(ComponentState.ACTIVE, getComponentState(container));
 
       updateConfiguration(container, configuration);
-      waitForTrueSupplied(1000, () -> ComponentState.ACTIVE == getComponentState(container));
+      waitForTrueSupplied(() -> ComponentState.ACTIVE == getComponentState(container));
       Assert.assertEquals(ComponentState.ACTIVE, getComponentState(container));
     } finally {
       if (failingServiceRegistration != null) {
@@ -392,13 +390,13 @@ public class ECMTest {
     configuration.put(FailingComponent.FAIL_PROPERTY_SETTER_ATTRIBUTE, true);
     updateConfiguration(container, configuration);
 
-    waitForTrueSupplied(1000, () -> ComponentState.FAILED == getComponentState(container));
+    waitForTrueSupplied(() -> ComponentState.FAILED == getComponentState(container));
     Assert.assertEquals(ComponentState.FAILED, getComponentState(container));
 
     configuration.put(FailingComponent.FAIL_PROPERTY_SETTER_ATTRIBUTE, false);
     updateConfiguration(container, configuration);
 
-    waitForTrueSupplied(1000, () -> ComponentState.ACTIVE == getComponentState(container));
+    waitForTrueSupplied(() -> ComponentState.ACTIVE == getComponentState(container));
     Assert.assertEquals(ComponentState.ACTIVE, getComponentState(container));
 
   }
@@ -413,13 +411,13 @@ public class ECMTest {
     configuration.put(FailingComponent.FAIL_ON_UPDATE_ATTRIBUTE, true);
     updateConfiguration(container, configuration);
 
-    waitForTrueSupplied(1000, () -> ComponentState.FAILED == getComponentState(container));
+    waitForTrueSupplied(() -> ComponentState.FAILED == getComponentState(container));
     Assert.assertEquals(ComponentState.FAILED, getComponentState(container));
 
     configuration.put(FailingComponent.FAIL_ON_UPDATE_ATTRIBUTE, false);
     updateConfiguration(container, configuration);
 
-    waitForTrueSupplied(1000, () -> ComponentState.ACTIVE == getComponentState(container));
+    waitForTrueSupplied(() -> ComponentState.ACTIVE == getComponentState(container));
     Assert.assertEquals(ComponentState.ACTIVE, getComponentState(container));
   }
 
@@ -578,7 +576,7 @@ public class ECMTest {
 
     try {
 
-      waitForTrueSupplied(ONE_SEC_IN_MILLIS, () -> container.getResources().length == 1);
+      waitForTrueSupplied(() -> container.getResources().length == 1);
 
       Assert.assertNotEquals(ComponentState.FAILED, container.getResources()[0].getState());
 
@@ -586,13 +584,13 @@ public class ECMTest {
       configuration.put("someRef.target", new String[] { "(WrongSyntax)" });
       updateConfiguration(container, configuration);
 
-      waitForTrueSupplied(1000, () -> ComponentState.FAILED == getComponentState(container));
+      waitForTrueSupplied(() -> ComponentState.FAILED == getComponentState(container));
       Assert.assertEquals(ComponentState.FAILED, getComponentState(container));
 
       configuration.put("someRef.target", new String[] { "(service.id>=0)" });
       updateConfiguration(container, configuration);
 
-      waitForTrueSupplied(1000, () -> ComponentState.FAILED != getComponentState(container));
+      waitForTrueSupplied(() -> ComponentState.FAILED != getComponentState(container));
       Assert.assertNotEquals(ComponentState.FAILED, getComponentState(container));
     } finally {
       container.close();
@@ -629,7 +627,7 @@ public class ECMTest {
     tracker.open();
     try {
       long millisBefore = System.currentTimeMillis();
-      T result = tracker.waitForService(SERVICE_AVAILABILITY_TIMEOUT);
+      T result = tracker.waitForService(WAITING_TIMEOUT);
       long millisAfter = System.currentTimeMillis();
       if (result == null) {
         Assert.fail("No service for component is available. Waited " + (millisAfter - millisBefore)
@@ -643,11 +641,11 @@ public class ECMTest {
     }
   }
 
-  private void waitForTrueSupplied(final long timeout, final Supplier<Boolean> supplier) {
+  private void waitForTrueSupplied(final Supplier<Boolean> supplier) {
     long startTime = System.currentTimeMillis();
     long endTime = startTime;
     boolean result = supplier.get();
-    while (endTime - startTime < timeout && !result) {
+    while (endTime - startTime < WAITING_TIMEOUT && !result) {
       try {
         Thread.sleep(1);
       } catch (InterruptedException e) {
