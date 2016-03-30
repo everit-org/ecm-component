@@ -16,13 +16,17 @@
 package org.everit.osgi.ecm.component.tests;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Dictionary;
+import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Supplier;
 
+import org.everit.osgi.dev.testrunner.TestDuringDevelopment;
 import org.everit.osgi.dev.testrunner.TestRunnerConstants;
 import org.everit.osgi.ecm.annotation.Activate;
 import org.everit.osgi.ecm.annotation.Component;
@@ -34,11 +38,13 @@ import org.everit.osgi.ecm.annotation.attribute.StringAttributes;
 import org.everit.osgi.ecm.annotation.metadatabuilder.MetadataBuilder;
 import org.everit.osgi.ecm.component.ComponentContext;
 import org.everit.osgi.ecm.component.ECMComponentConstants;
+import org.everit.osgi.ecm.component.resource.ComponentContainer;
 import org.everit.osgi.ecm.component.resource.ComponentRevision;
 import org.everit.osgi.ecm.component.resource.ComponentState;
 import org.everit.osgi.ecm.component.ri.ComponentContainerFactory;
 import org.everit.osgi.ecm.component.ri.ComponentContainerInstance;
 import org.everit.osgi.ecm.metadata.ComponentMetadata;
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
 import org.osgi.framework.BundleContext;
@@ -51,7 +57,6 @@ import org.osgi.framework.ServiceRegistration;
 import org.osgi.resource.Capability;
 import org.osgi.service.cm.Configuration;
 import org.osgi.service.cm.ConfigurationAdmin;
-import org.osgi.service.cm.ConfigurationException;
 import org.osgi.service.cm.ManagedService;
 import org.osgi.service.metatype.AttributeDefinition;
 import org.osgi.service.metatype.MetaTypeProvider;
@@ -68,6 +73,7 @@ import org.osgi.util.tracker.ServiceTracker;
     @StringAttribute(attributeId = TestRunnerConstants.SERVICE_PROPERTY_TEST_ID,
         defaultValue = "ECMTest") })
 @Service
+@TestDuringDevelopment
 public class ECMTest {
 
   private static final int ONE_SEC_IN_MILLIS = 1000;
@@ -82,12 +88,26 @@ public class ECMTest {
 
   private ConfigurationAdmin configAdmin;
 
+  private Set<Configuration> configurations = new HashSet<>();
+
   private ComponentContainerFactory factory;
 
   @Activate
   public void activate(final ComponentContext<ECMTest> componentContext) {
     this.componentContext = componentContext;
     factory = new ComponentContainerFactory(componentContext.getBundleContext());
+  }
+
+  @After
+  public void after() {
+    for (Configuration configuration : configurations) {
+      try {
+        configuration.delete();
+      } catch (IOException e) {
+        throw new UncheckedIOException(e);
+      }
+    }
+    configurations.clear();
   }
 
   private Hashtable<String, Object> createPresetPropertiesForTestComponent() {
@@ -123,6 +143,15 @@ public class ECMTest {
     properties.put("stringAttribute", "Hello World");
     properties.put("stringArrayAttribute", new String[] { "Hello World" });
     return properties;
+  }
+
+  private ComponentState getComponentState(
+      final ComponentContainerInstance<?> container) {
+    ComponentRevision<?>[] resources = container.getResources();
+    if (resources.length == 0) {
+      return null;
+    }
+    return resources[0].getState();
   }
 
   @ServiceRef(defaultValue = "(service.id>=0)")
@@ -175,23 +204,25 @@ public class ECMTest {
   }
 
   @Test
+  @TestDuringDevelopment
   public void testComponentUnregistersServiceAfterGettingUnsatisfied() {
     ComponentMetadata testComponentMetadata = MetadataBuilder
         .buildComponentMetadata(TestComponent.class);
     ComponentContainerInstance<Object> container = factory
         .createComponentContainer(testComponentMetadata);
-    ManagedService managedService = (ManagedService) container;
     container.open();
 
     Hashtable<String, Object> properties = createPresetPropertiesForTestComponent();
     properties.put("testComponentUnregistersServiceAfterGettingUnsatisfied", true);
-    updateConfiguration(managedService, properties);
+    updateConfiguration(container, properties);
 
     try {
       String filterString = "(testComponentUnregistersServiceAfterGettingUnsatisfied=true)";
       waitForService(filterString);
       properties.put("someReference.target", "(nonExistent=nonExistent)");
-      updateConfiguration(managedService, properties);
+      updateConfiguration(container, properties);
+      waitForTrueSupplied(1000,
+          () -> container.getResources()[0].getState() == ComponentState.UNSATISFIED);
 
       BundleContext bundleContext = componentContext.getBundleContext();
 
@@ -266,53 +297,43 @@ public class ECMTest {
       ComponentRevision<FailingComponent>[] resources = container.getResources();
       Assert.assertEquals(0, resources.length);
 
-      ManagedService managedService = (ManagedService) container;
-
-      testFailingWithEmptyProperties(container, managedService);
-      testFailingWithReferenceProbe(container, managedService);
-      testFailingWithSetterProbe(container, managedService);
-      testFailingWithDynamicSetterProbe(container, managedService);
-      testFailingWithUpdateProbe(container, managedService);
+      testFailingWithEmptyProperties(container);
+      testFailingWithReferenceProbe(container);
+      testFailingWithSetterProbe(container);
+      testFailingWithDynamicSetterProbe(container);
+      testFailingWithUpdateProbe(container);
     } finally {
       container.close();
     }
   }
 
   private void testFailingWithDynamicSetterProbe(
-      final ComponentContainerInstance<FailingComponent> container,
-      final ManagedService managedService) {
+      final ComponentContainerInstance<FailingComponent> container) {
 
     Hashtable<String, Object> configuration = new Hashtable<>();
     configuration.put(FailingComponent.FAIL_DYNAMIC_PROPERTY_SETTER_ATTRIBUTE, true);
-    updateConfiguration(managedService, configuration);
+    updateConfiguration(container, configuration);
+    waitForTrueSupplied(1000, () -> getComponentState(container) == ComponentState.FAILED);
 
-    ComponentRevision<FailingComponent> componentRevision = container.getResources()[0];
-    Assert.assertEquals(ComponentState.FAILED, componentRevision.getState());
+    Assert.assertEquals(ComponentState.FAILED, getComponentState(container));
 
     configuration.remove(FailingComponent.FAIL_DYNAMIC_PROPERTY_SETTER_ATTRIBUTE);
-    updateConfiguration(managedService, configuration);
+    updateConfiguration(container, configuration);
+    waitForTrueSupplied(1000, () -> getComponentState(container) == ComponentState.ACTIVE);
 
-    componentRevision = container.getResources()[0];
-    Assert.assertEquals(ComponentState.ACTIVE, componentRevision.getState());
-
+    Assert.assertEquals(ComponentState.ACTIVE, getComponentState(container));
   }
 
   private void testFailingWithEmptyProperties(
-      final ComponentContainerInstance<FailingComponent> container,
-      final ManagedService managedService) {
+      final ComponentContainerInstance<FailingComponent> container) {
     Hashtable<String, Object> properties = new Hashtable<String, Object>();
-    try {
-      managedService.updated(properties);
-      Assert.assertEquals(1, container.getResources().length);
-    } catch (ConfigurationException e) {
-      throw new RuntimeException(e);
-    }
-
+    updateConfiguration(container, properties);
+    waitForTrueSupplied(1000, () -> getComponentState(container) == ComponentState.ACTIVE);
+    Assert.assertEquals(1, container.getResources().length);
   }
 
   private void testFailingWithReferenceProbe(
-      final ComponentContainerInstance<FailingComponent> container,
-      final ManagedService managedService) {
+      final ComponentContainerInstance<FailingComponent> container) {
 
     ServiceRegistration<String> serviceRegistration = null;
     ServiceRegistration<String> failingServiceRegistration = null;
@@ -321,42 +342,38 @@ public class ECMTest {
       Hashtable<String, Object> configuration = new Hashtable<>();
       configuration.put("failingReference.target", "(name=forFailing)");
 
-      updateConfiguration(managedService, configuration);
+      updateConfiguration(container, configuration);
 
       Hashtable<String, Object> properties = new Hashtable<>();
       properties.put("name", "forFailing");
       serviceRegistration = componentContext.registerService(
           String.class, "", properties);
 
-      ComponentRevision<FailingComponent> componentRevision = container.getResources()[0];
-      Assert.assertEquals(ComponentState.ACTIVE, componentRevision.getState());
+      waitForTrueSupplied(1000, () -> getComponentState(container) == ComponentState.ACTIVE);
+      Assert.assertEquals(ComponentState.ACTIVE, getComponentState(container));
       serviceRegistration.unregister();
       serviceRegistration = null;
 
-      componentRevision = container.getResources()[0];
-      Assert.assertEquals(ComponentState.UNSATISFIED, componentRevision.getState());
+      Assert.assertEquals(ComponentState.UNSATISFIED, getComponentState(container));
 
       failingServiceRegistration = componentContext.registerService(
           String.class, FailingComponent.CONF_FAIL_REFERENCE, properties);
 
-      componentRevision = container.getResources()[0];
-      Assert.assertEquals(ComponentState.FAILED, componentRevision.getState());
+      Assert.assertEquals(ComponentState.FAILED, getComponentState(container));
 
       serviceRegistration = componentContext.registerService(
           String.class, "", properties);
 
-      componentRevision = container.getResources()[0];
-      Assert.assertEquals(ComponentState.FAILED, componentRevision.getState());
+      Assert.assertEquals(ComponentState.FAILED, getComponentState(container));
 
       failingServiceRegistration.unregister();
       failingServiceRegistration = null;
 
-      componentRevision = container.getResources()[0];
-      Assert.assertEquals(ComponentState.ACTIVE, componentRevision.getState());
+      Assert.assertEquals(ComponentState.ACTIVE, getComponentState(container));
 
-      updateConfiguration(managedService, configuration);
-      componentRevision = container.getResources()[0];
-      Assert.assertEquals(ComponentState.ACTIVE, componentRevision.getState());
+      updateConfiguration(container, configuration);
+      waitForTrueSupplied(1000, () -> ComponentState.ACTIVE == getComponentState(container));
+      Assert.assertEquals(ComponentState.ACTIVE, getComponentState(container));
     } finally {
       if (failingServiceRegistration != null) {
         failingServiceRegistration.unregister();
@@ -369,43 +386,41 @@ public class ECMTest {
   }
 
   private void testFailingWithSetterProbe(
-      final ComponentContainerInstance<FailingComponent> container,
-      final ManagedService managedService) {
+      final ComponentContainerInstance<FailingComponent> container) {
 
     Hashtable<String, Object> configuration = new Hashtable<>();
     configuration.put(FailingComponent.FAIL_PROPERTY_SETTER_ATTRIBUTE, true);
-    updateConfiguration(managedService, configuration);
+    updateConfiguration(container, configuration);
 
-    ComponentRevision<FailingComponent> componentRevision = container.getResources()[0];
-    Assert.assertEquals(ComponentState.FAILED, componentRevision.getState());
+    waitForTrueSupplied(1000, () -> ComponentState.FAILED == getComponentState(container));
+    Assert.assertEquals(ComponentState.FAILED, getComponentState(container));
 
     configuration.put(FailingComponent.FAIL_PROPERTY_SETTER_ATTRIBUTE, false);
-    updateConfiguration(managedService, configuration);
+    updateConfiguration(container, configuration);
 
-    componentRevision = container.getResources()[0];
-    Assert.assertEquals(ComponentState.ACTIVE, componentRevision.getState());
+    waitForTrueSupplied(1000, () -> ComponentState.ACTIVE == getComponentState(container));
+    Assert.assertEquals(ComponentState.ACTIVE, getComponentState(container));
 
   }
 
   private void testFailingWithUpdateProbe(
-      final ComponentContainerInstance<FailingComponent> container,
-      final ManagedService managedService) {
+      final ComponentContainerInstance<FailingComponent> container) {
 
     Hashtable<String, Object> configuration = new Hashtable<>();
     configuration.put(FailingComponent.FAIL_ON_UPDATE_ATTRIBUTE, false);
-    updateConfiguration(managedService, configuration);
+    updateConfiguration(container, configuration);
 
     configuration.put(FailingComponent.FAIL_ON_UPDATE_ATTRIBUTE, true);
-    updateConfiguration(managedService, configuration);
+    updateConfiguration(container, configuration);
 
-    ComponentRevision<FailingComponent> componentRevision = container.getResources()[0];
-    Assert.assertEquals(ComponentState.FAILED, componentRevision.getState());
+    waitForTrueSupplied(1000, () -> ComponentState.FAILED == getComponentState(container));
+    Assert.assertEquals(ComponentState.FAILED, getComponentState(container));
 
     configuration.put(FailingComponent.FAIL_ON_UPDATE_ATTRIBUTE, false);
-    updateConfiguration(managedService, configuration);
+    updateConfiguration(container, configuration);
 
-    componentRevision = container.getResources()[0];
-    Assert.assertEquals(ComponentState.ACTIVE, componentRevision.getState());
+    waitForTrueSupplied(1000, () -> ComponentState.ACTIVE == getComponentState(container));
+    Assert.assertEquals(ComponentState.ACTIVE, getComponentState(container));
   }
 
   @Test
@@ -479,11 +494,9 @@ public class ECMTest {
         .createComponentContainer(testComponentMetadata);
     container.open();
 
-    ManagedService managedService = (ManagedService) container;
-
     Hashtable<String, Object> properties = createPresetPropertiesForTestComponent();
 
-    updateConfiguration(managedService, properties);
+    updateConfiguration(container, properties);
 
     try {
       TestComponent testComponent = waitForService(TestComponent.class);
@@ -569,30 +582,33 @@ public class ECMTest {
 
       Assert.assertNotEquals(ComponentState.FAILED, container.getResources()[0].getState());
 
-      ManagedService managedService = (ManagedService) container;
-
       Hashtable<String, Object> configuration = new Hashtable<>();
       configuration.put("someRef.target", new String[] { "(WrongSyntax)" });
-      updateConfiguration(managedService, configuration);
+      updateConfiguration(container, configuration);
 
-      Assert.assertEquals(ComponentState.FAILED, container.getResources()[0].getState());
+      waitForTrueSupplied(1000, () -> ComponentState.FAILED == getComponentState(container));
+      Assert.assertEquals(ComponentState.FAILED, getComponentState(container));
 
       configuration.put("someRef.target", new String[] { "(service.id>=0)" });
-      updateConfiguration(managedService, configuration);
+      updateConfiguration(container, configuration);
 
-      Assert.assertNotEquals(ComponentState.FAILED, container.getResources()[0].getState());
+      waitForTrueSupplied(1000, () -> ComponentState.FAILED != getComponentState(container));
+      Assert.assertNotEquals(ComponentState.FAILED, getComponentState(container));
     } finally {
       container.close();
     }
 
   }
 
-  private void updateConfiguration(final ManagedService managedService,
-      final Hashtable<String, Object> configuration) {
+  private void updateConfiguration(final ComponentContainer<?> container,
+      final Hashtable<String, Object> properties) {
     try {
-      managedService.updated(configuration);
-    } catch (ConfigurationException e) {
-      throw new RuntimeException(e);
+      Configuration configuration = configAdmin
+          .getConfiguration(container.getComponentMetadata().getConfigurationPid(), null);
+      configurations.add(configuration);
+      configuration.update(properties);
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
     }
   }
 
