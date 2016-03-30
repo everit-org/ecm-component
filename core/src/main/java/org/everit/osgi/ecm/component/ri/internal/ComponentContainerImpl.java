@@ -132,9 +132,11 @@ public class ComponentContainerImpl<C> extends AbstractComponentContainer<C>
     } else if ((componentImpl != null) && (properties == null)
         && !ConfigurationPolicy.OPTIONAL.equals(configurationPolicy)) {
 
-      if (closed.compareAndSet(false, true)) {
-        componentImpl.close();
-        componentAtomicReference.set(null);
+      if (!closed.get()) {
+        componentImpl = componentAtomicReference.getAndSet(null);
+        if (componentImpl != null) {
+          componentImpl.close();
+        }
       }
 
     } else if (componentImpl != null) {
