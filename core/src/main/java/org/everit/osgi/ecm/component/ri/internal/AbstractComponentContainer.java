@@ -77,7 +77,6 @@ public abstract class AbstractComponentContainer<C> implements MetaTypeProvider,
 
   /**
    * Add service properties that are available for all kind of components:
-   * {@value ECMComponentConstants#SERVICE_PROP_COMPONENT_NAME} and
    * {@value ECMComponentConstants#SERVICE_PROP_COMPONENT_CLASS}.
    *
    * @param properties

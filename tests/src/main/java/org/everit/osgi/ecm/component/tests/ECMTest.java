@@ -73,7 +73,6 @@ import org.osgi.util.tracker.ServiceTracker;
     @StringAttribute(attributeId = TestRunnerConstants.SERVICE_PROPERTY_TEST_ID,
         defaultValue = "ECMTest") })
 @Service
-@TestDuringDevelopment
 public class ECMTest {
 
   private static final double TEST_VALUE_DOUBLE = 1.1D;
@@ -96,6 +95,10 @@ public class ECMTest {
     factory = new ComponentContainerFactory(componentContext.getBundleContext());
   }
 
+  /**
+   * Freeing up all configurations that were created within configurationAdmin while running the
+   * test.
+   */
   @After
   public void after() {
     for (Configuration configuration : configurations) {
@@ -202,7 +205,6 @@ public class ECMTest {
   }
 
   @Test
-  @TestDuringDevelopment
   public void testComponentUnregistersServiceAfterGettingUnsatisfied() {
     ComponentMetadata testComponentMetadata = MetadataBuilder
         .buildComponentMetadata(TestComponent.class);
@@ -281,6 +283,7 @@ public class ECMTest {
   }
 
   @Test
+  @TestDuringDevelopment
   public void testFailingComponent() {
 
     ComponentMetadata componentMetadata = MetadataBuilder
@@ -347,7 +350,8 @@ public class ECMTest {
       serviceRegistration = componentContext.registerService(
           String.class, "", properties);
 
-      waitForTrueSupplied(() -> getComponentState(container) == ComponentState.ACTIVE);
+      waitForService("(failingReference.target=\\(name\\=forFailing\\))");
+      waitForTrueSupplied(() -> ComponentState.ACTIVE == getComponentState(container));
       Assert.assertEquals(ComponentState.ACTIVE, getComponentState(container));
       serviceRegistration.unregister();
       serviceRegistration = null;

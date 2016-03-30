@@ -46,6 +46,22 @@ public class ComponentRequirementImpl<COMPONENT, CAPABILITY extends Capability> 
 
   /**
    * Constructor.
+   *
+   * @param requirementId
+   *          The id of the requirement that is normally the namespace part in the clause or if the
+   *          component is a target, the id of the property and the index of the requirement in a
+   *          bracket if the property cardinality is multiple. E.g.: myprop[0].
+   * @param namespace
+   *          The namespace of the requirement. If it is an OSGi service, the namespace is
+   *          "osgi.service".
+   * @param resource
+   *          The component revision that the requirement belongs to.
+   * @param directives
+   *          The directives of the requirement.
+   * @param attributes
+   *          The attributes of the requirement.
+   * @param capabilityType
+   *          The type of the capability that the requirement needs.
    */
   public ComponentRequirementImpl(final String requirementId, final String namespace,
       final ComponentRevisionImpl<COMPONENT> resource, final Map<String, String> directives,

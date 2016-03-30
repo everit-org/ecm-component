@@ -192,6 +192,9 @@ public class ComponentRevisionImpl<C> implements ComponentRevision<C> {
     /**
      * In case there is no cause, this will be the new one, otherwise the passed cause parameter
      * will be add as a suppressed cause of the original.
+     *
+     * @param cause
+     *          A suppressed cause that occurred during the failure of the component.
      */
     public synchronized void setOrAddSuppressedCause(final Throwable cause) {
       if (this.cause == null) {
@@ -381,8 +384,8 @@ public class ComponentRevisionImpl<C> implements ComponentRevision<C> {
       final Suiting<?> suiting) {
     String fullRequirementId = referenceId;
     if (referenceMetadata.isMultiple()
-        || (referenceMetadata.getReferenceConfigurationType()
-          == ReferenceConfigurationType.CLAUSE)) {
+        || (referenceMetadata
+            .getReferenceConfigurationType() == ReferenceConfigurationType.CLAUSE)) {
 
       fullRequirementId += "[" + suiting.getRequirement().getRequirementId() + "]";
     }

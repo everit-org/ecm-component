@@ -18,6 +18,7 @@ package org.everit.osgi.ecm.component.tests;
 import org.everit.osgi.ecm.annotation.Activate;
 import org.everit.osgi.ecm.annotation.Component;
 import org.everit.osgi.ecm.annotation.ConfigurationPolicy;
+import org.everit.osgi.ecm.annotation.Service;
 import org.everit.osgi.ecm.annotation.ServiceRef;
 import org.everit.osgi.ecm.annotation.Update;
 import org.everit.osgi.ecm.annotation.attribute.BooleanAttribute;
@@ -28,6 +29,7 @@ import org.everit.osgi.ecm.component.ConfigurationException;
  * A component to test failures.
  */
 @Component(configurationPolicy = ConfigurationPolicy.REQUIRE)
+@Service
 public class FailingComponent {
 
   public static final String CONF_FAIL_REFERENCE = "fail_reference";
