@@ -178,6 +178,8 @@ public abstract class ReferenceHelper<CAPABILITY, COMPONENT, METADATA extends Re
       }
     }
 
+    init();
+
     @SuppressWarnings("unchecked")
     RequirementDefinition<CAPABILITY>[] requirements = new RequirementDefinition[0];
     this.collector = createCollector(new ReferenceCapabilityConsumer(), requirements);
@@ -320,6 +322,13 @@ public abstract class ReferenceHelper<CAPABILITY, COMPONENT, METADATA extends Re
 
   public Suiting<CAPABILITY>[] getSuitings() {
     return suitings.clone();
+  }
+
+  /**
+   * Called in the end of the constructor of {@link ReferenceHelper} superclass, but before any of
+   * the abstract functions are called that must be implemented by the subclass.
+   */
+  protected void init() {
   }
 
   public boolean isArray() {

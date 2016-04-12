@@ -30,8 +30,10 @@ import org.everit.osgi.ecm.component.ServiceHolder;
 import org.everit.osgi.ecm.component.ri.internal.ComponentContextImpl;
 import org.everit.osgi.ecm.component.ri.internal.ReferenceEventHandler;
 import org.everit.osgi.ecm.metadata.ServiceReferenceMetadata;
+import org.osgi.framework.Bundle;
 import org.osgi.framework.ServiceObjects;
 import org.osgi.framework.ServiceReference;
+import org.osgi.framework.wiring.BundleWiring;
 
 /**
  * {@link ReferenceHelper} for OSGi service references.
@@ -72,6 +74,8 @@ public class ServiceReferenceAttributeHelper<S, COMPONENT> extends
 
   private Map<String, SuitingWithService<S>> previousSuitingsByRequirementId = new TreeMap<>();
 
+  private Class<S> serviceClass;
+
   private final Map<ServiceReference<S>, ServiceObjectsWithCounter<S>> serviceObjectsByReferences =
       new HashMap<>();
 
@@ -79,6 +83,7 @@ public class ServiceReferenceAttributeHelper<S, COMPONENT> extends
       final ComponentContextImpl<COMPONENT> componentContext,
       final ReferenceEventHandler eventHandler)
       throws IllegalAccessException {
+
     super(referenceMetadata, componentContext, eventHandler);
   }
 
@@ -189,15 +194,34 @@ public class ServiceReferenceAttributeHelper<S, COMPONENT> extends
       final ReferenceCapabilityConsumer consumer,
       final RequirementDefinition<ServiceReference<S>>[] items) {
 
-    @SuppressWarnings("unchecked")
-    Class<S> serviceInterface = (Class<S>) getReferenceMetadata().getServiceInterface();
     return new ServiceReferenceCollector<S>(getComponentContext().getBundleContext(),
-        serviceInterface, items, consumer, false);
+        serviceClass, items, consumer, false);
   }
 
   @Override
   public void free() {
     releaseServices();
+  }
+
+  @Override
+  protected void init() {
+    String serviceInterfaceName = getReferenceMetadata().getServiceInterface();
+
+    if (serviceInterfaceName == null) {
+      return;
+    }
+
+    Bundle bundle = getComponentContext().getBundleContext().getBundle();
+    ClassLoader classLoader = bundle.adapt(BundleWiring.class).getClassLoader();
+
+    try {
+      @SuppressWarnings("unchecked")
+      Class<S> tmpServiceClass =
+          (Class<S>) Class.forName(serviceInterfaceName, true, classLoader);
+      this.serviceClass = tmpServiceClass;
+    } catch (ClassNotFoundException e) {
+      throw new IllegalArgumentException(e);
+    }
   }
 
   private void releaseServices() {
@@ -233,8 +257,7 @@ public class ServiceReferenceAttributeHelper<S, COMPONENT> extends
     if (isHolder()) {
       parameter = new ServiceHolder[tmpSuitings.length];
     } else {
-      parameter = (Object[]) Array.newInstance(getReferenceMetadata().getServiceInterface(),
-          tmpSuitings.length);
+      parameter = (Object[]) Array.newInstance(serviceClass, tmpSuitings.length);
     }
     return parameter;
   }

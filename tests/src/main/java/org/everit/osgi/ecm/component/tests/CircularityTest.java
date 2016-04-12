@@ -83,7 +83,7 @@ public class CircularityTest {
     } else {
       AttributeMetadata<String[]> referenceMetadata =
           new ServiceReferenceMetadataBuilder().withReferenceId("reference")
-              .withServiceInterface(CircularClass.class)
+              .withServiceInterface(CircularClass.class.getName())
               .withDefaultValue(new String[] { "(circularId=" + referencedServicePropValue + ")" })
               .withSetter(new MethodDescriptor("setReference"))
               .withDynamic(referenceDynamic)

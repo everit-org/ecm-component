@@ -442,10 +442,10 @@ public class ComponentRevisionImpl<C> implements ComponentRevision<C> {
         Map<String, String> directives = new LinkedHashMap<String, String>();
         RequirementDefinition<?> requirementDefinition = suiting.getRequirement();
         if (referenceMetadata instanceof ServiceReferenceMetadata) {
-          Class<?> serviceInterface = ((ServiceReferenceMetadata) referenceMetadata)
+          String serviceInterface = ((ServiceReferenceMetadata) referenceMetadata)
               .getServiceInterface();
           if (serviceInterface != null) {
-            directives.put(Constants.OBJECTCLASS, serviceInterface.getName());
+            directives.put(Constants.OBJECTCLASS, serviceInterface);
           }
         }
 
