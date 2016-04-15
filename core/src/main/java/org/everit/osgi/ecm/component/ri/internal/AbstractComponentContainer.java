@@ -77,13 +77,16 @@ public abstract class AbstractComponentContainer<C> implements MetaTypeProvider,
 
   /**
    * Add service properties that are available for all kind of components:
-   * {@value ECMComponentConstants#SERVICE_PROP_COMPONENT_CLASS}.
+   * {@value ECMComponentConstants#SERVICE_PROP_COMPONENT_CONTAINER_SERVICE_ID}.
    *
    * @param properties
    *          The configuration of the component.
    */
-  protected void addCommonServiceProperties(final Dictionary<String, Object> properties) {
-    properties.put(ECMComponentConstants.SERVICE_PROP_COMPONENT_CLASS, componentMetadata.getType());
+  protected void addCommonContainerServiceProperties(final Dictionary<String, Object> properties) {
+    properties.put(ECMComponentConstants.SERVICE_PROP_COMPONENT_VERSION,
+        componentMetadata.getType());
+    properties.put(ECMComponentConstants.SERVICE_PROP_COMPONENT_ID,
+        componentMetadata.getComponentId());
   }
 
   @Override
@@ -185,7 +188,7 @@ public abstract class AbstractComponentContainer<C> implements MetaTypeProvider,
    * @param serviceInterfaces
    *          The interfaces are implemented by the service.
    */
-  protected void registerService(final Dictionary<String, Object> properties,
+  protected void registerContainerService(final Dictionary<String, Object> properties,
       final List<String> serviceInterfaces) {
     unregisterService();
     serviceRegistration = bundleContext.registerService(

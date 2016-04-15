@@ -89,7 +89,7 @@ public class ComponentContainerImpl<C> extends AbstractComponentContainer<C>
 
     ComponentMetadata componentMetadata = getComponentMetadata();
 
-    addCommonServiceProperties(properties);
+    addCommonContainerServiceProperties(properties);
 
     if (!ConfigurationPolicy.IGNORE.equals(componentMetadata.getConfigurationPolicy())) {
       if (componentMetadata.isMetatype()) {
@@ -100,7 +100,7 @@ public class ComponentContainerImpl<C> extends AbstractComponentContainer<C>
       serviceInterfaces.add(ManagedService.class.getName());
     }
 
-    registerService(properties, serviceInterfaces);
+    registerContainerService(properties, serviceInterfaces);
 
     ComponentContextImpl<C> componentImpl = componentAtomicReference.get();
     if (ConfigurationPolicy.IGNORE.equals(componentMetadata.getConfigurationPolicy())
@@ -120,31 +120,31 @@ public class ComponentContainerImpl<C> extends AbstractComponentContainer<C>
     Dictionary<String, Object> props = (Dictionary<String, Object>) properties;
 
     ComponentMetadata componentMetadata = getComponentMetadata();
-    ComponentContextImpl<C> componentImpl = componentAtomicReference.get();
+    ComponentContextImpl<C> componentContext = componentAtomicReference.get();
 
     ConfigurationPolicy configurationPolicy = componentMetadata.getConfigurationPolicy();
 
-    if ((componentImpl == null)
+    if ((componentContext == null)
         && ((properties != null) || ConfigurationPolicy.OPTIONAL.equals(configurationPolicy))) {
-      componentImpl = new ComponentContextImpl<C>(this, getBundleContext(), props, getLogService());
-      componentAtomicReference.set(componentImpl);
-      componentImpl.open();
-    } else if ((componentImpl != null) && (properties == null)
+      componentContext = new ComponentContextImpl<C>(this, getBundleContext(), props, getLogService());
+      componentAtomicReference.set(componentContext);
+      componentContext.open();
+    } else if ((componentContext != null) && (properties == null)
         && !ConfigurationPolicy.OPTIONAL.equals(configurationPolicy)) {
 
       if (!closed.get()) {
-        componentImpl = componentAtomicReference.getAndSet(null);
-        if (componentImpl != null) {
-          componentImpl.close();
+        componentContext = componentAtomicReference.getAndSet(null);
+        if (componentContext != null) {
+          componentContext.close();
         }
       }
 
-    } else if (componentImpl != null) {
+    } else if (componentContext != null) {
       @SuppressWarnings("unchecked")
       Dictionary<String, Object> propertiesWithObjectGenerics =
           (Dictionary<String, Object>) properties;
 
-      componentImpl.updateConfiguration(propertiesWithObjectGenerics);
+      componentContext.updateConfiguration(propertiesWithObjectGenerics);
     }
   }
 }

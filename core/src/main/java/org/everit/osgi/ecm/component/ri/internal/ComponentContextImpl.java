@@ -308,7 +308,8 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
   private void addCommonComponentProperties(final Map<String, Object> properties) {
     String componentId = componentContainer.getComponentMetadata().getComponentId();
     if (componentId != null) {
-      properties.put(ECMComponentConstants.SERVICE_PROP_COMPONENT_ID, componentId);
+      properties.put(ECMComponentConstants.SERVICE_PROP_COMPONENT_CONTAINER_SERVICE_ID,
+          componentContainer.getServiceId());
     }
   }
 
