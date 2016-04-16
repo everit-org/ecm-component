@@ -23,10 +23,12 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.everit.osgi.ecm.component.ConfigurationException;
+import org.everit.osgi.ecm.component.PasswordHolder;
 import org.everit.osgi.ecm.component.resource.ComponentState;
 import org.everit.osgi.ecm.component.ri.internal.ComponentContextImpl;
 import org.everit.osgi.ecm.component.ri.internal.IllegalMetadataException;
 import org.everit.osgi.ecm.metadata.ComponentMetadata;
+import org.everit.osgi.ecm.metadata.PasswordAttributeMetadata;
 import org.everit.osgi.ecm.metadata.PropertyAttributeMetadata;
 import org.everit.osgi.ecm.util.method.MethodDescriptor;
 import org.osgi.framework.Constants;
@@ -61,6 +63,8 @@ public class PropertyAttributeHelper<C, V_ARRAY> {
 
   private final MethodHandle methodHandle;
 
+  private Class<?> parameterClass;
+
   /**
    * Constructor.
    *
@@ -79,26 +83,29 @@ public class PropertyAttributeHelper<C, V_ARRAY> {
   }
 
   /**
-   * Calls the setter of the property if it is available and the omponent is not failed.
+   * Calls the setter of the property if it is available and the component is not failed.
    *
    * @param newValue
    *          The new value of the property that is passed to the setter.
    */
   public void applyValue(final Object newValue) {
+    if (methodHandle == null) {
+      return;
+    }
     Object parameterValue = resolveValue(newValue);
     if (componentContext.getState() == ComponentState.FAILED) {
       return;
     }
-    if (methodHandle != null) {
-      C instance = componentContext.getInstance();
 
-      methodHandle.bindTo(instance);
-      try {
-        methodHandle.invoke(instance, parameterValue);
-      } catch (Throwable e) {
-        componentContext.fail(e, false);
-      }
+    C instance = componentContext.getInstance();
+
+    methodHandle.bindTo(instance);
+    try {
+      methodHandle.invoke(instance, parameterValue);
+    } catch (Throwable e) {
+      componentContext.fail(e, false);
     }
+
   }
 
   private void failDuringValueResolution(final String message) {
@@ -126,6 +133,8 @@ public class PropertyAttributeHelper<C, V_ARRAY> {
       return null;
     }
 
+    parameterClass = setter.getParameterTypes()[0];
+
     MethodHandles.Lookup lookup = MethodHandles.lookup();
     try {
       return lookup.unreflect(setter);
@@ -136,9 +145,36 @@ public class PropertyAttributeHelper<C, V_ARRAY> {
     return null;
   }
 
-  private Object resolveMultiValue(final Object valueObject,
-      final Class<? extends Object> valueClass,
-      final Class<?> attributeType) {
+  private Object resolveMultiPasswordParamValue(final Object valueObject) {
+    Class<?> componentType = valueObject.getClass().getComponentType();
+    if (!PasswordHolder.class.equals(componentType) && !String.class.equals(componentType)) {
+      failDuringValueResolution(
+          "Either 'String[]' or 'PasswordHolder[]' was expected for attribute '"
+              + attributeMetadata.getAttributeId() + "' but got '" + componentType + "[]'");
+      return null;
+    }
+
+    if (componentType.equals(String.class)) {
+      String[] stringPasswordArray = (String[]) valueObject;
+      PasswordHolder[] result = new PasswordHolder[stringPasswordArray.length];
+      for (int i = 0; i < stringPasswordArray.length; i++) {
+        result[i] = new PasswordHolder(stringPasswordArray[i]);
+      }
+      return result;
+    }
+
+    PasswordHolder[] passwordHolderArray = (PasswordHolder[]) valueObject;
+    String[] result = new String[passwordHolderArray.length];
+    for (int i = 0; i < passwordHolderArray.length; i++) {
+      result[i] = passwordHolderArray[i].getPassword();
+    }
+    return result;
+  }
+
+  private Object resolveNonExactTypeMatchMultiValue(final Object valueObject) {
+
+    Class<? extends Object> valueClass = valueObject.getClass();
+
     if (!valueClass.isArray()) {
       failDuringValueResolution("An array was expected as value for attribute '"
           + attributeMetadata.getAttributeId() + "' but got '" + valueClass.getCanonicalName()
@@ -146,18 +182,13 @@ public class PropertyAttributeHelper<C, V_ARRAY> {
       return null;
     }
 
-    Class<?> componentType = valueClass.getComponentType();
-
-    if (!attributeType.equals(componentType)) {
-      StringBuilder sb = new StringBuilder();
-      sb.append("'").append(attributeType).append("[]' was expected for attribute '")
-          .append(attributeMetadata.getAttributeId()).append("' but got '").append(componentType)
-          .append("'");
-      failDuringValueResolution(sb.toString());
-      return null;
+    if (!(attributeMetadata instanceof PasswordAttributeMetadata)) {
+      failDuringValueResolution("'" + parameterClass.getCanonicalName()
+          + "' was expected for attribute '" + attributeMetadata.getAttributeId() + "', but got '"
+          + valueClass.getCanonicalName() + "'");
     }
 
-    return valueObject;
+    return resolveMultiPasswordParamValue(valueObject);
   }
 
   private Method resolveSetter() {
@@ -175,42 +206,81 @@ public class PropertyAttributeHelper<C, V_ARRAY> {
     }
 
     if (attributeMetadata.isMultiple()) {
-      if (!parameterTypes[0].isArray()) {
-        throwIllegalSetter(method, "Parameter type should be an array");
-        return null;
-      }
-      Class<?> componentType = parameterTypes[0].getComponentType();
-      Class<?> expectedComponentType = attributeMetadata.getValueType();
+      return resolveSetterForMultipleCardinalityAttribute(method, parameterTypes);
+    } else {
+      return resolveSetterForSimpleAttribute(method, parameterTypes);
+    }
+  }
 
-      if (!expectedComponentType.equals(componentType)) {
+  private Method resolveSetterForMultipleCardinalityAttribute(final Method method,
+      final Class<?>[] parameterTypes) {
+    if (!parameterTypes[0].isArray()) {
+      throwIllegalSetter(method, "Parameter type should be an array");
+      return null;
+    }
+    Class<?> componentType = parameterTypes[0].getComponentType();
+    Class<?> expectedComponentType = attributeMetadata.getValueType();
+
+    if (!expectedComponentType.equals(componentType)) {
+      if (attributeMetadata instanceof PasswordAttributeMetadata) {
+        if (!PasswordHolder.class.equals(componentType)) {
+          throwIllegalSetter(method,
+              "Parameter type should be either String[] or PasswordVaueHolder[].");
+          return null;
+        }
+      } else {
         throwIllegalSetter(method, "Parameter array should have '" + expectedComponentType
             + "' component type.");
         return null;
-      }
-    } else {
-      Class<?> valueType = attributeMetadata.getValueType();
-      if (!valueType.equals(parameterTypes[0])) {
-        if (valueType.isPrimitive()) {
-          Class<?> boxingType = PRIMITIVE_BOXING_TYPE_MAPPING.get(valueType);
-          if (!boxingType.equals(parameterTypes[0])) {
-            throwIllegalSetter(
-                method, " Parameter should be " + valueType.getCanonicalName() + " or "
-                    + boxingType.getCanonicalName() + ": " + method.toGenericString());
-          }
-        } else {
-          throwIllegalSetter(
-              method, " Parameter type should be " + valueType.getCanonicalName() + ": "
-                  + method.toGenericString());
-        }
       }
     }
     return method;
   }
 
-  private Object resolveSimpleValue(final Object valueObject,
-      final Class<? extends Object> valueClass,
-      final Class<?> attributeType) {
+  private Method resolveSetterForSimpleAttribute(final Method method,
+      final Class<?>[] parameterTypes) {
+    Class<?> valueType = attributeMetadata.getValueType();
+    if (!valueType.equals(parameterTypes[0])) {
+      if (valueType.isPrimitive()) {
+        Class<?> boxingType = PRIMITIVE_BOXING_TYPE_MAPPING.get(valueType);
+        if (!boxingType.equals(parameterTypes[0])) {
+          throwIllegalSetter(
+              method, " Parameter should be " + valueType.getCanonicalName() + " or "
+                  + boxingType.getCanonicalName() + ": " + method.toGenericString());
+          return null;
+        }
+      } else if (attributeMetadata instanceof PasswordAttributeMetadata) {
+        if (!PasswordHolder.class.equals(parameterTypes[0])) {
+          throwIllegalSetter(method,
+              "Parameter type should be either String or PasswordVaueHolder");
+        }
+      } else {
+        throwIllegalSetter(
+            method, " Parameter type should be " + valueType.getCanonicalName() + ": "
+                + method.toGenericString());
+      }
+    }
+    return method;
+  }
+
+  private Object resolveSimplePasswordParamValue(final Object simpleValue,
+      final Class<?> originalValueType) {
+    Class<?> valueType = simpleValue.getClass();
+    if (!String.class.equals(valueType) && !PasswordHolder.class.equals(valueType)) {
+      failDuringValueResolution(
+          "Either 'String[]' or 'PasswordHolder[]' was expected for attribute '"
+              + attributeMetadata.getAttributeId() + "' but got '" + originalValueType + "'");
+      return null;
+    }
+    if (String.class.equals(valueType)) {
+      return new PasswordHolder((String) simpleValue);
+    }
+    return ((PasswordHolder) simpleValue).getPassword();
+  }
+
+  private Object resolveSimpleValue(final Object valueObject) {
     Object simpleValue = valueObject;
+    Class<?> valueClass = valueObject.getClass();
     Class<?> simpleValueClass = valueClass;
 
     // Array can be accepted if the length of the array is ok
@@ -226,16 +296,26 @@ public class PropertyAttributeHelper<C, V_ARRAY> {
         return null;
       }
 
-      if (length == 1) {
-        simpleValue = Array.get(valueObject, 0);
-        simpleValueClass = simpleValue.getClass();
+      if (length > 1) {
+        failDuringValueResolution("Simple value of attribute '" + attributeMetadata.getAttributeId()
+            + "' cannot be specified with an array that has more than one elements");
       }
+      simpleValue = Array.get(valueObject, 0);
+      simpleValueClass = simpleValue.getClass();
     }
 
-    if (!simpleValueClass.equals(attributeType)
-        && (!attributeType.isPrimitive() || !PRIMITIVE_BOXING_TYPE_MAPPING.get(attributeType)
-            .equals(simpleValueClass))) {
+    if (simpleValueClass.equals(parameterClass)) {
+      return simpleValue;
+    }
 
+    if (attributeMetadata instanceof PasswordAttributeMetadata) {
+      return resolveSimplePasswordParamValue(simpleValue, valueClass);
+    }
+
+    if (!parameterClass.equals(PRIMITIVE_BOXING_TYPE_MAPPING.get(simpleValueClass))
+        && !simpleValueClass.equals(PRIMITIVE_BOXING_TYPE_MAPPING.get(parameterClass))) {
+
+      Class<?> attributeType = attributeMetadata.getValueType();
       StringBuilder sb = new StringBuilder("Either ");
       if (attributeType.isPrimitive()) {
         sb.append(PRIMITIVE_BOXING_TYPE_MAPPING.get(attributeType).getCanonicalName())
@@ -261,14 +341,14 @@ public class PropertyAttributeHelper<C, V_ARRAY> {
       return null;
     }
 
-    Class<? extends Object> valueClass = valueObject.getClass();
-
-    Class<?> attributeType = attributeMetadata.getValueType();
+    if (parameterClass.equals(valueObject.getClass())) {
+      return valueObject;
+    }
 
     if (attributeMetadata.isMultiple()) {
-      return resolveMultiValue(valueObject, valueClass, attributeType);
+      return resolveNonExactTypeMatchMultiValue(valueObject);
     } else {
-      return resolveSimpleValue(valueObject, valueClass, attributeType);
+      return resolveSimpleValue(valueObject);
     }
   }
 

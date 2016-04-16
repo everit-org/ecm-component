@@ -35,7 +35,7 @@
 
   <properties>
     <source.dist.folder>${basedir}/src/dist/</source.dist.folder>
-    <eosgi.testnum>11</eosgi.testnum>
+    <eosgi.testnum>12</eosgi.testnum>
     <maven.compiler.source>1.8</maven.compiler.source>
     <maven.compiler.target>1.8</maven.compiler.target>
     <baselining.baseline.skip>true</baselining.baseline.skip>

@@ -38,6 +38,7 @@ import org.everit.osgi.ecm.annotation.attribute.StringAttributes;
 import org.everit.osgi.ecm.annotation.metadatabuilder.MetadataBuilder;
 import org.everit.osgi.ecm.component.ComponentContext;
 import org.everit.osgi.ecm.component.ECMComponentConstants;
+import org.everit.osgi.ecm.component.PasswordHolder;
 import org.everit.osgi.ecm.component.resource.ComponentContainer;
 import org.everit.osgi.ecm.component.resource.ComponentRevision;
 import org.everit.osgi.ecm.component.resource.ComponentState;
@@ -259,8 +260,8 @@ public class ECMTest {
       Collection<ServiceReference<ManagedService>> simpleComponentContainerReferences =
           componentContext.getBundleContext().getServiceReferences(
               ManagedService.class,
-              "(" + ECMComponentConstants.SERVICE_PROP_COMPONENT_CLASS
-                  + "=" + SimpleComponent.class.getName()
+              "(" + ECMComponentConstants.SERVICE_PROP_COMPONENT_ID
+                  + "=" + componentId
                   + ")");
 
       Assert.assertEquals(1, simpleComponentContainerReferences.size());
@@ -283,7 +284,6 @@ public class ECMTest {
   }
 
   @Test
-  @TestDuringDevelopment
   public void testFailingComponent() {
 
     ComponentMetadata componentMetadata = MetadataBuilder
@@ -489,6 +489,56 @@ public class ECMTest {
   }
 
   @Test
+  @TestDuringDevelopment
+  public void testPasswordAttribute() {
+    ComponentMetadata componentMetadata = MetadataBuilder
+        .buildComponentMetadata(PasswordHolderTestComponent.class);
+
+    ComponentContainerInstance<PasswordHolderTestComponent> container = factory
+        .createComponentContainer(componentMetadata);
+
+    container.open();
+
+    try {
+      PasswordHolderTestComponent service = waitForService(PasswordHolderTestComponent.class);
+      Assert.assertArrayEquals(
+          new PasswordHolder[] { new PasswordHolder("test1"), new PasswordHolder("test2") },
+          service.getNoSetterMultiPassword());
+
+      Assert.assertArrayEquals(
+          new PasswordHolder[] { new PasswordHolder("test1"), new PasswordHolder("test2") },
+          service.getPshArrayPassword());
+
+      Assert.assertArrayEquals(new String[] { "test1", "test2" }, service.getStringArrayPassword());
+
+      Assert.assertEquals("test", service.getNoSetterPassword().getPassword());
+      Assert.assertEquals("test", service.getPshPassword().getPassword());
+      Assert.assertEquals("test", service.getSimpleStringPassword());
+
+      Filter filter;
+      try {
+        filter = FrameworkUtil.createFilter("(noSetterMultiPassword=test1)");
+      } catch (InvalidSyntaxException e) {
+        throw new RuntimeException(e);
+      }
+
+      ServiceTracker<PasswordHolderTestComponent, PasswordHolderTestComponent> tracker =
+          new ServiceTracker<>(componentContext.getBundleContext(), filter, null);
+
+      tracker.open();
+
+      try {
+        Assert.assertEquals(1, tracker.getServices().length);
+      } finally {
+        tracker.close();
+      }
+
+    } finally {
+      container.close();
+    }
+  }
+
+  @Test
   public void testTestComponent() {
     ComponentMetadata testComponentMetadata = MetadataBuilder
         .buildComponentMetadata(TestComponent.class);
@@ -661,6 +711,5 @@ public class ECMTest {
     if (!result) {
       Assert.fail("Timeout");
     }
-
   }
 }

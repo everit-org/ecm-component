@@ -38,6 +38,7 @@ import javax.annotation.Generated;
 
 import org.everit.osgi.ecm.component.ComponentContext;
 import org.everit.osgi.ecm.component.ECMComponentConstants;
+import org.everit.osgi.ecm.component.PasswordHolder;
 import org.everit.osgi.ecm.component.resource.ComponentContainer;
 import org.everit.osgi.ecm.component.resource.ComponentState;
 import org.everit.osgi.ecm.component.ri.internal.attribute.BundleCapabilityReferenceAttributeHelper;
@@ -48,6 +49,7 @@ import org.everit.osgi.ecm.component.ri.internal.resource.ComponentRevisionImpl;
 import org.everit.osgi.ecm.metadata.AttributeMetadata;
 import org.everit.osgi.ecm.metadata.BundleCapabilityReferenceMetadata;
 import org.everit.osgi.ecm.metadata.ComponentMetadata;
+import org.everit.osgi.ecm.metadata.PasswordAttributeMetadata;
 import org.everit.osgi.ecm.metadata.PropertyAttributeMetadata;
 import org.everit.osgi.ecm.metadata.ReferenceMetadata;
 import org.everit.osgi.ecm.metadata.ServiceMetadata;
@@ -306,11 +308,12 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
   }
 
   private void addCommonComponentProperties(final Map<String, Object> properties) {
-    String componentId = componentContainer.getComponentMetadata().getComponentId();
-    if (componentId != null) {
-      properties.put(ECMComponentConstants.SERVICE_PROP_COMPONENT_CONTAINER_SERVICE_ID,
-          componentContainer.getServiceId());
-    }
+    ComponentMetadata componentMetadata = componentContainer.getComponentMetadata();
+
+    properties.put(ECMComponentConstants.SERVICE_PROP_COMPONENT_ID,
+        componentMetadata.getComponentId());
+    properties.put(ECMComponentConstants.SERVICE_PROP_COMPONENT_VERSION,
+        componentContainer.getVersion());
   }
 
   private void callUpdateMethod() {
@@ -350,6 +353,21 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
         referenceHelper.close();
       }
     }
+  }
+
+  private Map<String, Object> createPropMapFromConfigDictionary(final Dictionary<String, ?> props) {
+    Map<String, Object> result = new HashMap<String, Object>();
+
+    if (props != null) {
+      Enumeration<?> elements = props.elements();
+      Enumeration<String> keys = props.keys();
+      while (keys.hasMoreElements()) {
+        String key = keys.nextElement();
+        Object element = elements.nextElement();
+        result.put(key, element);
+      }
+    }
+    return result;
   }
 
   @Generated("eclipse")
@@ -588,6 +606,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
       final Dictionary<String, ?> properties) {
 
     validateComponentStateForServiceRegistration();
+
     ServiceRegistration<S> lServiceRegistration = bundleContext.registerService(clazz, service,
         properties);
     return registerServiceInternal(lServiceRegistration);
@@ -625,6 +644,28 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
     revisionBuilder.removeServiceRegistration(pServiceRegistration);
   }
 
+  private void replacePasswordStringsToPasswordHoldersInProperties(final Map<String, Object> result,
+      final AttributeMetadata<?> attributeMetadata) {
+    String attributeId = attributeMetadata.getAttributeId();
+    if (attributeMetadata instanceof PasswordAttributeMetadata
+        && result.containsKey(attributeId)) {
+
+      Object password = result.get(attributeId);
+      if (password != null) {
+        if (password instanceof String) {
+          result.put(attributeId, new PasswordHolder((String) password));
+        } else if (password instanceof String[]) {
+          String[] passwordStringArray = (String[]) password;
+          PasswordHolder[] passwordHolderArray = new PasswordHolder[passwordStringArray.length];
+          for (int i = 0; i < passwordStringArray.length; i++) {
+            passwordHolderArray[i] = new PasswordHolder(passwordStringArray[i]);
+          }
+          result.put(attributeId, passwordHolderArray);
+        }
+      }
+    }
+  }
+
   private Method resolveAnnotatedMethod(final String methodType,
       final MethodDescriptor methodDescriptor) {
     if (methodDescriptor == null) {
@@ -648,17 +689,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
   }
 
   private Map<String, Object> resolveProperties(final Dictionary<String, ?> props) {
-    Map<String, Object> result = new HashMap<String, Object>();
-
-    if (props != null) {
-      Enumeration<?> elements = props.elements();
-      Enumeration<String> keys = props.keys();
-      while (keys.hasMoreElements()) {
-        String key = keys.nextElement();
-        Object element = elements.nextElement();
-        result.put(key, element);
-      }
-    }
+    Map<String, Object> result = createPropMapFromConfigDictionary(props);
 
     AttributeMetadata<?>[] attributes = componentContainer.getComponentMetadata().getAttributes();
     for (AttributeMetadata<?> attributeMetadata : attributes) {
@@ -674,6 +705,8 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
           }
         }
       }
+
+      replacePasswordStringsToPasswordHoldersInProperties(result, attributeMetadata);
     }
 
     addCommonComponentProperties(result);
@@ -779,8 +812,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
 
       if (serviceInterfaces.length > 0) {
         serviceRegistration = registerService(serviceInterfaces, instance,
-            new Hashtable<String, Object>(
-                properties));
+            new Hashtable<String, Object>(properties));
       }
       revisionBuilder.active();
     } finally {

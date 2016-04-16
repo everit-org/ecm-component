@@ -25,9 +25,9 @@ import org.everit.osgi.ecm.component.ri.internal.metatype.MetatypeProviderImpl;
 import org.everit.osgi.ecm.component.ri.internal.resource.ComponentRevisionImpl;
 import org.everit.osgi.ecm.metadata.ComponentMetadata;
 import org.osgi.framework.BundleContext;
-import org.osgi.framework.Constants;
 import org.osgi.framework.ServiceReference;
 import org.osgi.framework.ServiceRegistration;
+import org.osgi.framework.Version;
 import org.osgi.resource.Capability;
 import org.osgi.resource.Requirement;
 import org.osgi.resource.Wire;
@@ -53,9 +53,9 @@ public abstract class AbstractComponentContainer<C> implements MetaTypeProvider,
 
   private final MetatypeProviderImpl<C> metatypeProvider;
 
-  private Long serviceId = null;
-
   private ServiceRegistration<?> serviceRegistration = null;
+
+  private final Version version;
 
   /**
    * Constructor.
@@ -73,18 +73,23 @@ public abstract class AbstractComponentContainer<C> implements MetaTypeProvider,
     this.bundleContext = bundleContext;
     this.logService = logService;
     this.metatypeProvider = new MetatypeProviderImpl<C>(componentMetadata, bundleContext);
+    this.version = resolveComponentVersion();
   }
 
   /**
-   * Add service properties that are available for all kind of components:
-   * {@value ECMComponentConstants#SERVICE_PROP_COMPONENT_CONTAINER_SERVICE_ID}.
+   * Add service properties that are available for the component container service. The function
+   * will register the following properties:
+   * <ul>
+   * <li>{@value ECMComponentConstants#SERVICE_PROP_COMPONENT_ID}</li>
+   * <li>{@value ECMComponentConstants#SERVICE_PROP_COMPONENT_VERSION}</li>
+   * </ul>
+   *
    *
    * @param properties
    *          The configuration of the component.
    */
   protected void addCommonContainerServiceProperties(final Dictionary<String, Object> properties) {
-    properties.put(ECMComponentConstants.SERVICE_PROP_COMPONENT_VERSION,
-        componentMetadata.getType());
+    properties.put(ECMComponentConstants.SERVICE_PROP_COMPONENT_VERSION, this.version);
     properties.put(ECMComponentConstants.SERVICE_PROP_COMPONENT_ID,
         componentMetadata.getComponentId());
   }
@@ -116,12 +121,12 @@ public abstract class AbstractComponentContainer<C> implements MetaTypeProvider,
   @Override
   public abstract ComponentRevisionImpl<C>[] getResources();
 
-  public Long getServiceId() {
-    return serviceId;
-  }
-
   public ServiceReference<?> getServiceReference() {
     return serviceRegistration.getReference();
+  }
+
+  public Version getVersion() {
+    return version;
   }
 
   @Override
@@ -180,8 +185,7 @@ public abstract class AbstractComponentContainer<C> implements MetaTypeProvider,
 
   /**
    * Registers (or re-registers) the service of the component with the given data. The service
-   * registration will be stored in {@link #serviceRegistration}, and the ID of the service will be
-   * stored in {@link #serviceId}.
+   * registration will be stored in {@link #serviceRegistration}.
    *
    * @param properties
    *          The service properties.
@@ -194,22 +198,25 @@ public abstract class AbstractComponentContainer<C> implements MetaTypeProvider,
     serviceRegistration = bundleContext.registerService(
         serviceInterfaces.toArray(new String[serviceInterfaces.size()]),
         this, properties);
-    ServiceReference<?> reference = getServiceReference();
-    Object serviceIdAsObject = reference.getProperty(Constants.SERVICE_ID);
-    if (serviceIdAsObject instanceof Long) {
-      serviceId = (Long) serviceIdAsObject;
+  }
+
+  private Version resolveComponentVersion() {
+    Version version = componentMetadata.getVersion();
+    if (version != null) {
+      return version;
     }
+
+    return bundleContext.getBundle().getVersion();
   }
 
   /**
    * Unregisters the service of the component if the service registration exists, is setting null
-   * into {@link #serviceRegistration} and {@link #serviceId}.
+   * into {@link #serviceRegistration}.
    */
   protected void unregisterService() {
     if (serviceRegistration != null) {
       serviceRegistration.unregister();
       serviceRegistration = null;
-      serviceId = null;
     }
   }
 }

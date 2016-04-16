@@ -126,7 +126,10 @@ public class ComponentContainerImpl<C> extends AbstractComponentContainer<C>
 
     if ((componentContext == null)
         && ((properties != null) || ConfigurationPolicy.OPTIONAL.equals(configurationPolicy))) {
-      componentContext = new ComponentContextImpl<C>(this, getBundleContext(), props, getLogService());
+
+      componentContext =
+          new ComponentContextImpl<C>(this, getBundleContext(), props, getLogService());
+
       componentAtomicReference.set(componentContext);
       componentContext.open();
     } else if ((componentContext != null) && (properties == null)
