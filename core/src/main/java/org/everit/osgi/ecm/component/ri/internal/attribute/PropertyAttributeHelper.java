@@ -108,6 +108,22 @@ public class PropertyAttributeHelper<C, V_ARRAY> {
 
   }
 
+  private void checkAttributeOptionality() {
+    if (!attributeMetadata.isOptional()) {
+      failDuringValueResolution("Mandatory attribute is not specified");
+    }
+  }
+
+  private Object convertNonEmptyStringAttributeValueToChar(final String stringValue) {
+    if (stringValue.length() == 1) {
+      return stringValue.charAt(0);
+    } else if (stringValue.length() > 1) {
+      failDuringValueResolution(
+          "String value with multiple characters cannot be converted to char type");
+    }
+    return null;
+  }
+
   private void failDuringValueResolution(final String message) {
     Map<String, Object> properties = componentContext.getProperties();
     String servicePid = (String) properties.get(Constants.SERVICE_PID);
@@ -116,11 +132,25 @@ public class PropertyAttributeHelper<C, V_ARRAY> {
     if (servicePid == null) {
       servicePid = componentMetadata.getComponentId();
     }
-    Throwable e = new ConfigurationException("Error during updating configuration of component '"
-        + servicePid
-        + "' declared in class '" + componentMetadata.getType() + "': "
+    Throwable e = new ConfigurationException("Error during updating attribute '"
+        + attributeMetadata.getAttributeId() + "' in configuration of component '"
+        + servicePid + "' declared in class '" + componentMetadata.getType() + "': "
         + message);
     componentContext.fail(e, false);
+  }
+
+  private void failOnIncomaptibleSimpleType(final Class<? extends Object> valueType,
+      final Class<?> attributeType) {
+
+    StringBuilder sb = new StringBuilder();
+    if (attributeType.isPrimitive()) {
+      sb.append("Either ")
+          .append(PRIMITIVE_BOXING_TYPE_MAPPING.get(attributeType).getCanonicalName())
+          .append(" or ");
+    }
+    sb.append(attributeType.getCanonicalName()).append(" was expected, but got ")
+        .append(valueType.getCanonicalName());
+    failDuringValueResolution(sb.toString());
   }
 
   public PropertyAttributeMetadata<V_ARRAY> getAttributeMetadata() {
@@ -149,8 +179,8 @@ public class PropertyAttributeHelper<C, V_ARRAY> {
     Class<?> componentType = valueObject.getClass().getComponentType();
     if (!PasswordHolder.class.equals(componentType) && !String.class.equals(componentType)) {
       failDuringValueResolution(
-          "Either 'String[]' or 'PasswordHolder[]' was expected for attribute '"
-              + attributeMetadata.getAttributeId() + "' but got '" + componentType + "[]'");
+          "Either 'String[]' or 'PasswordHolder[]' was expected, but got '" + componentType
+              + "[]'");
       return null;
     }
 
@@ -176,16 +206,14 @@ public class PropertyAttributeHelper<C, V_ARRAY> {
     Class<? extends Object> valueClass = valueObject.getClass();
 
     if (!valueClass.isArray()) {
-      failDuringValueResolution("An array was expected as value for attribute '"
-          + attributeMetadata.getAttributeId() + "' but got '" + valueClass.getCanonicalName()
-          + '\'');
+      failDuringValueResolution(
+          "An array was expected as value , but got '" + valueClass.getCanonicalName() + '\'');
       return null;
     }
 
     if (!(attributeMetadata instanceof PasswordAttributeMetadata)) {
       failDuringValueResolution("'" + parameterClass.getCanonicalName()
-          + "' was expected for attribute '" + attributeMetadata.getAttributeId() + "', but got '"
-          + valueClass.getCanonicalName() + "'");
+          + "' was expected, but got '" + valueClass.getCanonicalName() + "'");
     }
 
     return resolveMultiPasswordParamValue(valueObject);
@@ -267,9 +295,8 @@ public class PropertyAttributeHelper<C, V_ARRAY> {
       final Class<?> originalValueType) {
     Class<?> valueType = simpleValue.getClass();
     if (!String.class.equals(valueType) && !PasswordHolder.class.equals(valueType)) {
-      failDuringValueResolution(
-          "Either 'String[]' or 'PasswordHolder[]' was expected for attribute '"
-              + attributeMetadata.getAttributeId() + "' but got '" + originalValueType + "'");
+      failDuringValueResolution("Either 'String[]' or 'PasswordHolder[]' was expected, but got '"
+          + originalValueType + "'");
       return null;
     }
     if (String.class.equals(valueType)) {
@@ -281,7 +308,6 @@ public class PropertyAttributeHelper<C, V_ARRAY> {
   private Object resolveSimpleValue(final Object valueObject) {
     Object simpleValue = valueObject;
     Class<?> valueClass = valueObject.getClass();
-    Class<?> simpleValueClass = valueClass;
 
     // Array can be accepted if the length of the array is ok
     if (valueClass.isArray()) {
@@ -289,20 +315,25 @@ public class PropertyAttributeHelper<C, V_ARRAY> {
       int length = Array.getLength(valueObject);
       if (length == 0) {
         if (!attributeMetadata.isOptional()) {
-          failDuringValueResolution("Mandatory non-array attribute '"
-              + attributeMetadata.getAttributeId()
-              + "' cannot be specified with an empty array.");
+          failDuringValueResolution(
+              "Mandatory non-array attribute cannot be specified with an empty array.");
         }
         return null;
       }
 
       if (length > 1) {
-        failDuringValueResolution("Simple value of attribute '" + attributeMetadata.getAttributeId()
-            + "' cannot be specified with an array that has more than one elements");
+        failDuringValueResolution("Simple value of attribute cannot be specified"
+            + " with an array that has more than one elements");
       }
       simpleValue = Array.get(valueObject, 0);
-      simpleValueClass = simpleValue.getClass();
     }
+
+    if (simpleValue == null) {
+      checkAttributeOptionality();
+      return null;
+    }
+
+    Class<?> simpleValueClass = simpleValue.getClass();
 
     if (simpleValueClass.equals(parameterClass)) {
       return simpleValue;
@@ -312,32 +343,18 @@ public class PropertyAttributeHelper<C, V_ARRAY> {
       return resolveSimplePasswordParamValue(simpleValue, valueClass);
     }
 
-    if (!parameterClass.equals(PRIMITIVE_BOXING_TYPE_MAPPING.get(simpleValueClass))
-        && !simpleValueClass.equals(PRIMITIVE_BOXING_TYPE_MAPPING.get(parameterClass))) {
-
-      Class<?> attributeType = attributeMetadata.getValueType();
-      StringBuilder sb = new StringBuilder("Either ");
-      if (attributeType.isPrimitive()) {
-        sb.append(PRIMITIVE_BOXING_TYPE_MAPPING.get(attributeType).getCanonicalName())
-            .append(" or ");
-      }
-      sb.append(attributeType.getCanonicalName()).append(" was expected for attribute '")
-          .append(attributeMetadata.getAttributeId()).append("' but got ")
-          .append(valueClass.getCanonicalName());
-      failDuringValueResolution(sb.toString());
-      return null;
+    if (parameterClass.equals(PRIMITIVE_BOXING_TYPE_MAPPING.get(simpleValueClass))
+        || simpleValueClass.equals(PRIMITIVE_BOXING_TYPE_MAPPING.get(parameterClass))) {
+      return simpleValue;
     }
 
-    return simpleValue;
+    return tryConvertingSimpleValue(simpleValue);
   }
 
   private Object resolveValue(final Object valueObject) {
     // Handle null value
     if (valueObject == null) {
-      if (!attributeMetadata.isOptional()) {
-        failDuringValueResolution("Mandatory attribute '" + attributeMetadata.getAttributeId()
-            + "' is not specified");
-      }
+      checkAttributeOptionality();
       return null;
     }
 
@@ -360,6 +377,65 @@ public class PropertyAttributeHelper<C, V_ARRAY> {
         + additionalMessage);
 
     componentContext.fail(e, true);
+  }
+
+  private Object tryConvertingSimpleValue(final Object simpleValue) {
+    Class<? extends Object> originalValueType = simpleValue.getClass();
+    Class<?> attributeType = attributeMetadata.getValueType();
+
+    if (simpleValue instanceof String) {
+      return tryConvertingStringValueToAttributeType(simpleValue);
+    }
+
+    failOnIncomaptibleSimpleType(originalValueType, attributeType);
+    return null;
+  }
+
+  private Object tryConvertingStringValueToAttributeType(final Object simpleValue) {
+    String stringValue = (String) simpleValue;
+
+    Class<?> attributeType = attributeMetadata.getValueType();
+    if (char.class.equals(attributeType)) {
+      return convertNonEmptyStringAttributeValueToChar(stringValue);
+    }
+
+    if ("".equals(stringValue.trim())) {
+      checkAttributeOptionality();
+      return null;
+    }
+
+    if (boolean.class.equals(attributeType)) {
+      return Boolean.valueOf(stringValue);
+    }
+
+    return tryConvertingStringValueToNumberOrFail(stringValue, attributeType);
+  }
+
+  private Object tryConvertingStringValueToNumberOrFail(final String stringValue,
+      final Class<?> attributeType) {
+
+    try {
+      if (byte.class.equals(attributeType)) {
+        return Byte.valueOf(stringValue);
+      } else if (double.class.equals(attributeType)) {
+        return Double.valueOf(stringValue);
+      } else if (float.class.equals(attributeType)) {
+        return Float.valueOf(stringValue);
+      } else if (int.class.equals(attributeType)) {
+        return Integer.valueOf(stringValue);
+      } else if (long.class.equals(attributeType)) {
+        return Long.valueOf(stringValue);
+      } else if (short.class.equals(attributeType)) {
+        return Short.valueOf(stringValue);
+      }
+    } catch (NumberFormatException e) {
+      failDuringValueResolution(
+          "String value \"" + stringValue + "\" cannot be converted to type '"
+              + attributeType.getCanonicalName() + "'");
+    }
+
+    failOnIncomaptibleSimpleType(String.class, attributeType);
+    return null;
   }
 
 }
