@@ -87,7 +87,7 @@ public class ECMTest {
 
   private ConfigurationAdmin configAdmin;
 
-  private Set<Configuration> configurations = new HashSet<>();
+  private final Set<Configuration> configurations = new HashSet<>();
 
   private ComponentContainerFactory factory;
 
@@ -114,7 +114,7 @@ public class ECMTest {
   }
 
   private Hashtable<String, Object> createPresetPropertiesForEveryTypeAttributeTestComponent() {
-    Hashtable<String, Object> properties = new Hashtable<String, Object>();
+    Hashtable<String, Object> properties = new Hashtable<>();
     properties.put("booleanAttribute", true);
     properties.put("booleanArrayAttribute", new boolean[] { true });
 
@@ -176,7 +176,7 @@ public class ECMTest {
       configuration = configAdmin.getConfiguration(BundleCapabilityTestComponent.class.getName(),
           null);
 
-      Hashtable<String, Object> properties = new Hashtable<String, Object>();
+      Hashtable<String, Object> properties = new Hashtable<>();
 
       properties.put("bcArrayReference.target", new String[] {});
       properties.put("bcHolderReference.target", new String[] {});
@@ -214,7 +214,8 @@ public class ECMTest {
         .createComponentContainer(testComponentMetadata);
     container.open();
 
-    Hashtable<String, Object> properties = createPresetPropertiesForEveryTypeAttributeTestComponent();
+    Hashtable<String, Object> properties =
+        createPresetPropertiesForEveryTypeAttributeTestComponent();
     properties.put("testComponentUnregistersServiceAfterGettingUnsatisfied", true);
     updateConfiguration(container, properties);
 
@@ -328,7 +329,7 @@ public class ECMTest {
 
   private void testFailingWithEmptyProperties(
       final ComponentContainerInstance<FailingComponent> container) {
-    Hashtable<String, Object> properties = new Hashtable<String, Object>();
+    Hashtable<String, Object> properties = new Hashtable<>();
     updateConfiguration(container, properties);
     waitForTrueSupplied(() -> getComponentState(container) == ComponentState.ACTIVE);
     Assert.assertEquals(1, container.getResources().length);
@@ -546,12 +547,14 @@ public class ECMTest {
         .createComponentContainer(testComponentMetadata);
     container.open();
 
-    Hashtable<String, Object> properties = createPresetPropertiesForEveryTypeAttributeTestComponent();
+    Hashtable<String, Object> properties =
+        createPresetPropertiesForEveryTypeAttributeTestComponent();
 
     updateConfiguration(container, properties);
 
     try {
-      EveryTypeAttributeTestComponent testComponent = waitForService(EveryTypeAttributeTestComponent.class);
+      EveryTypeAttributeTestComponent testComponent =
+          waitForService(EveryTypeAttributeTestComponent.class);
 
       // Check if all of the properties got the right value
       Assert.assertTrue(testComponent.getBooleanAttribute());
