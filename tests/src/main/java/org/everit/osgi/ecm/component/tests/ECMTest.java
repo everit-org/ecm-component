@@ -74,6 +74,7 @@ import org.osgi.util.tracker.ServiceTracker;
     @StringAttribute(attributeId = TestRunnerConstants.SERVICE_PROPERTY_TEST_ID,
         defaultValue = "ECMTest") })
 @Service
+@TestDuringDevelopment
 public class ECMTest {
 
   private static final double TEST_VALUE_DOUBLE = 1.1D;
@@ -112,7 +113,7 @@ public class ECMTest {
     configurations.clear();
   }
 
-  private Hashtable<String, Object> createPresetPropertiesForTestComponent() {
+  private Hashtable<String, Object> createPresetPropertiesForEveryTypeAttributeTestComponent() {
     Hashtable<String, Object> properties = new Hashtable<String, Object>();
     properties.put("booleanAttribute", true);
     properties.put("booleanArrayAttribute", new boolean[] { true });
@@ -208,12 +209,12 @@ public class ECMTest {
   @Test
   public void testComponentUnregistersServiceAfterGettingUnsatisfied() {
     ComponentMetadata testComponentMetadata = MetadataBuilder
-        .buildComponentMetadata(TestComponent.class);
+        .buildComponentMetadata(EveryTypeAttributeTestComponent.class);
     ComponentContainerInstance<Object> container = factory
         .createComponentContainer(testComponentMetadata);
     container.open();
 
-    Hashtable<String, Object> properties = createPresetPropertiesForTestComponent();
+    Hashtable<String, Object> properties = createPresetPropertiesForEveryTypeAttributeTestComponent();
     properties.put("testComponentUnregistersServiceAfterGettingUnsatisfied", true);
     updateConfiguration(container, properties);
 
@@ -227,8 +228,8 @@ public class ECMTest {
 
       BundleContext bundleContext = componentContext.getBundleContext();
 
-      Collection<ServiceReference<TestComponent>> serviceReferences =
-          bundleContext.getServiceReferences(TestComponent.class, filterString);
+      Collection<ServiceReference<EveryTypeAttributeTestComponent>> serviceReferences =
+          bundleContext.getServiceReferences(EveryTypeAttributeTestComponent.class, filterString);
 
       Assert.assertEquals(0, serviceReferences.size());
     } catch (InvalidSyntaxException e) {
@@ -489,7 +490,6 @@ public class ECMTest {
   }
 
   @Test
-  @TestDuringDevelopment
   public void testPasswordAttribute() {
     ComponentMetadata componentMetadata = MetadataBuilder
         .buildComponentMetadata(PasswordHolderTestComponent.class);
@@ -541,17 +541,17 @@ public class ECMTest {
   @Test
   public void testTestComponent() {
     ComponentMetadata testComponentMetadata = MetadataBuilder
-        .buildComponentMetadata(TestComponent.class);
+        .buildComponentMetadata(EveryTypeAttributeTestComponent.class);
     ComponentContainerInstance<Object> container = factory
         .createComponentContainer(testComponentMetadata);
     container.open();
 
-    Hashtable<String, Object> properties = createPresetPropertiesForTestComponent();
+    Hashtable<String, Object> properties = createPresetPropertiesForEveryTypeAttributeTestComponent();
 
     updateConfiguration(container, properties);
 
     try {
-      TestComponent testComponent = waitForService(TestComponent.class);
+      EveryTypeAttributeTestComponent testComponent = waitForService(EveryTypeAttributeTestComponent.class);
 
       // Check if all of the properties got the right value
       Assert.assertTrue(testComponent.getBooleanAttribute());

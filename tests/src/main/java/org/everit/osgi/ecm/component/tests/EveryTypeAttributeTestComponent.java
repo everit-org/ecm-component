@@ -48,7 +48,7 @@ import org.osgi.service.cm.ManagedService;
     multiple = ThreeStateBoolean.TRUE,
     defaultValue = { false, false, true }) })
 @Service
-public class TestComponent {
+public class EveryTypeAttributeTestComponent {
 
   /**
    * Variable is initialized from Activate method.
@@ -117,7 +117,7 @@ public class TestComponent {
    * Activate method that sets {@link #booleanArrayAttribute} based on componentContext.
    */
   @Activate
-  public void activate(final ComponentContext<TestComponent> componentContext) {
+  public void activate(final ComponentContext<EveryTypeAttributeTestComponent> componentContext) {
     Map<String, Object> properties = componentContext.getComponentRevision().getProperties();
     Object booleanArrayAttribute = properties.get("booleanArrayAttribute");
     this.booleanArrayAttribute = (boolean[]) booleanArrayAttribute;

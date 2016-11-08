@@ -43,7 +43,7 @@ import org.osgi.service.metatype.MetaTypeProvider;
 public class ComponentContainerImpl<C> extends AbstractComponentContainer<C>
     implements ManagedService {
 
-  private AtomicBoolean closed = new AtomicBoolean(true);
+  private final AtomicBoolean closed = new AtomicBoolean(true);
 
   private final AtomicReference<ComponentContextImpl<C>> componentAtomicReference =
       new AtomicReference<ComponentContextImpl<C>>();

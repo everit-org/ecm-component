@@ -43,6 +43,7 @@ import org.everit.osgi.ecm.component.resource.ComponentContainer;
 import org.everit.osgi.ecm.component.resource.ComponentState;
 import org.everit.osgi.ecm.component.ri.internal.attribute.BundleCapabilityReferenceAttributeHelper;
 import org.everit.osgi.ecm.component.ri.internal.attribute.PropertyAttributeHelper;
+import org.everit.osgi.ecm.component.ri.internal.attribute.PropertyAttributeUtil;
 import org.everit.osgi.ecm.component.ri.internal.attribute.ReferenceHelper;
 import org.everit.osgi.ecm.component.ri.internal.attribute.ServiceReferenceAttributeHelper;
 import org.everit.osgi.ecm.component.ri.internal.resource.ComponentRevisionImpl;
@@ -267,10 +268,14 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
     this.bundleContext = bundleContext;
     this.componentContainer = componentContainer;
     this.logService = logService;
-    this.revisionBuilder = new ComponentRevisionImpl.Builder<C>(componentContainer,
-        resolveProperties(properties));
 
-    if (isFailed()) {
+    Map<String, Object> propertyMap = createPropMapFromConfigDictionary(properties);
+    this.revisionBuilder =
+        new ComponentRevisionImpl.Builder<C>(componentContainer, propertyMap);
+    try {
+      this.revisionBuilder.updateProperties(resolveProperties(propertyMap));
+    } catch (RuntimeException e) {
+      fail(e, false);
       return;
     }
 
@@ -353,6 +358,39 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
         referenceHelper.close();
       }
     }
+  }
+
+  private void convertAttributeValueIfNecessary(
+      final AttributeMetadata<?> attributeMetadata, final Map<String, Object> result) {
+
+    if (attributeMetadata.isMultiple()) {
+      // TODO convert multiple values or at least do a check.
+      return;
+    }
+
+    String attributeId = attributeMetadata.getAttributeId();
+    Object attributeValue = result.get(attributeId);
+
+    attributeValue = PropertyAttributeUtil
+        .resolveSimpleValueEvenIfItIsInOneElementArray(attributeValue, this, attributeMetadata);
+
+    if (attributeValue == null) {
+      return;
+    }
+
+    Class<? extends Object> configuredAttributeValueType = attributeValue.getClass();
+
+    Class<?> attributeType = attributeMetadata.getValueType();
+    if (PropertyAttributeUtil.typesEqualWithOrWithoutBoxing(configuredAttributeValueType,
+        attributeType)) {
+      return;
+    }
+
+    Object newAttributeValue =
+        PropertyAttributeUtil.tryConvertingSimpleValue(attributeValue, attributeType,
+            this, attributeMetadata);
+
+    result.put(attributeId, newAttributeValue);
   }
 
   private Map<String, Object> createPropMapFromConfigDictionary(final Dictionary<String, ?> props) {
@@ -688,30 +726,30 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
     return method;
   }
 
-  private Map<String, Object> resolveProperties(final Dictionary<String, ?> props) {
-    Map<String, Object> result = createPropMapFromConfigDictionary(props);
-
+  private Map<String, Object> resolveProperties(final Map<String, Object> props) {
     AttributeMetadata<?>[] attributes = componentContainer.getComponentMetadata().getAttributes();
     for (AttributeMetadata<?> attributeMetadata : attributes) {
       String attributeId = attributeMetadata.getAttributeId();
-      if (!result.containsKey(attributeId)) {
+      if (!props.containsKey(attributeId)) {
         Object defaultValue = attributeMetadata.getDefaultValue();
         if (attributeMetadata.isMultiple() && (defaultValue != null)) {
-          result.put(attributeId, defaultValue);
+          props.put(attributeId, defaultValue);
         } else if ((defaultValue != null) && (Array.getLength(defaultValue) > 0)) {
           Object value = Array.get(defaultValue, 0);
           if (value != null) {
-            result.put(attributeId, value);
+            props.put(attributeId, value);
           }
         }
+      } else {
+        convertAttributeValueIfNecessary(attributeMetadata, props);
       }
 
-      replacePasswordStringsToPasswordHoldersInProperties(result, attributeMetadata);
+      replacePasswordStringsToPasswordHoldersInProperties(props, attributeMetadata);
     }
 
-    addCommonComponentProperties(result);
+    addCommonComponentProperties(props);
 
-    return Collections.unmodifiableMap(result);
+    return Collections.unmodifiableMap(props);
   }
 
   private String[] resolveServiceInterfaces() {
@@ -903,7 +941,15 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
     ComponentState stateBeforeUpdate = getState();
 
     Map<String, Object> oldProperties = getProperties();
-    Map<String, Object> newProperties = resolveProperties(properties);
+    Map<String, Object> newPropertyMap = createPropMapFromConfigDictionary(properties);
+
+    Map<String, Object> newProperties;
+    try {
+      newProperties = resolveProperties(newPropertyMap);
+    } catch (RuntimeException e) {
+      fail(e, false);
+      return;
+    }
 
     // After this preparing, the component will be either UPDATING_CONFIGURATION or ACTIVE
     prepareConfigurationUpdate(stateBeforeUpdate, newProperties);

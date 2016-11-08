@@ -32,16 +32,17 @@ import org.osgi.framework.wiring.BundleCapability;
 public class BundleCapabilityTestComponent {
 
   @BundleCapabilityRef(namespace = "testNS", stateMask = Bundle.ACTIVE | Bundle.STARTING,
-      setter = "setBcArrayReference")
+      setter = "setBcArrayReference", optional = true)
   private BundleCapability[] bcArrayReference;
 
-  @BundleCapabilityRef(namespace = "testNS", configurationType = ReferenceConfigurationType.CLAUSE)
+  @BundleCapabilityRef(namespace = "testNS", configurationType = ReferenceConfigurationType.CLAUSE,
+      optional = true)
   private BundleCapability bcClauseReference;
 
-  @BundleCapabilityRef(namespace = "testNS")
+  @BundleCapabilityRef(namespace = "testNS", optional = true)
   private BundleCapabilityHolder bcHolderReference;
 
-  @BundleCapabilityRef(namespace = "testNS")
+  @BundleCapabilityRef(namespace = "testNS", optional = true)
   private BundleCapability bcReference;
 
   public BundleCapability[] getBcArrayReference() {
