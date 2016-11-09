@@ -25,8 +25,7 @@ import org.everit.osgi.ecm.annotation.attribute.StringAttribute;
  */
 @Component(
     componentId = SimpleComponent.COMPONENT_ID,
-    configurationPolicy = ConfigurationPolicy.REQUIRE
-    )
+    configurationPolicy = ConfigurationPolicy.REQUIRE)
 @Service
 public class SimpleComponent {
 
@@ -35,7 +34,7 @@ public class SimpleComponent {
   @StringAttribute
   private String simpleStringAttr;
 
-  public  String getComponentId() {
+  public String getComponentId() {
     return COMPONENT_ID;
   }
 
@@ -46,6 +45,5 @@ public class SimpleComponent {
   public void setSimpleStringAttr(final String simpleStringAttr) {
     this.simpleStringAttr = simpleStringAttr;
   }
-
 
 }

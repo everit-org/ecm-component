@@ -21,6 +21,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.everit.osgi.ecm.component.ConfigurationException;
+import org.everit.osgi.ecm.component.PasswordHolder;
 import org.everit.osgi.ecm.component.ri.internal.ComponentContextImpl;
 import org.everit.osgi.ecm.metadata.AttributeMetadata;
 import org.everit.osgi.ecm.metadata.ComponentMetadata;
@@ -164,12 +165,19 @@ public final class PropertyAttributeUtil {
 
     Class<? extends Object> originalValueType = simpleValue.getClass();
 
+    if (originalValueType.equals(targetType)) {
+      return simpleValue;
+    }
+
     PropertyAttributeUtil instance = new PropertyAttributeUtil(componentContext, attributeMetadata);
     if (simpleValue instanceof String) {
       return instance.tryConvertingStringValueToAttributeType(simpleValue, targetType);
+    } else if (simpleValue instanceof PasswordHolder && targetType.equals(String.class)) {
+      return ((PasswordHolder) simpleValue).getPassword();
     }
 
     instance.failOnIncomaptibleSimpleType(originalValueType, targetType);
+
     return null;
   }
 

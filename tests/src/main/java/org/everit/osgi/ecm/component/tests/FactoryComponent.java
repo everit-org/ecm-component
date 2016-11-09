@@ -60,7 +60,7 @@ public class FactoryComponent {
    */
   @Activate
   public void activate(final ComponentContext<FactoryComponent> context) {
-    Dictionary<String, Object> properties = new Hashtable<String, Object>();
+    Dictionary<String, Object> properties = new Hashtable<>();
     ComponentRevision<FactoryComponent> componentRevision = context.getComponentRevision();
     Map<String, Object> componentProperties = componentRevision.getProperties();
     Object servicePid = componentProperties.get(Constants.SERVICE_PID);

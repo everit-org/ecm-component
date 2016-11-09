@@ -23,10 +23,10 @@ import java.util.Dictionary;
 import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.List;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.function.Supplier;
 
-import org.everit.osgi.dev.testrunner.TestDuringDevelopment;
 import org.everit.osgi.dev.testrunner.TestRunnerConstants;
 import org.everit.osgi.ecm.annotation.Activate;
 import org.everit.osgi.ecm.annotation.Component;
@@ -74,7 +74,6 @@ import org.osgi.util.tracker.ServiceTracker;
     @StringAttribute(attributeId = TestRunnerConstants.SERVICE_PROPERTY_TEST_ID,
         defaultValue = "ECMTest") })
 @Service
-@TestDuringDevelopment
 public class ECMTest {
 
   private static final double TEST_VALUE_DOUBLE = 1.1D;
@@ -111,6 +110,18 @@ public class ECMTest {
       }
     }
     configurations.clear();
+  }
+
+  private void convertAllNonArrayPropertiesToStringRepresentation(
+      final Hashtable<String, Object> properties) {
+
+    @SuppressWarnings("unchecked")
+    Hashtable<String, Object> clonedProperties = (Hashtable<String, Object>) properties.clone();
+    for (Entry<String, Object> entry : clonedProperties.entrySet()) {
+      if (!entry.getValue().getClass().isArray()) {
+        properties.put(entry.getKey(), String.valueOf(entry.getValue()));
+      }
+    }
   }
 
   private Hashtable<String, Object> createPresetPropertiesForEveryTypeAttributeTestComponent() {
@@ -160,6 +171,44 @@ public class ECMTest {
   @ServiceRef(defaultValue = "(service.id>=0)")
   public void setConfigAdmin(final ConfigurationAdmin configAdmin) {
     this.configAdmin = configAdmin;
+  }
+
+  @Test
+  public void testAttributeConversionFromString() {
+    Hashtable<String, Object> properties =
+        createPresetPropertiesForEveryTypeAttributeTestComponent();
+
+    convertAllNonArrayPropertiesToStringRepresentation(properties);
+
+    testEveryTypeComponentWithProperties(properties);
+  }
+
+  @Test
+  public void testAttributeConversionFromStringFailure() {
+    ComponentMetadata testComponentMetadata = MetadataBuilder
+        .buildComponentMetadata(EveryTypeAttributeTestComponent.class);
+    ComponentContainerInstance<Object> container = factory
+        .createComponentContainer(testComponentMetadata);
+    container.open();
+
+    Hashtable<String, Object> properties =
+        createPresetPropertiesForEveryTypeAttributeTestComponent();
+
+    properties.put("byteAttribute", "not_a_number");
+
+    try {
+      updateConfiguration(container, properties);
+
+      waitForTrueSupplied(() -> getComponentState(container) == ComponentState.FAILED);
+
+      properties.put("byteAttribute", (byte) 1);
+
+      updateConfiguration(container, properties);
+
+      waitForTrueSupplied(() -> getComponentState(container) == ComponentState.ACTIVE);
+    } finally {
+      container.close();
+    }
   }
 
   @Test
@@ -282,6 +331,60 @@ public class ECMTest {
           throw new RuntimeException(e);
         }
       }
+    }
+  }
+
+  private void testEveryTypeComponentWithProperties(final Hashtable<String, Object> properties) {
+    ComponentMetadata testComponentMetadata = MetadataBuilder
+        .buildComponentMetadata(EveryTypeAttributeTestComponent.class);
+    ComponentContainerInstance<Object> container = factory
+        .createComponentContainer(testComponentMetadata);
+    container.open();
+
+    updateConfiguration(container, properties);
+
+    try {
+      EveryTypeAttributeTestComponent testComponent =
+          waitForService(EveryTypeAttributeTestComponent.class);
+
+      // Check if all of the properties got the right value
+      Assert.assertTrue(testComponent.getBooleanAttribute());
+      Assert.assertTrue(Arrays.equals(new boolean[] { true },
+          testComponent.getBooleanArrayAttribute()));
+
+      Assert.assertEquals((byte) 1, testComponent.getByteAttribute());
+      Assert.assertArrayEquals(new byte[] { 1 }, testComponent.getByteArrayAttribute());
+
+      Assert.assertEquals('a', testComponent.getCharAttribute());
+      Assert.assertArrayEquals(new char[] { 'a' }, testComponent.getCharArrayAttribute());
+
+      Assert.assertEquals(TEST_VALUE_DOUBLE, testComponent.getDoubleAttribute(), 0);
+      Assert.assertTrue(Arrays.equals(new double[] { TEST_VALUE_DOUBLE },
+          testComponent.getDoubleArrayAttribute()));
+
+      Assert.assertEquals(TEST_VALUE_FLOAT, testComponent.getFloatAttribute(), 0);
+      Assert.assertTrue(Arrays.equals(new float[] { TEST_VALUE_FLOAT },
+          testComponent.getFloatArrayAttribute()));
+
+      Assert.assertTrue(1 == testComponent.getIntAttribute());
+      Assert.assertTrue(Arrays.equals(new int[] { 1 }, testComponent.getIntArrayAttribute()));
+
+      Assert.assertTrue(1L == testComponent.getLongAttribute());
+      Assert.assertTrue(Arrays.equals(new long[] { 1L }, testComponent.getLongArrayAttribute()));
+
+      Assert.assertTrue(1 == testComponent.getShortAttribute());
+      Assert.assertTrue(Arrays.equals(new short[] { 1 }, testComponent.getShortArrayAttribute()));
+
+      Assert.assertEquals("123456", testComponent.getPasswordAttribute());
+      Assert.assertArrayEquals(new String[] { "123456" },
+          testComponent.getPasswordArrayAttribute());
+
+      Assert.assertEquals("Hello World", testComponent.getStringAttribute());
+      Assert.assertArrayEquals(new String[] { "Hello World" },
+          testComponent.getStringArrayAttribute());
+
+    } finally {
+      container.close();
     }
   }
 
@@ -462,7 +565,7 @@ public class ECMTest {
       int i = 0;
       final int maxIterationNum = 10;
       final long millisToSleep = 10;
-      while (capabilities.size() < 2 && i < maxIterationNum) {
+      while ((capabilities.size() < 2) && (i < maxIterationNum)) {
         Thread.sleep(millisToSleep);
         componentRevision = container.getResources()[0];
         capabilities = componentRevision.getCapabilities(null);
@@ -541,60 +644,10 @@ public class ECMTest {
 
   @Test
   public void testTestComponent() {
-    ComponentMetadata testComponentMetadata = MetadataBuilder
-        .buildComponentMetadata(EveryTypeAttributeTestComponent.class);
-    ComponentContainerInstance<Object> container = factory
-        .createComponentContainer(testComponentMetadata);
-    container.open();
-
     Hashtable<String, Object> properties =
         createPresetPropertiesForEveryTypeAttributeTestComponent();
 
-    updateConfiguration(container, properties);
-
-    try {
-      EveryTypeAttributeTestComponent testComponent =
-          waitForService(EveryTypeAttributeTestComponent.class);
-
-      // Check if all of the properties got the right value
-      Assert.assertTrue(testComponent.getBooleanAttribute());
-      Assert.assertTrue(Arrays.equals(new boolean[] { true },
-          testComponent.getBooleanArrayAttribute()));
-
-      Assert.assertEquals((byte) 1, testComponent.getByteAttribute());
-      Assert.assertArrayEquals(new byte[] { 1 }, testComponent.getByteArrayAttribute());
-
-      Assert.assertEquals('a', testComponent.getCharAttribute());
-      Assert.assertArrayEquals(new char[] { 'a' }, testComponent.getCharArrayAttribute());
-
-      Assert.assertEquals(TEST_VALUE_DOUBLE, testComponent.getDoubleAttribute(), 0);
-      Assert.assertTrue(Arrays.equals(new double[] { TEST_VALUE_DOUBLE },
-          testComponent.getDoubleArrayAttribute()));
-
-      Assert.assertEquals(TEST_VALUE_FLOAT, testComponent.getFloatAttribute(), 0);
-      Assert.assertTrue(Arrays.equals(new float[] { TEST_VALUE_FLOAT },
-          testComponent.getFloatArrayAttribute()));
-
-      Assert.assertTrue(1 == testComponent.getIntAttribute());
-      Assert.assertTrue(Arrays.equals(new int[] { 1 }, testComponent.getIntArrayAttribute()));
-
-      Assert.assertTrue(1L == testComponent.getLongAttribute());
-      Assert.assertTrue(Arrays.equals(new long[] { 1L }, testComponent.getLongArrayAttribute()));
-
-      Assert.assertTrue(1 == testComponent.getShortAttribute());
-      Assert.assertTrue(Arrays.equals(new short[] { 1 }, testComponent.getShortArrayAttribute()));
-
-      Assert.assertEquals("123456", testComponent.getPasswordAttribute());
-      Assert.assertArrayEquals(new String[] { "123456" },
-          testComponent.getPasswordArrayAttribute());
-
-      Assert.assertEquals("Hello World", testComponent.getStringAttribute());
-      Assert.assertArrayEquals(new String[] { "Hello World" },
-          testComponent.getStringArrayAttribute());
-
-    } finally {
-      container.close();
-    }
+    testEveryTypeComponentWithProperties(properties);
   }
 
   @Test
@@ -702,7 +755,7 @@ public class ECMTest {
     long startTime = System.currentTimeMillis();
     long endTime = startTime;
     boolean result = supplier.get();
-    while (endTime - startTime < WAITING_TIMEOUT && !result) {
+    while (((endTime - startTime) < WAITING_TIMEOUT) && !result) {
       try {
         Thread.sleep(1);
       } catch (InterruptedException e) {
