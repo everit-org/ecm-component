@@ -219,6 +219,13 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
 
   private Class<C> componentType;
 
+  /**
+   * We need to store component type name to be able to write out meaningful log messages if wicked
+   * proxy technologies weave classes in the system and {@link #componentType}.getName() returns a
+   * meaningless name.
+   */
+  private String componentTypeName;
+
   private boolean configurationUpdateInProgress = false;
 
   private Method deactivateMethod;
@@ -279,9 +286,10 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
     Bundle bundle = bundleContext.getBundle();
     BundleWiring bundleWiring = bundle.adapt(BundleWiring.class);
     ClassLoader classLoader = bundleWiring.getClassLoader();
+    componentTypeName = componentMetadata.getType();
     try {
       @SuppressWarnings("unchecked")
-      Class<C> tmpComponentType = (Class<C>) classLoader.loadClass(componentMetadata.getType());
+      Class<C> tmpComponentType = (Class<C>) classLoader.loadClass(componentTypeName);
       componentType = tmpComponentType;
     } catch (ClassNotFoundException e) {
       fail(e, true);
@@ -562,6 +570,10 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
     return componentType;
   }
 
+  public String getComponentTypeName() {
+    return componentTypeName;
+  }
+
   @Override
   public C getInstance() {
     return instance;
@@ -721,14 +733,14 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
     if (method == null) {
       Exception exception = new IllegalMetadataException("Could not find " + methodType
           + " method '" + methodDescriptor.toString()
-          + "' for type " + componentType);
+          + "' for type " + componentTypeName);
       fail(exception, true);
     }
     if (method.getParameterTypes().length > 0) {
       Exception exception = new IllegalMetadataException(
           methodType.substring(0, 1).toUpperCase(Locale.getDefault()) + methodType.substring(1)
               + " method must not have any parameters. Method '"
-              + method.toGenericString() + "' of type " + componentType + " does have.");
+              + method.toGenericString() + "' of type " + componentTypeName + " does have.");
       fail(exception, true);
     }
     return method;
@@ -782,7 +794,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
     if (interfaces.size() != 0) {
       return interfaces.toArray(new String[interfaces.size()]);
     }
-    return new String[] { componentType.getName() };
+    return new String[] { componentTypeName };
   }
 
   private void restart() {

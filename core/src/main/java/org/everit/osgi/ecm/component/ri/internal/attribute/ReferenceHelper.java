@@ -144,7 +144,7 @@ public abstract class ReferenceHelper<CAPABILITY, COMPONENT, METADATA extends Re
           false);
       if (setterMethod == null) {
         throw new MetadataValidationException("Setter method '" + setterMethodDescriptor.toString()
-            + "' could not be found for class " + componentContext.getComponentType());
+            + "' could not be found for class " + componentContext.getComponentTypeName());
       }
 
       MethodHandles.Lookup lookup = MethodHandles.lookup();
@@ -155,7 +155,7 @@ public abstract class ReferenceHelper<CAPABILITY, COMPONENT, METADATA extends Re
       if ((parameterTypes.length != 1) || parameterTypes[0].isPrimitive()) {
         throw new MetadataValidationException("Setter method for reference '"
             + referenceMetadata.toString()
-            + "' that is defined in the class '" + componentContext.getComponentType()
+            + "' that is defined in the class '" + componentContext.getComponentTypeName()
             + "' must have one non-primitive parameter.");
       }
 
