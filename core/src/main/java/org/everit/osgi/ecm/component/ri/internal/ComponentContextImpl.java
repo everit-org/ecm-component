@@ -26,6 +26,7 @@ import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Hashtable;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -787,14 +788,12 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
     }
 
     // Auto detect
-    Set<String> interfaces = new HashSet<String>();
+    Set<String> interfaces = new LinkedHashSet<String>();
     Class<?> currentClass = componentType;
     ComponentContextImpl.resolveSuperInterfacesRecurse(currentClass, interfaces);
+    interfaces.add(componentTypeName);
 
-    if (interfaces.size() != 0) {
-      return interfaces.toArray(new String[interfaces.size()]);
-    }
-    return new String[] { componentTypeName };
+    return interfaces.toArray(new String[interfaces.size()]);
   }
 
   private void restart() {

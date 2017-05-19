@@ -93,7 +93,7 @@ public class ECMTest {
   @Activate
   public void activate(final ComponentContext<ECMTest> componentContext) {
     this.componentContext = componentContext;
-    factory = new ComponentContainerFactory(componentContext.getBundleContext());
+    this.factory = new ComponentContainerFactory(componentContext.getBundleContext());
   }
 
   /**
@@ -102,14 +102,14 @@ public class ECMTest {
    */
   @After
   public void after() {
-    for (Configuration configuration : configurations) {
+    for (Configuration configuration : this.configurations) {
       try {
         configuration.delete();
       } catch (IOException e) {
         throw new UncheckedIOException(e);
       }
     }
-    configurations.clear();
+    this.configurations.clear();
   }
 
   private void convertAllNonArrayPropertiesToStringRepresentation(
@@ -187,7 +187,7 @@ public class ECMTest {
   public void testAttributeConversionFromStringFailure() {
     ComponentMetadata testComponentMetadata = MetadataBuilder
         .buildComponentMetadata(EveryTypeAttributeTestComponent.class);
-    ComponentContainerInstance<Object> container = factory
+    ComponentContainerInstance<Object> container = this.factory
         .createComponentContainer(testComponentMetadata);
     container.open();
 
@@ -215,15 +215,16 @@ public class ECMTest {
   public void testBundleCapabilityTestComponent() {
     ComponentMetadata bundleCapabilityTest = MetadataBuilder
         .buildComponentMetadata(BundleCapabilityTestComponent.class);
-    ComponentContainerInstance<BundleCapabilityTestComponent> container = factory
+    ComponentContainerInstance<BundleCapabilityTestComponent> container = this.factory
         .createComponentContainer(bundleCapabilityTest);
     container.open();
 
     Configuration configuration = null;
     try {
 
-      configuration = configAdmin.getConfiguration(BundleCapabilityTestComponent.class.getName(),
-          null);
+      configuration =
+          this.configAdmin.getConfiguration(BundleCapabilityTestComponent.class.getName(),
+              null);
 
       Hashtable<String, Object> properties = new Hashtable<>();
 
@@ -259,7 +260,7 @@ public class ECMTest {
   public void testComponentUnregistersServiceAfterGettingUnsatisfied() {
     ComponentMetadata testComponentMetadata = MetadataBuilder
         .buildComponentMetadata(EveryTypeAttributeTestComponent.class);
-    ComponentContainerInstance<Object> container = factory
+    ComponentContainerInstance<Object> container = this.factory
         .createComponentContainer(testComponentMetadata);
     container.open();
 
@@ -276,7 +277,7 @@ public class ECMTest {
       waitForTrueSupplied(
           () -> container.getResources()[0].getState() == ComponentState.UNSATISFIED);
 
-      BundleContext bundleContext = componentContext.getBundleContext();
+      BundleContext bundleContext = this.componentContext.getBundleContext();
 
       Collection<ServiceReference<EveryTypeAttributeTestComponent>> serviceReferences =
           bundleContext.getServiceReferences(EveryTypeAttributeTestComponent.class, filterString);
@@ -295,21 +296,21 @@ public class ECMTest {
     Configuration configuration = null;
     try {
 
-      configuration = configAdmin.getConfiguration(SimpleComponent.COMPONENT_ID, null);
+      configuration = this.configAdmin.getConfiguration(SimpleComponent.COMPONENT_ID, null);
       Dictionary<String, Object> properties = new Hashtable<>();
       properties.put("simpleStringAttr", "simple string value");
       configuration.update(properties);
 
       waitForService(SimpleComponent.class);
 
-      ServiceReference<SimpleComponent> simpleComponentReference = componentContext
+      ServiceReference<SimpleComponent> simpleComponentReference = this.componentContext
           .getBundleContext().getServiceReference(SimpleComponent.class);
 
       Object componentId = simpleComponentReference
           .getProperty(ECMComponentConstants.SERVICE_PROP_COMPONENT_ID);
 
       Collection<ServiceReference<ManagedService>> simpleComponentContainerReferences =
-          componentContext.getBundleContext().getServiceReferences(
+          this.componentContext.getBundleContext().getServiceReferences(
               ManagedService.class,
               "(" + ECMComponentConstants.SERVICE_PROP_COMPONENT_ID
                   + "=" + componentId
@@ -337,7 +338,7 @@ public class ECMTest {
   private void testEveryTypeComponentWithProperties(final Hashtable<String, Object> properties) {
     ComponentMetadata testComponentMetadata = MetadataBuilder
         .buildComponentMetadata(EveryTypeAttributeTestComponent.class);
-    ComponentContainerInstance<Object> container = factory
+    ComponentContainerInstance<Object> container = this.factory
         .createComponentContainer(testComponentMetadata);
     container.open();
 
@@ -394,7 +395,7 @@ public class ECMTest {
     ComponentMetadata componentMetadata = MetadataBuilder
         .buildComponentMetadata(FailingComponent.class);
 
-    ComponentContainerInstance<FailingComponent> container = factory
+    ComponentContainerInstance<FailingComponent> container = this.factory
         .createComponentContainer(componentMetadata);
 
     container.open();
@@ -452,7 +453,7 @@ public class ECMTest {
 
       Hashtable<String, Object> properties = new Hashtable<>();
       properties.put("name", "forFailing");
-      serviceRegistration = componentContext.registerService(
+      serviceRegistration = this.componentContext.registerService(
           String.class, "", properties);
 
       waitForService("(failingReference.target=\\(name\\=forFailing\\))");
@@ -463,12 +464,12 @@ public class ECMTest {
 
       Assert.assertEquals(ComponentState.UNSATISFIED, getComponentState(container));
 
-      failingServiceRegistration = componentContext.registerService(
+      failingServiceRegistration = this.componentContext.registerService(
           String.class, FailingComponent.CONF_FAIL_REFERENCE, properties);
 
       Assert.assertEquals(ComponentState.FAILED, getComponentState(container));
 
-      serviceRegistration = componentContext.registerService(
+      serviceRegistration = this.componentContext.registerService(
           String.class, "", properties);
 
       Assert.assertEquals(ComponentState.FAILED, getComponentState(container));
@@ -535,7 +536,7 @@ public class ECMTest {
     ComponentMetadata ignoredComponentMetadata = MetadataBuilder
         .buildComponentMetadata(IgnoredComponent.class);
 
-    ComponentContainerInstance<IgnoredComponent> ignoredComponentContainer = factory
+    ComponentContainerInstance<IgnoredComponent> ignoredComponentContainer = this.factory
         .createComponentContainer(ignoredComponentMetadata);
     ignoredComponentContainer.open();
 
@@ -554,7 +555,7 @@ public class ECMTest {
     ComponentMetadata componentMetadata = MetadataBuilder
         .buildComponentMetadata(MultiRequirementAndCapabilityComponent.class);
 
-    ComponentContainerInstance<Object> container = factory
+    ComponentContainerInstance<Object> container = this.factory
         .createComponentContainer(componentMetadata);
 
     container.open();
@@ -598,7 +599,7 @@ public class ECMTest {
     ComponentMetadata componentMetadata = MetadataBuilder
         .buildComponentMetadata(PasswordHolderTestComponent.class);
 
-    ComponentContainerInstance<PasswordHolderTestComponent> container = factory
+    ComponentContainerInstance<PasswordHolderTestComponent> container = this.factory
         .createComponentContainer(componentMetadata);
 
     container.open();
@@ -627,7 +628,7 @@ public class ECMTest {
       }
 
       ServiceTracker<PasswordHolderTestComponent, PasswordHolderTestComponent> tracker =
-          new ServiceTracker<>(componentContext.getBundleContext(), filter, null);
+          new ServiceTracker<>(this.componentContext.getBundleContext(), filter, null);
 
       tracker.open();
 
@@ -652,7 +653,7 @@ public class ECMTest {
 
   @Test
   public void testWrongActivateMethodComponent() {
-    BundleContext bundleContext = componentContext.getBundleContext();
+    BundleContext bundleContext = this.componentContext.getBundleContext();
     ComponentContainerFactory factory = new ComponentContainerFactory(bundleContext);
 
     ComponentMetadata componentMetadata = MetadataBuilder
@@ -673,7 +674,7 @@ public class ECMTest {
 
   @Test
   public void testWrongReferenceConfiguration() {
-    BundleContext bundleContext = componentContext.getBundleContext();
+    BundleContext bundleContext = this.componentContext.getBundleContext();
     ComponentContainerFactory factory = new ComponentContainerFactory(bundleContext);
 
     ComponentMetadata componentMetadata = MetadataBuilder
@@ -711,9 +712,9 @@ public class ECMTest {
   private void updateConfiguration(final ComponentContainer<?> container,
       final Hashtable<String, Object> properties) {
     try {
-      Configuration configuration = configAdmin
+      Configuration configuration = this.configAdmin
           .getConfiguration(container.getComponentMetadata().getConfigurationPid(), null);
-      configurations.add(configuration);
+      this.configurations.add(configuration);
       configuration.update(properties);
     } catch (IOException e) {
       throw new UncheckedIOException(e);
@@ -733,7 +734,7 @@ public class ECMTest {
     }
 
     ServiceTracker<T, T> tracker = new ServiceTracker<>(
-        componentContext.getBundleContext(), filter, null);
+        this.componentContext.getBundleContext(), filter, null);
     tracker.open();
     try {
       long millisBefore = System.currentTimeMillis();

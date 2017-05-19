@@ -28,7 +28,7 @@
   </parent>
 
   <artifactId>org.everit.osgi.ecm.component.ri.tests</artifactId>
-  <version>3.0.2</version>
+  <version>3.0.3</version>
 
   <packaging>bundle</packaging>
   <name>Everit - ECM Component RI Tests</name>
@@ -46,6 +46,7 @@
       <plugin>
         <groupId>org.apache.felix</groupId>
         <artifactId>maven-bundle-plugin</artifactId>
+        <version>3.2.0</version>
         <extensions>true</extensions>
         <configuration>
           <instructions>
@@ -59,7 +60,7 @@
       <plugin>
         <groupId>org.everit.osgi.dev</groupId>
         <artifactId>eosgi-maven-plugin</artifactId>
-        <version>4.0.3</version>
+        <version>4.1.0</version>
         <configuration>
           <environments>
             <environment>
@@ -75,10 +76,21 @@
                     <useBy>INTEGRATION_TEST</useBy>
                     <vmArguments>
                       <http>-Dorg.osgi.service.http.port=0</http>
+<!--                       <jacoco>-javaagent:jacoco/jacoco.jar=output=tcpserver,includes=org.everit.osgi.ecm.component.ri.*,excludes=org.everit.osgi.ecm.component.ri.tests</jacoco> -->
                     </vmArguments>
                   </override>
                 </overrides>
               </launchConfig>
+<!--               <artifacts> -->
+<!--                 <artifact> -->
+<!--                   <coordinates>org.jacoco:org.jacoco.agent:jar:runtime:0.7.9</coordinates> -->
+<!--                   <targetFile>jacoco.jar</targetFile> -->
+<!--                   <targetFolder>jacoco</targetFolder> -->
+<!--                   <properties>  -->
+<!--                     <osgi.action>none</osgi.action> -->
+<!--                   </properties> -->
+<!--                 </artifact> -->
+<!--               </artifacts> -->
             </environment>
             <environment>
               <id>ecmEquinox</id>
