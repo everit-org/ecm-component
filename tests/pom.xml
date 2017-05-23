@@ -28,7 +28,7 @@
   </parent>
 
   <artifactId>org.everit.osgi.ecm.component.ri.tests</artifactId>
-  <version>3.0.3</version>
+  <version>3.0.4-SNAPSHOT</version>
 
   <packaging>bundle</packaging>
   <name>Everit - ECM Component RI Tests</name>
@@ -60,7 +60,7 @@
       <plugin>
         <groupId>org.everit.osgi.dev</groupId>
         <artifactId>eosgi-maven-plugin</artifactId>
-        <version>4.1.0</version>
+        <version>4.1.1</version>
         <configuration>
           <environments>
             <environment>
@@ -129,6 +129,13 @@
             </goals>
           </execution>
         </executions>
+        <dependencies>
+          <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+            <version>3.5</version>
+          </dependency>
+        </dependencies>
       </plugin>
     </plugins>
   </build>
