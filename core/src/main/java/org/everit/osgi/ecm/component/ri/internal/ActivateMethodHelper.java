@@ -70,7 +70,6 @@ public class ActivateMethodHelper<C> {
    */
   public ActivateMethodHelper(final ComponentContextImpl<C> componentContext) {
     this.componentContext = componentContext;
-    Class<C> componentType = componentContext.getComponentType();
     ComponentMetadata componentMetadata = componentContext.getComponentContainer()
         .getComponentMetadata();
     MethodDescriptor methodDescriptor = componentMetadata.getActivate();
@@ -78,43 +77,21 @@ public class ActivateMethodHelper<C> {
       return;
     }
 
-    String methodName = methodDescriptor.getMethodName();
-    Method locatedMethod = null;
-    if (methodDescriptor.getParameterTypeNames() != null) {
-      locatedMethod = methodDescriptor.locate(componentType, false);
-      if (!validateMethod(locatedMethod)) {
-        Exception e = new IllegalMetadataException("Invalid activate method: "
-            + locatedMethod.toGenericString());
-        componentContext.fail(e, true);
-        return;
-      }
-    } else {
-      locatedMethod = new MethodDescriptor(methodName,
-          new String[] { ComponentContext.class.getName() }).locate(componentType, false);
-
-      if (locatedMethod == null) {
-        locatedMethod = new MethodDescriptor(methodName,
-            new String[] { BundleContext.class.getName() }).locate(componentType, false);
-      }
-
-      if (locatedMethod == null) {
-        locatedMethod = new MethodDescriptor(methodName, new String[] { Map.class.getName() })
-            .locate(componentType, false);
-      }
-
-      if (locatedMethod == null) {
-        locatedMethod = locateMethodWithMinTwoParams(componentType);
-      }
-
-      if (componentContext.isFailed()) {
-        return;
-      }
-
-      if (locatedMethod == null) {
-        locatedMethod = new MethodDescriptor(methodName, new String[0])
-            .locate(componentType, false);
-      }
+    Method locatedMethod;
+    try {
+      locatedMethod = resolveActivateMethod(methodDescriptor);
+    } catch (NoClassDefFoundError e) {
+      componentContext.fail(new RuntimeException(
+          "Could not find activate method for component " + componentMetadata.getComponentId()
+              + " with type " + componentMetadata.getType(),
+          e), true);
+      return;
     }
+
+    if (componentContext.isFailed()) {
+      return;
+    }
+
     if (locatedMethod == null) {
       Exception e = new MetadataValidationException(
           "Could not find activate method for component '"
@@ -189,13 +166,7 @@ public class ActivateMethodHelper<C> {
 
     Method foundMethod = null;
     while ((currentClass != null) && (foundMethod == null)) {
-      Method[] declaredMethods;
-      try {
-        declaredMethods = currentClass.getDeclaredMethods();
-      } catch (NoClassDefFoundError e) {
-        componentContext.fail(e, true);
-        return null;
-      }
+      Method[] declaredMethods = currentClass.getDeclaredMethods();
 
       for (int i = 0; (i < declaredMethods.length) && (foundMethod == null); i++) {
         Method declaredMethod = declaredMethods[i];
@@ -212,6 +183,46 @@ public class ActivateMethodHelper<C> {
       currentClass = currentClass.getSuperclass();
     }
     return foundMethod;
+  }
+
+  private Method resolveActivateMethod(final MethodDescriptor methodDescriptor) {
+    Class<C> componentType = componentContext.getComponentType();
+    String methodName = methodDescriptor.getMethodName();
+
+    Method locatedMethod = null;
+
+    if (methodDescriptor.getParameterTypeNames() != null) {
+      locatedMethod = methodDescriptor.locate(componentType, false);
+      if (!validateMethod(locatedMethod)) {
+        Exception e = new IllegalMetadataException("Invalid activate method: "
+            + locatedMethod.toGenericString());
+        componentContext.fail(e, true);
+        return null;
+      }
+    } else {
+      locatedMethod = new MethodDescriptor(methodName,
+          new String[] { ComponentContext.class.getName() }).locate(componentType, false);
+
+      if (locatedMethod == null) {
+        locatedMethod = new MethodDescriptor(methodName,
+            new String[] { BundleContext.class.getName() }).locate(componentType, false);
+      }
+
+      if (locatedMethod == null) {
+        locatedMethod = new MethodDescriptor(methodName, new String[] { Map.class.getName() })
+            .locate(componentType, false);
+      }
+
+      if (locatedMethod == null) {
+        locatedMethod = locateMethodWithMinTwoParams(componentType);
+      }
+
+      if (locatedMethod == null) {
+        locatedMethod = new MethodDescriptor(methodName, new String[0])
+            .locate(componentType, false);
+      }
+    }
+    return locatedMethod;
   }
 
   private boolean validateMethod(final Method pMethod) {
