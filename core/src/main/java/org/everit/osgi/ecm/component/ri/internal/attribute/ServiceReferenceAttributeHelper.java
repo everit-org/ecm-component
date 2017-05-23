@@ -15,8 +15,8 @@
  */
 package org.everit.osgi.ecm.component.ri.internal.attribute;
 
-import java.lang.invoke.MethodHandle;
 import java.lang.reflect.Array;
+import java.lang.reflect.Method;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -128,7 +128,7 @@ public class ServiceReferenceAttributeHelper<S, COMPONENT> extends
 
         service = addToUsedServiceReferences(serviceReference);
         if (service != null) {
-          SuitingWithService<S> suitingWithService = new SuitingWithService<S>();
+          SuitingWithService<S> suitingWithService = new SuitingWithService<>();
           suitingWithService.service = service;
           suitingWithService.suiting = suiting;
           newSuitingMapping.put(requirementId, suitingWithService);
@@ -140,7 +140,7 @@ public class ServiceReferenceAttributeHelper<S, COMPONENT> extends
       }
 
       if (isHolder()) {
-        ServiceHolder<S> serviceHolder = new ServiceHolder<S>(suiting.getRequirement()
+        ServiceHolder<S> serviceHolder = new ServiceHolder<>(suiting.getRequirement()
             .getRequirementId(), serviceReference, service, requirement.getAttributes());
 
         parameter[i] = serviceHolder;
@@ -161,7 +161,7 @@ public class ServiceReferenceAttributeHelper<S, COMPONENT> extends
   }
 
   private void callSetterWithParameters(final Object[] parameter) {
-    MethodHandle setterMethod = getSetterMethodHandle();
+    Method setterMethod = getSetterMethod();
     if (isArray()) {
       try {
         setterMethod.invoke(getComponentContext().getInstance(), (Object) parameter);
@@ -171,7 +171,7 @@ public class ServiceReferenceAttributeHelper<S, COMPONENT> extends
     } else {
       try {
         if (parameter.length == 0) {
-          setterMethod.invoke(getComponentContext().getInstance(), null);
+          setterMethod.invoke(getComponentContext().getInstance(), (Object) null);
         } else {
           setterMethod.invoke(getComponentContext().getInstance(), parameter[0]);
         }
@@ -194,7 +194,7 @@ public class ServiceReferenceAttributeHelper<S, COMPONENT> extends
       final ReferenceCapabilityConsumer consumer,
       final RequirementDefinition<ServiceReference<S>>[] items) {
 
-    return new ServiceReferenceCollector<S>(getComponentContext().getBundleContext(),
+    return new ServiceReferenceCollector<>(getComponentContext().getBundleContext(),
         serviceClass, items, consumer, false);
   }
 

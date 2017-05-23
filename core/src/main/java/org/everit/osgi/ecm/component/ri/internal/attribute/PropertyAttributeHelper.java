@@ -15,8 +15,6 @@
  */
 package org.everit.osgi.ecm.component.ri.internal.attribute;
 
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Method;
 
 import org.everit.osgi.ecm.component.PasswordHolder;
@@ -40,9 +38,9 @@ public class PropertyAttributeHelper<C, V_ARRAY> {
 
   private final ComponentContextImpl<C> componentContext;
 
-  private final MethodHandle methodHandle;
+  private final Class<?> parameterClass;
 
-  private Class<?> parameterClass;
+  private final Method setterMethod;
 
   /**
    * Constructor.
@@ -57,7 +55,8 @@ public class PropertyAttributeHelper<C, V_ARRAY> {
 
     this.componentContext = componentContext;
     this.attributeMetadata = attributeMetadata;
-    this.methodHandle = resolveMethodHandle();
+    this.setterMethod = resolveSetter();
+    this.parameterClass = (setterMethod != null) ? this.setterMethod.getParameterTypes()[0] : null;
 
   }
 
@@ -68,7 +67,7 @@ public class PropertyAttributeHelper<C, V_ARRAY> {
    *          The new value of the property that is passed to the setter.
    */
   public void applyValue(final Object newValue) {
-    if (methodHandle == null) {
+    if (setterMethod == null) {
       return;
     }
 
@@ -82,9 +81,8 @@ public class PropertyAttributeHelper<C, V_ARRAY> {
 
     C instance = componentContext.getInstance();
 
-    methodHandle.bindTo(instance);
     try {
-      methodHandle.invoke(instance, parameterValue);
+      setterMethod.invoke(instance, parameterValue);
     } catch (Throwable e) {
       componentContext.fail(e, false);
     }
@@ -93,24 +91,6 @@ public class PropertyAttributeHelper<C, V_ARRAY> {
 
   public PropertyAttributeMetadata<V_ARRAY> getAttributeMetadata() {
     return attributeMetadata;
-  }
-
-  private MethodHandle resolveMethodHandle() {
-    Method setter = resolveSetter();
-    if (setter == null) {
-      return null;
-    }
-
-    parameterClass = setter.getParameterTypes()[0];
-
-    MethodHandles.Lookup lookup = MethodHandles.lookup();
-    try {
-      return lookup.unreflect(setter);
-    } catch (IllegalAccessException e) {
-      componentContext.fail(e, true);
-    }
-
-    return null;
   }
 
   private Object resolveMultiPasswordParamValue(final Object valueObject) {

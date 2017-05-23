@@ -15,7 +15,7 @@
  */
 package org.everit.osgi.ecm.component.ri.internal.attribute;
 
-import java.lang.invoke.MethodHandle;
+import java.lang.reflect.Method;
 
 import org.everit.osgi.capabilitycollector.AbstractCapabilityCollector;
 import org.everit.osgi.capabilitycollector.BundleCapabilityCollector;
@@ -47,7 +47,7 @@ public class BundleCapabilityReferenceAttributeHelper<COMPONENT> extends
 
   @Override
   protected void bindInternal() {
-    MethodHandle setterMethod = getSetterMethodHandle();
+    Method setterMethod = getSetterMethod();
     if (setterMethod == null) {
       return;
     }
@@ -59,7 +59,7 @@ public class BundleCapabilityReferenceAttributeHelper<COMPONENT> extends
         setterMethod.invoke(getComponentContext().getInstance(), (Object) parameterArray);
       } else {
         if (parameterArray.length == 0) {
-          setterMethod.invoke(getComponentContext().getInstance(), null);
+          setterMethod.invoke(getComponentContext().getInstance(), (Object) null);
         } else {
           setterMethod.invoke(getComponentContext().getInstance(), parameterArray[0]);
         }

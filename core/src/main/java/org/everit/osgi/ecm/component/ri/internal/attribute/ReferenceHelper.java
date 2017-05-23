@@ -15,8 +15,6 @@
  */
 package org.everit.osgi.ecm.component.ri.internal.attribute;
 
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -102,15 +100,13 @@ public abstract class ReferenceHelper<CAPABILITY, COMPONENT, METADATA extends Re
 
   private final boolean holder;
 
-  private Object previousInstance = null;
-
   private final METADATA referenceMetadata;
 
   private boolean satisfied = false;
 
   private boolean satisfiedNotificationSent = false;
 
-  private final MethodHandle setterMethodHandle;
+  private final Method setterMethod;
 
   private Suiting<CAPABILITY>[] suitings;
 
@@ -137,19 +133,15 @@ public abstract class ReferenceHelper<CAPABILITY, COMPONENT, METADATA extends Re
     MethodDescriptor setterMethodDescriptor = referenceMetadata.getSetter();
     if (setterMethodDescriptor == null) {
       holder = false;
-      setterMethodHandle = null;
+      setterMethod = null;
       array = false;
     } else {
-      Method setterMethod = setterMethodDescriptor.locate(componentContext.getComponentType(),
+      this.setterMethod = setterMethodDescriptor.locate(componentContext.getComponentType(),
           false);
       if (setterMethod == null) {
         throw new MetadataValidationException("Setter method '" + setterMethodDescriptor.toString()
             + "' could not be found for class " + componentContext.getComponentTypeName());
       }
-
-      MethodHandles.Lookup lookup = MethodHandles.lookup();
-
-      this.setterMethodHandle = lookup.unreflect(setterMethod);
 
       Class<?>[] parameterTypes = setterMethod.getParameterTypes();
       if ((parameterTypes.length != 1) || parameterTypes[0].isPrimitive()) {
@@ -190,7 +182,7 @@ public abstract class ReferenceHelper<CAPABILITY, COMPONENT, METADATA extends Re
    */
   public void bind() {
     try {
-      if (setterMethodHandle != null) {
+      if (setterMethod != null) {
         if (!array && (suitings.length > 1)) {
           getComponentContext().fail(new ConfigurationException(
               getReferenceMetadata().getAttributeId()
@@ -199,11 +191,6 @@ public abstract class ReferenceHelper<CAPABILITY, COMPONENT, METADATA extends Re
               false);
         }
 
-        COMPONENT instance = componentContext.getInstance();
-        if ((previousInstance == null) || !previousInstance.equals(instance)) {
-          previousInstance = instance;
-          setterMethodHandle.bindTo(instance);
-        }
         bindInternal();
       }
     } catch (RuntimeException e) {
@@ -302,7 +289,7 @@ public abstract class ReferenceHelper<CAPABILITY, COMPONENT, METADATA extends Re
           return emptyRequirementDefinitionsArray();
         }
       }
-      result[i] = new RequirementDefinition<CAPABILITY>(requirementId, filter, attributes);
+      result[i] = new RequirementDefinition<>(requirementId, filter, attributes);
 
     }
     return result;
@@ -316,8 +303,8 @@ public abstract class ReferenceHelper<CAPABILITY, COMPONENT, METADATA extends Re
     return referenceMetadata;
   }
 
-  public MethodHandle getSetterMethodHandle() {
-    return setterMethodHandle;
+  public Method getSetterMethod() {
+    return setterMethod;
   }
 
   public Suiting<CAPABILITY>[] getSuitings() {
