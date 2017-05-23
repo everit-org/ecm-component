@@ -106,6 +106,10 @@ public class ActivateMethodHelper<C> {
         locatedMethod = locateMethodWithMinTwoParams(componentType);
       }
 
+      if (componentContext.isFailed()) {
+        return;
+      }
+
       if (locatedMethod == null) {
         locatedMethod = new MethodDescriptor(methodName, new String[0])
             .locate(componentType, false);
@@ -185,7 +189,13 @@ public class ActivateMethodHelper<C> {
 
     Method foundMethod = null;
     while ((currentClass != null) && (foundMethod == null)) {
-      Method[] declaredMethods = currentClass.getDeclaredMethods();
+      Method[] declaredMethods;
+      try {
+        declaredMethods = currentClass.getDeclaredMethods();
+      } catch (NoClassDefFoundError e) {
+        componentContext.fail(e, true);
+        return null;
+      }
 
       for (int i = 0; (i < declaredMethods.length) && (foundMethod == null); i++) {
         Method declaredMethod = declaredMethods[i];
@@ -210,7 +220,7 @@ public class ActivateMethodHelper<C> {
       return false;
     }
 
-    Set<Class<?>> collectedParameterTypes = new HashSet<Class<?>>();
+    Set<Class<?>> collectedParameterTypes = new HashSet<>();
     for (Class<?> parameterType : parameterTypes) {
       if (!parameterType.equals(ComponentContext.class) && !parameterType.equals(Map.class)
           && !parameterType.equals(BundleContext.class)) {

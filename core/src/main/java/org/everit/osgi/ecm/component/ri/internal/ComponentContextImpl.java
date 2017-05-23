@@ -279,7 +279,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
 
     Map<String, Object> propertyMap = createPropMapFromConfigDictionary(properties);
     this.revisionBuilder =
-        new ComponentRevisionImpl.Builder<C>(componentContainer, propertyMap);
+        new ComponentRevisionImpl.Builder<>(componentContainer, propertyMap);
 
     this.revisionBuilder.updateProperties(resolveProperties(propertyMap, false));
 
@@ -297,7 +297,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
       return;
     }
 
-    activateMethodHelper = new ActivateMethodHelper<C>(this);
+    activateMethodHelper = new ActivateMethodHelper<>(this);
 
     if (isFailed()) {
       return;
@@ -403,7 +403,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
   }
 
   private Map<String, Object> createPropMapFromConfigDictionary(final Dictionary<String, ?> props) {
-    Map<String, Object> result = new HashMap<String, Object>();
+    Map<String, Object> result = new HashMap<>();
 
     if (props != null) {
       Enumeration<?> elements = props.elements();
@@ -503,7 +503,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
 
         @SuppressWarnings("unchecked")
         PropertyAttributeHelper<C, Object> propertyAttributeHelper =
-            new PropertyAttributeHelper<C, Object>(this,
+            new PropertyAttributeHelper<>(this,
                 (PropertyAttributeMetadata<Object>) attributeMetadata);
 
         propertyAttributeHelpers
@@ -513,12 +513,12 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
         try {
           if (attributeMetadata instanceof ServiceReferenceMetadata) {
 
-            helper = new ServiceReferenceAttributeHelper<Object, C>(
+            helper = new ServiceReferenceAttributeHelper<>(
                 (ServiceReferenceMetadata) attributeMetadata,
                 this, referenceEventHandler);
 
           } else {
-            helper = new BundleCapabilityReferenceAttributeHelper<C>(
+            helper = new BundleCapabilityReferenceAttributeHelper<>(
                 (BundleCapabilityReferenceMetadata) attributeMetadata, this, referenceEventHandler);
 
           }
@@ -694,7 +694,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
       final ServiceRegistration<S> original) {
 
     ComponentServiceRegistration<S, C> componentServiceRegistration =
-        new ComponentServiceRegistration<S, C>(this, original);
+        new ComponentServiceRegistration<>(this, original);
     revisionBuilder.addServiceRegistration(componentServiceRegistration);
     return componentServiceRegistration;
   }
@@ -788,7 +788,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
     }
 
     // Auto detect
-    Set<String> interfaces = new LinkedHashSet<String>();
+    Set<String> interfaces = new LinkedHashSet<>();
     Class<?> currentClass = componentType;
     ComponentContextImpl.resolveSuperInterfacesRecurse(currentClass, interfaces);
     interfaces.add(componentTypeName);
@@ -872,7 +872,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
 
       if (serviceInterfaces.length > 0) {
         serviceRegistration = registerService(serviceInterfaces, instance,
-            new Hashtable<String, Object>(properties));
+            new Hashtable<>(properties));
       }
       revisionBuilder.active();
     } finally {
@@ -1006,7 +1006,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
     }
 
     if (serviceRegistration != null) {
-      serviceRegistration.setProperties(new Hashtable<String, Object>(newProperties));
+      serviceRegistration.setProperties(new Hashtable<>(newProperties));
     }
 
   }
