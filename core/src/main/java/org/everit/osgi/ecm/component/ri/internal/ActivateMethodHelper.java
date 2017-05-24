@@ -81,10 +81,7 @@ public class ActivateMethodHelper<C> {
     try {
       locatedMethod = resolveActivateMethod(methodDescriptor);
     } catch (NoClassDefFoundError e) {
-      componentContext.fail(new RuntimeException(
-          "Could not find activate method for component " + componentMetadata.getComponentId()
-              + " with type " + componentMetadata.getType(),
-          e), true);
+      componentContext.fail(e, true);
       return;
     }
 

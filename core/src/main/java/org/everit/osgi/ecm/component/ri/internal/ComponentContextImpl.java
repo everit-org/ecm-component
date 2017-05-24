@@ -309,11 +309,16 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
 
     serviceInterfaces = resolveServiceInterfaces();
 
-    deactivateMethod = resolveAnnotatedMethod("deactivate", componentContainer
-        .getComponentMetadata().getDeactivate());
+    try {
+      deactivateMethod = resolveAnnotatedMethod("deactivate", componentContainer
+          .getComponentMetadata().getDeactivate());
 
-    updateMethod = resolveAnnotatedMethod("update", componentContainer
-        .getComponentMetadata().getUpdate());
+      updateMethod = resolveAnnotatedMethod("update", componentContainer
+          .getComponentMetadata().getUpdate());
+    } catch (NoClassDefFoundError e) {
+      fail(e, true);
+      return;
+    }
 
   }
 
@@ -501,13 +506,17 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
     for (AttributeMetadata<?> attributeMetadata : attributes) {
       if (attributeMetadata instanceof PropertyAttributeMetadata) {
 
-        @SuppressWarnings("unchecked")
-        PropertyAttributeHelper<C, Object> propertyAttributeHelper =
-            new PropertyAttributeHelper<>(this,
-                (PropertyAttributeMetadata<Object>) attributeMetadata);
+        try {
+          @SuppressWarnings("unchecked")
+          PropertyAttributeHelper<C, Object> propertyAttributeHelper =
+              new PropertyAttributeHelper<>(this,
+                  (PropertyAttributeMetadata<Object>) attributeMetadata);
 
-        propertyAttributeHelpers
-            .add(propertyAttributeHelper);
+          propertyAttributeHelpers.add(propertyAttributeHelper);
+        } catch (NoClassDefFoundError e) {
+          fail(e, true);
+          return;
+        }
       } else {
         ReferenceHelper<?, C, ?> helper;
         try {
@@ -522,7 +531,7 @@ public class ComponentContextImpl<C> implements ComponentContext<C> {
                 (BundleCapabilityReferenceMetadata) attributeMetadata, this, referenceEventHandler);
 
           }
-        } catch (IllegalAccessException | RuntimeException e) {
+        } catch (IllegalAccessException | RuntimeException | NoClassDefFoundError e) {
           fail(e, true);
           return;
         }
